@@ -23,9 +23,8 @@ class GetPatientApproach(Approach):
         cursor = cnxn.cursor()
 
         # SQL Server から患者情報を取得する
-        cursor.execute("""SELECT Name
-            FROM [dbo].[Patient] WHERE IsDeleted = 0 AND PatientCode = ?""", patient_code)
-        #cursor.execute('SELECT Name FROM Patient WHERE PatientCode = ?', patient_code)
+        cursor.execute("""SELECT PID_NAME
+            FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", patient_code)
         rows = cursor.fetchall() 
         records = ""
         for row in rows:
