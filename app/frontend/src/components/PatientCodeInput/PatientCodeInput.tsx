@@ -67,7 +67,7 @@ export const PatientCodeInput = ({ onPatientCodeChanged, disabled, placeholder, 
             <Stack horizontal className={styles.patientCodeInputContainer}>
                 <TextField
                     className={styles.patientCodeInputTextArea}
-                    placeholder="患者番号を入力してください (e.g. 0000-123456)"
+                    placeholder="患者番号を入力してください (e.g. 8888012345)"
                     multiline={false}
                     resizable={false}
                     borderless

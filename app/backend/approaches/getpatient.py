@@ -19,15 +19,14 @@ class GetPatientApproach(Approach):
         print(patient_code)
 
         # SQL Server に接続する
-        cnxn = pyodbc.connect(os.environ.get("SQL_CONNECTION_STRING"))
+        sql_connection_string = os.environ.get('SQL_CONNECTION_STRING')
+        cnxn = pyodbc.connect(sql_connection_string)
         cursor = cnxn.cursor()
 
         # SQL Server から患者情報を取得する
-        cursor.execute("""SELECT Name
-            FROM [dbo].[Patient] WHERE IsDeleted = 0 AND PatientCode = ?""", patient_code)
-        #cursor.execute('SELECT Name FROM Patient WHERE PatientCode = ?', patient_code)
+        cursor.execute("""SELECT PID_NAME
+            FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", patient_code)
         rows = cursor.fetchall() 
-        records = ""
         for row in rows:
             return {"name":row[0]}
         return {"name":"患者情報が見つかりませんでした。"}
