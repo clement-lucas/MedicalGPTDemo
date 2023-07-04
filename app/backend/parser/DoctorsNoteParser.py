@@ -1,7 +1,7 @@
 # 医師記録 parser class.
 # XML 形式の文字列を受け取り、SOAP の内容を抽出する。
 
-from parser.SOAPParser import SOAPParser as SP
+from parser.soapparser import SOAPParser as SP
 
 class DoctorsNoteParser(SP):
 
