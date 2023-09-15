@@ -16,6 +16,8 @@ interface Props {
     onSupportingContentClicked: () => void;
     onFollowupQuestionClicked?: (question: string) => void;
     showFollowupQuestions?: boolean;
+    isThoughtProcessVisible?: boolean;
+    isSupportingContentVisible?: boolean;
 }
 
 export const Answer = ({
@@ -25,7 +27,9 @@ export const Answer = ({
     onThoughtProcessClicked,
     onSupportingContentClicked,
     onFollowupQuestionClicked,
-    showFollowupQuestions
+    showFollowupQuestions,
+    isThoughtProcessVisible = true,
+    isSupportingContentVisible = true,
 }: Props) => {
     const parsedAnswer = useMemo(() => parseAnswerToHtml(answer.answer, onCitationClicked), [answer]);
 
@@ -38,7 +42,7 @@ export const Answer = ({
                     <AnswerIcon />
                     <div>
                         <IconButton
-                            style={{ color: "black" }}
+                            style={{ color: "black", visibility: isThoughtProcessVisible ? "visible" : "hidden" }}
                             iconProps={{ iconName: "Lightbulb" }}
                             title="Show thought process"
                             ariaLabel="Show thought process"
@@ -46,7 +50,7 @@ export const Answer = ({
                             disabled={!answer.thoughts}
                         />
                         <IconButton
-                            style={{ color: "black" }}
+                            style={{ color: "black", visibility: isSupportingContentVisible ? "visible" : "hidden" }}
                             iconProps={{ iconName: "ClipboardList" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"

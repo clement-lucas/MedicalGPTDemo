@@ -1,15 +1,28 @@
 import { useRef, useState} from "react";
 import { Checkbox, ChoiceGroup, IChoiceGroupOption, Panel, DefaultButton, Spinner, TextField, SpinButton } from "@fluentui/react";
 import { Label, Stack } from "@fluentui/react";
+import { PrimaryButton } from '@fluentui/react/lib/Button';
+
 
 import styles from "./Discharge.module.css";
 
-import { dischargeApi, Approaches, AskResponse, DischargeRequest } from "../../api";
+import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
 import { DischargeList } from "../../components/Example";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import bird from "../../assets/bird.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
+export type HistoryIndex = {
+    id: number;
+    pid: string;
+    patientname: string;
+    documentname: string;
+};
+
+export type DayOfHistoryIndex = {
+    createddate: string;
+    historylist: HistoryIndex[];
+};
 
 const Discharge = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -22,6 +35,7 @@ const Discharge = () => {
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [patientCode, setPatientCode] = useState<string>("");
+    const [patientName, setPatientName] = useState<string>("");
 
     const lastQuestionRef = useRef<string>("");
     const [completionTokens, setCompletionTokens] = useState<number>(0);
@@ -35,6 +49,49 @@ const Discharge = () => {
     const [activeCitation, setActiveCitation] = useState<string>();
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
+    const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
+
+    const onLoad = async () => {
+        await getHistoryIndex();
+    }
+
+    const getHistoryIndex = async () => {
+        try {
+            const request: GetHistoryIndexRequest = {
+                document_name: "退院時サマリ",
+            };
+            const result = await getHistoryIndexApi(request);
+            setHistoryItems(result.history_date_list);
+        } catch (e) {
+            // TODO エラー表示処理
+            alert(e)
+            //setError(e);
+        }
+    }
+
+    const getHistoryDetail = async (id:number) => {
+        error && setError(undefined);
+        setIsLoading(true);
+        setActiveCitation(undefined);
+        setActiveAnalysisPanelTab(undefined);
+
+        try {
+            const request: GetHistoryDetailRequest = {
+                id: id,
+            };
+            const result = await getHistoryDetailApi(request);
+            setAnswer(result);
+            setCompletionTokens(result.completion_tokens);
+            setPromptTokens(result.prompt_tokens);
+            setTotalTokens(result.total_tokens);
+            setPatientCode(result.pid!);
+            setPatientName(result.patient_name!);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setIsLoading(false);
+        }
+    }
 
     const makeApiRequest = async (documentName: string) => {
         lastQuestionRef.current = documentName;
@@ -62,6 +119,10 @@ const Discharge = () => {
             setCompletionTokens(result.completion_tokens);
             setPromptTokens(result.prompt_tokens);
             setTotalTokens(result.total_tokens);
+
+            // 履歴の取り直し
+            await getHistoryIndex();
+
         } catch (e) {
             setError(e);
         } finally {
@@ -137,8 +198,44 @@ const Discharge = () => {
         }
     ];
 
+    function onHistoryButtonClicked(id:number): void {
+        getHistoryDetail(id);
+    }
+
+    const hitoryLabelStyles = {
+        root: {
+          color: '#ffffff',
+          font: '14px',
+        }
+    };
+
+    const hitoryButtonStyles = {
+        root: {
+            backgroundColor: 'transparent',
+            borderColor: 'transparent',
+            with: '100%',
+            padding: '10px',
+        }
+    };
 
     return (
+    <Stack horizontal horizontalAlign="space-between" onLoad={onLoad}>  
+        <div className={styles.dischargeHistoryPanel}>
+            <Label styles={hitoryLabelStyles}>作成履歴</Label>
+            {historyItems.map((item) => (
+                <div><Label styles={hitoryLabelStyles}>{item.created_date}</Label>
+                {item.history_list.map((history) => (
+                    <div>
+                        <PrimaryButton styles={hitoryButtonStyles}  onClick={() => onHistoryButtonClicked(history.id)}>
+                            <Stack horizontal>
+                                <Label styles={hitoryLabelStyles}>{history.pid + " " + history.patient_name}</Label>
+                            </Stack>
+                        </PrimaryButton>                 
+                        </div>
+                    ))}
+                    </div>
+                ))}
+        </div>            
         <div className={styles.dischargeContainer}>
             <div className={styles.dischargeTopSection}>
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
@@ -149,7 +246,10 @@ const Discharge = () => {
                              <div className={styles.dischargeInput}>
                                  <PatientCodeInput
                                      onPatientCodeChanged={x => (setPatientCode(x))}
+                                     onPatientNameChanged={x => (setPatientName(x))}
                                      clearOnSend
+                                     patientCode={patientCode}
+                                     patientName={patientName}
                                      placeholder="Type a new question (e.g. how to prevent chronic disease?)"
                                      disabled={isLoading}
                              />
@@ -165,6 +265,8 @@ const Discharge = () => {
                             onCitationClicked={x => onShowCitation(x)}
                             onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab)}
                             onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab)}
+                            isSupportingContentVisible = {false}
+                            isThoughtProcessVisible = {false}
                         />
                         <Stack horizontal>
                             <Label>completion_tokens: </Label>
@@ -270,7 +372,8 @@ const Discharge = () => {
                 />
             </Panel>
         </div>
-    );
+        </Stack>  
+        );
 };
 
 export default Discharge;

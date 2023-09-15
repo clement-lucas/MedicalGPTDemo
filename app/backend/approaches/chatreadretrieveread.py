@@ -37,9 +37,6 @@ Sources:
     Do not include any text inside [] or <<>> in the search query terms.
     If the question is not in English, translate the question to English before generating the search query.
 
-Chat History:
-{chat_history}
-
 Question:
 {question}
 
@@ -62,7 +59,8 @@ Search query:
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
         messages = []
         messages.append({"role":"system","content":"You are AI assistant."})
-        prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False), question=history[-1]["user"])
+        messages.append(self.get_chat_history_as_list(history, include_last_turn=False))
+        prompt = self.query_prompt_template.format(question=history[-1]["user"])
         messages.append({"role":"user","content":prompt})
 
         print(messages)
@@ -100,14 +98,17 @@ Search query:
 
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
         
+        # TODO GPT3.5turbo のバージョンアップ（0301->0613）対応によりAPIの呼び出し方が変わった。
+        # プロンプトを上書きすることはしない。
         # Allow client to replace the entire prompt, or to inject into the exiting prompt using >>>
-        prompt_override = overrides.get("prompt_template")
-        if prompt_override is None:
-            prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
-        elif prompt_override.startswith(">>>"):
-            prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
-        else:
-            prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        # prompt_override = overrides.get("prompt_template")
+        # if prompt_override is None:
+        #     prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        # elif prompt_override.startswith(">>>"):
+        #     prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        # else:
+        #     prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
         # STEP 3: Generate a contextual and content specific answer using the search results and chat history
 
@@ -132,11 +133,10 @@ Search query:
 
         return {"data_points": results, "answer": answer, "thoughts": f"Searched for:<br>{q}<br><br>Prompt:<br>"}
     
-    def get_chat_history_as_text(self, history, include_last_turn=True, approx_max_tokens=1000) -> str:
-        history_text = ""
+    def get_chat_history_as_list(self, history, include_last_turn=True) -> list[str]:
+        history_list = []
         for h in reversed(history if include_last_turn else history[:-1]):
-            history_text = """<|im_start|>user""" +"\n" + h["user"] + "\n" + """<|im_end|>""" + "\n" + """<|im_start|>assistant""" + "\n" + (h.get("bot") + """<|im_end|>""" if h.get("bot") else "") + "\n" + history_text
-            if len(history_text) > approx_max_tokens*4:
-                break    
-        return history_text
+            history_list.append({"role":"user","content":h["user"]})
+            history_list.append({"role":"assistant","content":h["bot"]})
+        return history_list
         

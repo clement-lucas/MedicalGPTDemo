@@ -44,6 +44,8 @@ export type AskPatientRequest = {
 };
 
 export type AskResponse = {
+    pid: string | null;
+    patient_name: string | null;
     answer: string;
     thoughts: string | null;
     data_points: string[];
@@ -84,3 +86,29 @@ export type GetPatientResponse = {
     name: string;
     error?: string;
 };
+
+export type GetHistoryIndexRequest = {
+    document_name: string;
+};
+
+export type GetHistoryIndexResponse = {
+    history_date_list: HistoryDate[];
+    error?: string;
+};
+
+export type HistoryDate = {
+    created_date: string;
+    history_list: HistoryIndex[];
+};
+
+export type HistoryIndex = {
+    id: number;
+    pid: string;
+    patient_name: string;
+    document_name: string;
+};
+
+export type GetHistoryDetailRequest = {
+    id: number;
+};
+

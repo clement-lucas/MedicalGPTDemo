@@ -7,25 +7,26 @@ import styles from "./PatientCodeInput.module.css";
 
 interface Props {
     onPatientCodeChanged: (patientCode: string) => void;
+    onPatientNameChanged: (patientName: string) => void;
     disabled: boolean;
     placeholder?: string;
     clearOnSend?: boolean;
+    patientCode: string;
+    patientName: string;
 }
 
-export const PatientCodeInput = ({ onPatientCodeChanged, disabled, placeholder, clearOnSend }: Props) => {
-    const [patientCode, setPatientCode] = useState<string>("");
-    const [name, setName] = useState<string>("");
+export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, disabled, patientCode, patientName}: Props) => {
 
     const makeApiRequest = async (patientCode: string) => {
-        setName("");
+        onPatientNameChanged("");
         try {
             const request: GetPatientRequest = {
                 patient_code: patientCode,
             };
             const result = await getPatientApi(request);
-            setName(result.name)
+            onPatientNameChanged(result.name)
         } catch (e) {
-            setName("-");
+            onPatientNameChanged("-");
         } finally {
         }
     };
@@ -48,9 +49,9 @@ export const PatientCodeInput = ({ onPatientCodeChanged, disabled, placeholder, 
 
     const onPatientCodeChange = (_ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         if (!newValue) {
-            setPatientCode("");
+            onPatientCodeChanged("");
         } else if (newValue.length <= 1000) {
-            setPatientCode(newValue);
+            onPatientCodeChanged(newValue);
         }
     };
 
@@ -87,7 +88,7 @@ export const PatientCodeInput = ({ onPatientCodeChanged, disabled, placeholder, 
                 </div>
             </Stack>
             <Label>　患者名：</Label>
-            <Label>{name}</Label>
+            <Label>{patientName}</Label>
         </Stack>
 );
 };

@@ -63,13 +63,15 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         answer = answer.lstrip("：")
         answer = answer.lstrip("\n")
 
+        prompt = ' '.join(map(str, messages))
+
         # どうしても「「なし」と出力します。」などと冗長に出力されてしまう場合は
         # 以下のように抑止することができる。
         # answer に「なし」という文字列が含まれていたら、空文字に置き換える
         # 例）「なし」と出力します。 -> なし
         # if answer.find("「なし」と出力します。") != -1 or answer.find("「なし」という文言を出力します。") != -1:
         #     answer = "なし"
-        return "【" + category_name+ "】" + "\n" + answer + "\n\n", completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens
+        return "【" + category_name+ "】" + "\n" + answer + "\n\n", completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, prompt
 
     def get_allergy(self, cursor, pi_item_id, jpn_item_name, patient_code):
         select_allergy_sql = """SELECT PI_ITEM_02, PI_ITEM_03
@@ -326,9 +328,12 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         ret += allergy
 
         # token の集計
-        sum_of_completion_tokens = 0
-        sum_of_prompt_tokens = 0
-        sum_of_total_tokens = 0
+        sum_of_completion_tokens: int = 0
+        sum_of_prompt_tokens: int = 0
+        sum_of_total_tokens: int = 0
+
+        # 作成されたプロンプトの回収（返却とログ用）
+        prompts = ""
 
         # 【主訴または入院理由】​
         answer = self.get_answer("主訴または入院理由", """あなたは医療事務アシスタントです。
@@ -342,6 +347,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         sum_of_completion_tokens += answer[1]
         sum_of_prompt_tokens += answer[2]
         sum_of_total_tokens += answer[3]
+        prompts += answer[4] + "\n"
 
         # 【入院までの経過】​
         answer = self.get_answer("入院までの経過", """あなたは医療事務アシスタントです。
@@ -357,6 +363,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         sum_of_completion_tokens += answer[1]
         sum_of_prompt_tokens += answer[2]
         sum_of_total_tokens += answer[3]
+        prompts += answer[4] + "\n"
 
         # 【入院経過】​
         answer = self.get_answer("入院経過", """あなたは医療事務アシスタントです。
@@ -371,6 +378,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         sum_of_completion_tokens += answer[1]
         sum_of_prompt_tokens += answer[2]
         sum_of_total_tokens += answer[3]
+        prompts += answer[4] + "\n"
 
         # 【退院時状況】​
         answer = self.get_answer("退院時の状況​​", """あなたは医療事務アシスタントです。
@@ -384,6 +392,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         sum_of_completion_tokens += answer[1]
         sum_of_prompt_tokens += answer[2]
         sum_of_total_tokens += answer[3]
+        prompts += answer[4] + "\n"
 
         # tempの中の項目名である【退院時の状況】を【退院時状況】に変更する
         # これは、項目名に「の」を含めた方が、
@@ -429,12 +438,52 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         sum_of_completion_tokens += answer[1]
         sum_of_prompt_tokens += answer[2]
         sum_of_total_tokens += answer[3]
+        prompts += answer[4] + "\n"
         
         print(ret)
         print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
+
+
+        # History テーブルに追加する
+        # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする
+        insert_history_sql = """INSERT INTO [dbo].[History]
+           ([UserId]
+           ,[PID]
+           ,[DocumentName]
+           ,[Prompt]
+           ,[MedicalRecord]
+           ,[Response]
+           ,[CompletionTokens]
+           ,[PromptTokens]
+           ,[TotalTokens]
+           ,[CreatedDateTime]
+           ,[UpdatedDateTime]
+           ,[IsDeleted])
+     VALUES
+           ('000001'
+           ,?
+           ,N'退院時サマリ'
+           ,?
+           ,?
+           ,?
+           ,?
+           ,?
+           ,?
+           ,GETDATE()
+           ,GETDATE()
+           ,0)"""
+        cursor.execute(insert_history_sql, patient_code, 
+                       prompts, records_soap + allergy + medicine, 
+                       ret,
+                       sum_of_completion_tokens,   
+                       sum_of_prompt_tokens,   
+                       sum_of_total_tokens
+                       )
+        cursor.commit()
+
         return {"data_points": "test results", 
                 "answer": ret + "\n\n\nカルテデータ：\n" + records_soap + allergy + medicine, 
-                "thoughts": "", 
+                "thoughts": prompts, 
                 "completion_tokens": sum_of_completion_tokens,   
                 "prompt_tokens": sum_of_prompt_tokens,   
                 "total_tokens": sum_of_total_tokens}

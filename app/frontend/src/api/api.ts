@@ -1,4 +1,6 @@
-import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest, GetPatientResponse, AskPatientRequest, AskResponse, ChatRequest, ChatPatientRequest } from "./models";
+import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest, 
+    GetPatientResponse, GetHistoryDetailRequest, AskResponse, ChatRequest, ChatPatientRequest,
+    GetHistoryIndexRequest, GetHistoryIndexResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -223,6 +225,45 @@ export async function getPatientOldApi(options: GetPatientRequest): Promise<GetP
     return parsedResponse;
 }
 
+export async function getHistoryIndexApi(options: GetHistoryIndexRequest): Promise<GetHistoryIndexResponse> {
+    const response = await fetch("/get_history_index", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            document_name: options.document_name,
+        })
+    });
+
+    const parsedResponse: GetHistoryIndexResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+
+    return parsedResponse;
+}
+
+export async function getHistoryDetailApi(options: GetHistoryDetailRequest): Promise<AskResponse> {
+    const response = await fetch("/get_history_detail", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            id: options.id,
+        })
+    });
+
+    const parsedResponse: AskResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+
+    return parsedResponse;
+}
+
 export function getCitationFilePath(citation: string): string {
     return `/content/${citation}`;
 }
+

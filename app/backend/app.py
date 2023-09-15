@@ -15,6 +15,8 @@ from approaches.readretrievedocumentread import ReadRetrieveDocumentReadApproach
 from approaches.readretrievedischargeread import ReadRetrieveDischargeReadApproach
 from approaches.getpatient import GetPatientApproach
 from approaches.getpatientold import GetPatientOldApproach
+from approaches.gethistoryinex import GetHistoryIndexApproach
+from approaches.gethistorydetail import GetHistoryDetailApproach
 from azure.storage.blob import BlobServiceClient
 
 # Replace these with your own values, either in environment variables or directly here
@@ -88,6 +90,14 @@ get_patient_approaches = {
 
 get_patient_old_approaches = {
     "rrr": GetPatientOldApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
+get_history_index_approaches = {
+    "rrr": GetHistoryIndexApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
+get_history_detail_approaches = {
+    "rrr": GetHistoryDetailApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 app = Flask(__name__)
@@ -180,8 +190,6 @@ def chat_patient():
 
 @app.route("/get_patient", methods=["POST"])
 def get_patient():
-    ensure_openai_token()
-#    approach = request.json["approach"]
     try:
         impl = get_patient_approaches.get("rrr")
         if not impl:
@@ -194,8 +202,6 @@ def get_patient():
 
 @app.route("/get_patient_old", methods=["POST"])
 def get_patient_old():
-    ensure_openai_token()
-#    approach = request.json["approach"]
     try:
         impl = get_patient_old_approaches.get("rrr")
         if not impl:
@@ -204,6 +210,30 @@ def get_patient_old():
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_patient_old")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get_history_index", methods=["POST"])
+def get_history_index():
+    try:
+        impl = get_history_index_approaches.get("rrr")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_name"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_history_index")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get_history_detail", methods=["POST"])
+def get_history_detail():
+    try:
+        impl = get_history_detail_approaches.get("rrr")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["id"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_history_detail")
         return jsonify({"error": str(e)}), 500
 
 def ensure_openai_token():
