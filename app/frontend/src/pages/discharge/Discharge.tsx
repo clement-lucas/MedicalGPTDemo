@@ -202,36 +202,67 @@ const Discharge = () => {
         getHistoryDetail(id);
     }
 
-    const hitoryLabelStyles = {
+    const hitoryTitleLabelStyles = {
+        root: {
+          color: '#ffffff',
+          font: '16px',
+          fontWeight: 'bold',
+          textAliegn: 'left',
+          paddingLeft: '5px',
+          width: '100%',
+          backgroundColor: 'rgb(95, 95, 95)',
+        }
+    };
+
+    const hitoryDateLabelStyles = {
         root: {
           color: '#ffffff',
           font: '14px',
+          fontWeight: 'bold',
+          textAliegn: 'left',
+          paddingLeft: '5px',
+          width: '100%',
+          backgroundColor: '#858585',
         }
     };
 
     const hitoryButtonStyles = {
         root: {
-            backgroundColor: 'transparent',
+            backgroundColor: '#CFCFCF',
             borderColor: 'transparent',
-            with: '100%',
-            padding: '10px',
-        }
+            color: 'rgb(95, 95, 95)',
+            fontWeight: 'bold',
+            width: '100%',
+            padding: '0px',
+            margin: '0px',
+            borderRadius: '0px',
+            textAliegn: 'left',
+            paddingLeft: '0px',
+            alignItems: 'left',
+          }
     };
 
+    const rootStackStyles = {
+        root: {
+            height: '100%',
+            backgroundColor: 'transparent',
+        }
+    }
+
     return (
-    <Stack horizontal horizontalAlign="space-between" onLoad={onLoad}>  
-        <div className={styles.dischargeHistoryPanel}>
-            <Label styles={hitoryLabelStyles}>作成履歴</Label>
+    <Stack styles={rootStackStyles} horizontal onLoad={onLoad}>  
+        <div className={styles.dischargeHistoryDiv}>
+            <Label styles={hitoryTitleLabelStyles}>作成履歴</Label>
             {historyItems.map((item) => (
-                <div><Label styles={hitoryLabelStyles}>{item.created_date}</Label>
+                <div>
+                    <Label styles={hitoryDateLabelStyles}>{item.created_date}</Label>
                 {item.history_list.map((history) => (
                     <div>
-                        <PrimaryButton styles={hitoryButtonStyles}  onClick={() => onHistoryButtonClicked(history.id)}>
-                            <Stack horizontal>
-                                <Label styles={hitoryLabelStyles}>{history.pid + " " + history.patient_name}</Label>
-                            </Stack>
+                        <PrimaryButton styles={hitoryButtonStyles} 
+                            text={history.pid + " " + history.patient_name}
+                            onClick={() => onHistoryButtonClicked(history.id)}>
                         </PrimaryButton>                 
-                        </div>
+                    </div>
                     ))}
                     </div>
                 ))}
@@ -372,8 +403,8 @@ const Discharge = () => {
                 />
             </Panel>
         </div>
-        </Stack>  
-        );
+    </Stack>  
+    );
 };
 
 export default Discharge;

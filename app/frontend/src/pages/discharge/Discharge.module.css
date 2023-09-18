@@ -78,13 +78,12 @@
     background: #f2f2f2;
 }
 
-.dischargeHistoryPanel {
+.dischargeHistoryDiv {
+    height: 100%;
     width: 200px;
-    height: 1080%;
-    max-width: 1200px;
-    padding: 10px;
-    background-color: rgb(95, 95, 95);
+    background-color: transparent;
 }
+
 
   
 
