@@ -469,8 +469,8 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
            ,?
            ,?
            ,?
-           ,GETDATE()
-           ,GETDATE()
+           ,dateadd(hour, 9, GETDATE())
+           ,dateadd(hour, 9, GETDATE())
            ,0)"""
         cursor.execute(insert_history_sql, patient_code, 
                        prompts, records_soap + allergy + medicine, 
