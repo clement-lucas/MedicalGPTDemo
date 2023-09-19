@@ -446,6 +446,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
 
         # History テーブルに追加する
         # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする
+        # TODO 日本時間との時差調整の値を設定可能にする
         insert_history_sql = """INSERT INTO [dbo].[History]
            ([UserId]
            ,[PID]
