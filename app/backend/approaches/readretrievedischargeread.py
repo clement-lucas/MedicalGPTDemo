@@ -34,12 +34,15 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
     # 例）20140224095813 -> 2014/02/24 09:58:13
     def get_datetime(self, org):
-        year = org[0:4]
-        month = org[4:6]
-        day = org[6:8]
-        hour = org[8:10]
-        minute = org[10:12]
-        second = org[12:14]
+        strdate = str(org)
+        if len(strdate) != 14:
+            return strdate
+        year = strdate[0:4]
+        month = strdate[4:6]
+        day = strdate[6:8]
+        hour = strdate[8:10]
+        minute = strdate[10:12]
+        second = strdate[12:14]
         return year + "/" + month + "/" + day + " " + hour + ":" + minute + ":" + second
     
     # 質問文とカルテデータを受け取って GPT に投げる関数
@@ -417,7 +420,12 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         for row in rows:
             if row[0] == "HY1":
                 medicine += "　"
-            medicine += row[1] + "　" + str(row[2]) + row[3] + "\n"
+            quantity = str(row[2])
+            # quantity の小数点以下の0を削除する
+            if quantity.find(".") != -1:
+                quantity = quantity.rstrip("0")
+                quantity = quantity.rstrip(".")
+            medicine += row[1] + "　" + quantity + row[3] + "\n"
         if medicine != "":
             medicine = "【退院時使用薬剤】\n" + medicine + "\n"
         else:
