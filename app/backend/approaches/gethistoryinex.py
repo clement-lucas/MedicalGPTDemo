@@ -1,7 +1,7 @@
 import os
 import pyodbc
 from approaches.approach import Approach
-from text import nonewlines
+from lib.sqlconnector import SQLConnector
 
 class GetHistoryIndexApproach(Approach):
     def __init__(self, sourcepage_field: str, content_field: str):
@@ -14,8 +14,8 @@ class GetHistoryIndexApproach(Approach):
         print("run")
 
         # SQL Server に接続する
-        sql_connection_string = os.environ.get('SQL_CONNECTION_STRING')
-        cnxn = pyodbc.connect(sql_connection_string)
+        # 接続文字列を取得する
+        cnxn = SQLConnector.get_conn()
         cursor = cnxn.cursor()
 
         # SQL Server から履歴情報を取得する
