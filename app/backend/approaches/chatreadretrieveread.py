@@ -33,9 +33,12 @@ Sources:
     # 質問が英語でない場合は、検索クエリを生成する前に質問を英語に翻訳します。
     query_prompt_template = """Below is a history of the conversation so far, and a new question asked by the user that needs to be answered by searching in a knowledge base about medical journal and research.
     Generate a search query based on the conversation and the new question. 
+    If the question is not in English, translate the question to English before generating the search query.
     Do not include cited source filenames and document names e.g info.txt or doc.pdf in the search query terms.
     Do not include any text inside [] or <<>> in the search query terms.
-    If the question is not in English, translate the question to English before generating the search query.
+    
+Chat History:
+{chat_history}
 
 Question:
 {question}
@@ -59,8 +62,7 @@ Search query:
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
         messages = []
         messages.append({"role":"system","content":"You are AI assistant."})
-        messages.append(self.get_chat_history_as_list(history, include_last_turn=False))
-        prompt = self.query_prompt_template.format(question=history[-1]["user"])
+        prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False), question=history[-1]["user"])
         messages.append({"role":"user","content":prompt})
 
         print(messages)
@@ -68,7 +70,7 @@ Search query:
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
             messages = messages,
-            temperature=0.7,
+            temperature=0.3,
             max_tokens=800,
             top_p=0.95,
             frequency_penalty=0,
@@ -76,10 +78,14 @@ Search query:
             stop=None)
         q = completion.choices[0].message.content
 
+        # 質問文からサーチクエリを抽出する際、翻訳を通すとサーチクエリ語群がダブルコーテで囲まれ、
+        # 語群すべてが１ワードとして扱われ、サーチできないパターンがあるため、外す。
+        q = q.replace('"', "")
         print(q)
 
         # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
         if overrides.get("semantic_ranker"):
+            print("semantic_ranker")
             r = self.search_client.search(q, 
                                           filter=filter,
                                           query_type=QueryType.SEMANTIC, 
@@ -89,26 +95,28 @@ Search query:
                                           top=top, 
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
         else:
+            print("not semantic_ranker")
             r = self.search_client.search(q, filter=filter, top=top)
+        print(r)
+
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
         else:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) for doc in r]
         content = "\n".join(results)
 
+        print(results)
+
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
         
-        # TODO GPT3.5turbo のバージョンアップ（0301->0613）対応によりAPIの呼び出し方が変わった。
-        # プロンプトを上書きすることはしない。
         # Allow client to replace the entire prompt, or to inject into the exiting prompt using >>>
-        # prompt_override = overrides.get("prompt_template")
-        # if prompt_override is None:
-        #     prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
-        # elif prompt_override.startswith(">>>"):
-        #     prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
-        # else:
-        #     prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
-        prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        prompt_override = overrides.get("prompt_template")
+        if prompt_override is None:
+            prompt = self.prompt_prefix.format(injected_prompt="", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        elif prompt_override.startswith(">>>"):
+            prompt = self.prompt_prefix.format(injected_prompt=prompt_override[3:] + "\n", sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
+        else:
+            prompt = prompt_override.format(sources=content, chat_history=self.get_chat_history_as_text(history), follow_up_questions_prompt=follow_up_questions_prompt)
 
         # STEP 3: Generate a contextual and content specific answer using the search results and chat history
 
@@ -130,13 +138,15 @@ Search query:
             presence_penalty=0,
             stop=None)
         answer = completion.choices[0].message.content
+        prompt = ' '.join(map(str, messages))
 
-        return {"data_points": results, "answer": answer, "thoughts": f"Searched for:<br>{q}<br><br>Prompt:<br>"}
+        return {"data_points": results, "answer": answer, "thoughts": f"Searched for:<br>{q}<br><br>Prompt:<br>{prompt}<br>"}
     
-    def get_chat_history_as_list(self, history, include_last_turn=True) -> list[str]:
-        history_list = []
+    def get_chat_history_as_text(self, history, include_last_turn=True, approx_max_tokens=1000) -> str:
+        history_text = ""
         for h in reversed(history if include_last_turn else history[:-1]):
-            history_list.append({"role":"user","content":h["user"]})
-            history_list.append({"role":"assistant","content":h["bot"]})
-        return history_list
+            history_text = """<|im_start|>user""" +"\n" + h["user"] + "\n" + """<|im_end|>""" + "\n" + """<|im_start|>assistant""" + "\n" + (h.get("bot") + """<|im_end|>""" if h.get("bot") else "") + "\n" + history_text
+            if len(history_text) > approx_max_tokens*4:
+                break    
+        return history_text
         
