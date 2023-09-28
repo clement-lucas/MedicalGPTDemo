@@ -27,14 +27,11 @@ azd env get-values
   
 6. 医療文献を登録用フォルダーに入れる。  
 ./data フォルダーに、 ./data_scanned の中身をコピーする。  
-これにより、 azd up 時に pdf の内容が取り込まれる。  
+これにより、 azd up あるいは ./scripts/propdocs.ps1 時に pdf の内容が取り込まれる。  
 一度取り込んだら、削除しておくこと。  
   
 7. 以下のコマンドを実行する。  
-azd init (もしも ERROR: environment already initialized to <env_name> というメッセージが出たら無視する)  
 azd up  
-location には **East US** or **South Central US** を指定する。
-なお、使用可能な location は変更となる可能性がある。
   
 8. 任意のデータベースを作成する。  
 任意の RDB を作成する。  
@@ -59,11 +56,10 @@ https://learn.microsoft.com/ja-jp/azure/app-service/configure-common?tabs=portal
 名前：SQL_CONNECTION_STRING  
 値：<接続文字列>  
   
-10. 以降、システムに変更を加えた場合のデプロイに際しては、以下のコマンドを実行する。  
-azd up  
-ただし、 Web アプリケーションに対してのみ変更された場合は、以下のコマンドで良い。  
-azd deploy  
-  
+Azule Portal にて追加したアプリケーション設定は、  
+azd up あるいは azd provision コマンド実行後に削除されるので、これらのコマンドを実行したら再度設定する必要がある。  
+通常、これらのコマンドは初期導入時以外に実行する必要はない。  
+
 
 # 開発環境構築手順（既に用意された環境で開発する）  
 前提条件：  
@@ -99,18 +95,13 @@ azd env get-values
   
 6. 以下のコマンドを実行する。  
 pwsh ./scripts/roles.ps1 （初回のみ）  
-azd up  
   
-7. 以降、システムに変更を加えた場合のデプロイに際しては、以下のコマンドを実行する。  
-azd up  
-ただし、 Web アプリケーションに対してのみ変更された場合は、以下のコマンドで良い。  
-azd deploy  
-
 
 # ローカルマシン上で Webサーバーを起動する  
 ローカルマシン上で Webサーバーを起動するには以下のコマンドを実行する。  
 ./app ディレクトリに移動する。
 ./start.ps1 または ./start.sh を実行する。
+
 
 # 医療文献を追加で読み込ませる
 1. 医療文献を登録用フォルダーに入れる。  
@@ -121,6 +112,11 @@ azd deploy
 cd <project_root>  
 .\scripts\prepdocs.ps1  
 
+
+# Web アプリケーションに変更を加えた後でデプロイする  
+1. 以下のコマンドを実行する。  
+cd <project_root>  
+azd deploy  
 
 # Azure SQL Server の認証に AAD 認証を使用する場合の手順
 1. Azure Portal にアクセスし、Azure SQL Server の認証方式に AAD があることを確認する。  
