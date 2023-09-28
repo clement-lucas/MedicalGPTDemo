@@ -8,6 +8,12 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
+    "location_openai": {
+      "value": "${AZURE_LOCATION_OPENAI}"
+    },
+    "chatGptModelName": {
+      "value": "${AZURE_GPT_MODEL_NAME}"
+    },
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
     },

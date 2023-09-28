@@ -118,6 +118,21 @@ cd <project_root>
 cd <project_root>  
 azd deploy  
 
+
+# GPT モデルを変更する
+本システムでは通常 gpt-35-turbo モデルを使用するが、 gpt-4 を使用したい場合は、  
+.azure\<env_name>\.env  
+ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
+AZURE_GPT_MODEL_NAME="gpt-4"  
+
+
+# GPT モデルの location を変更する
+gpt-4 の location を強制された等の理由により、 Azure Open AI リソースのみ location を変更したい場合は、  
+.azure\<env_name>\.env  
+ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
+AZURE_LOCATION_OPENAI="<target_location>"  
+
+
 # Azure SQL Server の認証に AAD 認証を使用する場合の手順
 1. Azure Portal にアクセスし、Azure SQL Server の認証方式に AAD があることを確認する。  
   
@@ -132,12 +147,13 @@ azd deploy
 5. 接続文字列を設定する。  
 .azure\<env_name>\.env  
 ファイルに以下の設定を記載する。  
-<sql-server-namme>, <sql-db-namme> は適宜置き換える。  
+<sql-server-name>, <sql-db-name> は適宜置き換える。  
 この設定は、ローカルにて Webアプリケーションを実行する際に参照される。  
 SQL_AUTHENTICATION="ActiveDirectoryMsi"  
-SQL_CONNECTION_STRING="Driver={ODBC Driver 18 for SQL Server};Server=tcp:<sql-server-namme>.database.windows.net,1433;Database=<sql-db-name>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"  
+SQL_CONNECTION_STRING="Driver={ODBC Driver 18 for SQL Server};Server=tcp:<sql-server-name>.database.windows.net,1433;Database=<sql-db-name>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"  
 同じ設定を、 Azure Portal 等から Web アプリケーションに対しても行う。  
 この設定は、Azure 上にて Webアプリケーションを実行する際に参照される。  
+
 
 # トラブルシューティング
 ## hogehoge.ps1 がロックされていて実行できない旨のエラーが発生

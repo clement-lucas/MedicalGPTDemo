@@ -5,8 +5,11 @@ targetScope = 'subscription'
 @description('Name of the the environment which is used to generate a short unique hash used in all resources.')
 param environmentName string
 
+@description('Primary location for open ai resources')
+param location_openai string
+
 @minLength(1)
-@description('Primary location for all resources')
+@description('Primary location for other resources')
 param location string
 
 param appServicePlanName string = ''
@@ -28,7 +31,7 @@ param storageContainerName string = 'content'
 
 param openAiServiceName string = ''
 param openAiResourceGroupName string = ''
-param openAiResourceGroupLocation string = location
+param openAiResourceLocation string = !empty(location_openai) ? location_openai : location
 
 param openAiSkuName string = 'S0'
 
@@ -42,13 +45,17 @@ param formRecognizerSkuName string = 'S0'
 //param gptDeploymentName string = 'davinci'
 //param gptModelName string = 'text-davinci-003'
 param chatGptDeploymentName string = 'chat'
-param chatGptModelName string = 'gpt-35-turbo'
+
+@description('gpt-35-turbo or gpt-4')
+param chatGptModelName string
+var chatGptModelNameValue = !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo'
 
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+var resourceTokenOpenAI = toLower(uniqueString(subscription().id, environmentName, openAiResourceLocation))
 var tags = { 'azd-env-name': environmentName }
 
 // Organize resources in a resource group
@@ -121,8 +128,8 @@ module openAi 'core/ai/cognitiveservices.bicep' = {
   name: 'openai'
   scope: openAiResourceGroup
   params: {
-    name: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
-    location: openAiResourceGroupLocation
+    name: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceTokenOpenAI}'
+    location: openAiResourceLocation
     tags: tags
     sku: {
       name: openAiSkuName
@@ -144,7 +151,7 @@ module openAi 'core/ai/cognitiveservices.bicep' = {
         name: chatGptDeploymentName
         model: {
           format: 'OpenAI'
-          name: chatGptModelName
+          name: chatGptModelNameValue
           version: '0613'
         }
         sku: {
@@ -315,12 +322,14 @@ module searchRoleBackend 'core/security/role.bicep' = {
   }
 }
 
+output AZURE_LOCATION_OPENAI string = openAiResourceLocation
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
 output AZURE_RESOURCE_GROUP string = resourceGroup.name
 
 output AZURE_OPENAI_SERVICE string = openAi.outputs.name
 output AZURE_OPENAI_RESOURCE_GROUP string = openAiResourceGroup.name
+output AZURE_GPT_MODEL_NAME string = chatGptModelNameValue
 // 2023/07/11 model text-davinci-003 retired to deploy
 // output AZURE_OPENAI_GPT_DEPLOYMENT string = gptDeploymentName
 output AZURE_OPENAI_GPT_DEPLOYMENT string = chatGptDeploymentName
