@@ -120,6 +120,7 @@ module backend 'core/host/appservice.bicep' = {
 //      AZURE_OPENAI_GPT_DEPLOYMENT: gptDeploymentName
       AZURE_OPENAI_GPT_DEPLOYMENT: chatGptDeploymentName
       AZURE_OPENAI_CHATGPT_DEPLOYMENT: chatGptDeploymentName
+      AZURE_GPT_MODEL_NAME: chatGptModelNameValue
     }
   }
 }
