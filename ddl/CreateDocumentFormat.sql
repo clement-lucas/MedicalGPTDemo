@@ -14,7 +14,7 @@ CREATE TABLE DocumentFormat (
     GPTModelName VARCHAR(32),
 
     ------------------
-    -- フォーマット種別
+    -- 処理種別
     -- 0: システムコンテンツ
     -- 1: SOAP と質問文からの生成
     -- 2: アレルギー・不適応反応
