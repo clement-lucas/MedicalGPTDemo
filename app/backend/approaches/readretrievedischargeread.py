@@ -31,7 +31,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         self.content_field = content_field
 
     # 質問文とカルテデータを受け取って GPT に投げる関数
-    def get_answer(self, category_name, question, sources, system_content):
+    def get_answer(self, category_name, temperature, question, sources, system_content):
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":question + "\n\nmedical record:\n\n" + sources}]
         print(messages)
@@ -39,7 +39,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
             messages = messages,
-            temperature=0.01,
+            temperature=temperature,
             max_tokens=800,
             top_p=0.95,
             frequency_penalty=0,
@@ -241,6 +241,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         select_document_format_sql = """SELECT 
                 Kind, 
                 CategoryName, 
+                Temperature,
                 Question, 
                 TargetSoapRecords, 
                 UseAllergyRecords, 
@@ -273,17 +274,18 @@ class ReadRetrieveDischargeReadApproach(Approach):
             print(row)
             kind = row[0]
             categoryName = row[1]
-            question = row[2]
-            targetSoapRecords = row[3]
+            temperature = row[2]
+            question = row[3]
+            targetSoapRecords = row[4]
 
             # 以下は今は見ていない
-            useAllergyRecords = row[4]
-            useDischargeMedicineRecords = row[5]
+            useAllergyRecords = row[5]
+            useDischargeMedicineRecords = row[6]
 
             if kind == DOCUMENT_FORMAT_KIND_SOAP:
                 # SOAP からの情報取得
                 answer = self.get_answer(
-                    categoryName, question, 
+                    categoryName, temperature, question, 
                     soap_manager.SOAP(targetSoapRecords), 
                     system_content)
                 ret += answer[0]
