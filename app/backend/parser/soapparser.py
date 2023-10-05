@@ -71,6 +71,7 @@ class SOAPParser:
     
     # SOAP タグか調べて、インデックスを返却する。
     # SOAP タグでない場合は、SOAPParser.IS_NOT_SOAP を返却する。
+    # 継承先クラスにて実装される。
     def _is_SOAP(self, tag, text):
         return self.IS_NOT_SOAP
                 
