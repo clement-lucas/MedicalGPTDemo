@@ -30,7 +30,7 @@ class SOAPParser:
     IS_NOT_SOAP = -2
         
     def __init__(self, xml, content_tag):
-        self.xml = self._escape_andchar(xml)
+        self.xml = self._escape_andchar(xml).replace('""', '"')
         self._content_tag = content_tag
         self.root = ET.fromstring(self.xml)
         self._soap = ["","","",""]
