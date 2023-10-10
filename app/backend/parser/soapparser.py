@@ -2,7 +2,6 @@
 # XML 形式の文字列を受け取り、SOAP の内容を抽出する。
 
 import xml.etree.ElementTree as ET
-import re
 
 class SOAPParser:
 
@@ -30,7 +29,7 @@ class SOAPParser:
     IS_NOT_SOAP = -2
         
     def __init__(self, xml, content_tag):
-        self.xml = self._escape_andchar(xml).replace('""', '"')
+        self.xml = xml
         self._content_tag = content_tag
         self.root = ET.fromstring(self.xml)
         self._soap = ["","","",""]
@@ -41,14 +40,6 @@ class SOAPParser:
         self._index_P = 3
         self._parse()
 
-    # & を &amp; に置換する。
-    re_entity = re.compile(r'(>[^<]*)(&)([^<]*<)')
-    re_replace = re.compile(r'&(?!\w*?;)')
-    def _escape_andchar(self, xml_source):
-        def _replace(matcher):
-            return self.re_replace.sub('&amp;', matcher.group(0))
-        return self.re_entity.sub(_replace, xml_source)
-    
     def _parse(self):
         is_content = False
         _now_soap_index = self._index_nodata
