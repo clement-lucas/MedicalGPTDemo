@@ -10,8 +10,8 @@ class GetHistoryDetailApproach(Approach):
         
     def run(self, id:int) -> any:
 
-        print("run")
-        print(id)
+        # print("run")
+        # print(id)
 
         # SQL Server に接続する
         # 接続文字列を取得する

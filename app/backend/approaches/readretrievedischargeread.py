@@ -34,7 +34,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
     def get_answer(self, category_name, temperature, question, sources, system_content):
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":question + "\n\nmedical record:\n\n" + sources}]
-        print(messages)
+        # print(messages)
 
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
@@ -81,9 +81,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
     def run(self, document_name: str, patient_code:str, overrides: dict) -> any:
 
-        print("run")
-        print(document_name)
-        print(patient_code)
+        # print("run")
+        # print(document_name)
+        # print(patient_code)
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
@@ -224,7 +224,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             AND GPTModelName = ?
             AND IsDeleted = 0"""
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
-        print(gpt_model_name)
+        # print(gpt_model_name)
         if gpt_model_name is None:
             gpt_model_name = "gpt-35-turbo"
         cursor.execute(select_system_content_sql,
@@ -234,7 +234,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         rows = cursor.fetchall() 
         system_content = ""
         for row in rows:
-            print(row)
+            # print(row)
             system_content = row[0]
 
         # ドキュメントフォーマットの取得
@@ -271,7 +271,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
         for row in rows:
-            print(row)
+            # print(row)
             kind = row[0]
             categoryName = row[1]
             temperature = row[2]
@@ -347,9 +347,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     medicine = "【退院時使用薬剤】\n" + "なし" + "\n\n"
                 ret += medicine
 
-        print(ret)
+        # print(ret)
         records_soap = soap_manager.SOAP("soap")
-        print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
+        # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
 
         # History テーブルに追加する
         # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする

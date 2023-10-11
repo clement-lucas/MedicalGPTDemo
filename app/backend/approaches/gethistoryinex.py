@@ -11,7 +11,7 @@ class GetHistoryIndexApproach(Approach):
     # TODO ログインユーザーごとの絞り込みが必要であれば、引数にユーザーIDを追加する
     def run(self, document_name:str) -> any:
 
-        print("run")
+        # print("run")
 
         # SQL Server に接続する
         # 接続文字列を取得する
@@ -34,7 +34,7 @@ SELECT [History].[Id]
   """, document_name)
         rows = cursor.fetchall() 
 
-        print(rows)
+        # print(rows)
   
         # SQL Server から取得した履歴情報を整形する
         history_date_list = []

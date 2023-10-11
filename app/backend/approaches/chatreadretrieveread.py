@@ -65,7 +65,7 @@ Search query:
         prompt = self.query_prompt_template.format(chat_history=self.get_chat_history_as_text(history, include_last_turn=False), question=history[-1]["user"])
         messages.append({"role":"user","content":prompt})
 
-        print(messages)
+        # print(messages)
 
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
@@ -81,11 +81,11 @@ Search query:
         # 質問文からサーチクエリを抽出する際、翻訳を通すとサーチクエリ語群がダブルコーテで囲まれ、
         # 語群すべてが１ワードとして扱われ、サーチできないパターンがあるため、外す。
         q = q.replace('"', "")
-        print(q)
+        # print(q)
 
         # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
         if overrides.get("semantic_ranker"):
-            print("semantic_ranker")
+            # print("semantic_ranker")
             r = self.search_client.search(q, 
                                           filter=filter,
                                           query_type=QueryType.SEMANTIC, 
@@ -95,9 +95,9 @@ Search query:
                                           top=top, 
                                           query_caption="extractive|highlight-false" if use_semantic_captions else None)
         else:
-            print("not semantic_ranker")
+            # print("not semantic_ranker")
             r = self.search_client.search(q, filter=filter, top=top)
-        print(r)
+        # print(r)
 
         if use_semantic_captions:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(" . ".join([c.text for c in doc['@search.captions']])) for doc in r]
@@ -105,7 +105,7 @@ Search query:
             results = [doc[self.sourcepage_field] + ": " + nonewlines(doc[self.content_field]) for doc in r]
         content = "\n".join(results)
 
-        print(results)
+        # print(results)
 
         follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
         

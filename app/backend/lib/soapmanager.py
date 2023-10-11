@@ -5,7 +5,7 @@ class SOAPManager:
     _soap_by_date_list = []
 
     def SOAP(self, target: str):
-        print("SOAP の件数：" + str(len(self._soap_by_date_list)))
+        # print("SOAP の件数：" + str(len(self._soap_by_date_list)))
         # target には、S, O, A, P のいずれかを指定する。
         # 指定された target に対応する SOAP を返却する。
         # SOAP が存在しない場合は、空文字を返却する。
@@ -51,7 +51,7 @@ class SOAPManager:
         rows = cursor.fetchall() 
         
         self._soap_by_date_list = []
-        print("SOAP の取得件数：" + str(len(rows)))
+        # print("SOAP の取得件数：" + str(len(rows)))
         for row in rows:
             datetime = self.get_datetime(row[0])
             # XML のまま GPT に投げても解釈してくれないこともないが、

@@ -27,9 +27,9 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         
     def run(self, document_name: str, patient_code:str, overrides: dict) -> any:
 
-        print("run")
-        print(document_name)
-        print(patient_code)
+        # print("run")
+        # print(document_name)
+        # print(patient_code)
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
@@ -43,9 +43,9 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         rows = cursor.fetchall() 
         records = ""
         for row in rows:
-            print(row[0])
+            # print(row[0])
             records += row[0] + "\n\n"
-        print(records)
+        # print(records)
 
 #        follow_up_questions_prompt = self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else ""
 #        以下のカルテデータからHL7規格に沿った{format_name}を json 形式で出力してください。
@@ -73,7 +73,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
 
         messages = [{"role":"system","content":self.prompt_prefix},
                     {"role":"user","content":question + "\n\nカルテデータ：\n\n" + records}]
-        print(messages)
+        # print(messages)
 
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
@@ -85,7 +85,7 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
             presence_penalty=0,
             stop=None)
         answer = completion.choices[0].message.content
-        print(answer)        
+        # print(answer)        
         return {"data_points": "test results", "answer": answer, "thoughts": f"Searched for:<br>q test<br><br>Prompt:<br>"}
 
     def get_chat_history_as_text(self, question, include_last_turn=True, approx_max_tokens=1000) -> str:

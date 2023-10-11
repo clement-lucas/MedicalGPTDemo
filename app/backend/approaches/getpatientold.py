@@ -16,8 +16,8 @@ class GetPatientOldApproach(Approach):
         
     def run(self, patient_code:str) -> any:
 
-        print("run")
-        print(patient_code)
+        # print("run")
+        # print(patient_code)
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()

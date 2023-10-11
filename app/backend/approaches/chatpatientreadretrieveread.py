@@ -44,13 +44,13 @@ Each source has a date followed by colon and the actual information, always incl
         rows = cursor.fetchall() 
         records = ""
         for row in rows:
-            print(row[0])
+            # print(row[0])
             records += row[0] + "\n\n"
-        print(records)
+        # print(records)
         # historyの中身を確認する
-        print(history)
+        # print(history)
         messages = self.get_chat_history_as_list(history, question, records)
-        print(messages)
+        # print(messages)
 
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
@@ -63,7 +63,7 @@ Each source has a date followed by colon and the actual information, always incl
             stop=None)
         answer = completion.choices[0].message.content
 
-        print(answer)
+        # print(answer)
         return {"data_points": "test results", "answer": answer, "thoughts": f"Searched for:<br>q test<br><br>Prompt:<br>"}
     
     def get_chat_history_as_list(self, history, question, records) -> list:
