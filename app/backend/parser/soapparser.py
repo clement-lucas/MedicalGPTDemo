@@ -51,12 +51,13 @@ class SOAPParser:
                     # SOAP が見つかっていない場合は、無視する。
                     continue
                 else:
-                    # self._soap[_now_soap_index] の文字列長が1以上であれば、改行を追加する。
-                    if len(self._soap[_now_soap_index]) > 0:
-                        self._soap[_now_soap_index] += "\n"
-                    
-                    # SOAP が見つかっている場合は、SOAP に追加する。
-                    self._soap[_now_soap_index] += elem.text
+                    if elem.text is not None and elem.text != "":
+                        # self._soap[_now_soap_index] の文字列長が1以上であれば、改行を追加する。
+                        if len(self._soap[_now_soap_index]) > 0:
+                            self._soap[_now_soap_index] += "\n"
+                        
+                        # SOAP が見つかっている場合は、SOAP に追加する。
+                        self._soap[_now_soap_index] += elem.text
 
             # FREE タグ取得中に他のタグを見つけた。
             elif is_content:
