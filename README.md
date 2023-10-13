@@ -124,8 +124,10 @@ azd deploy
 .azure\<env_name>\.env  
 ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
 AZURE_GPT_MODEL_NAME="gpt-4"  
+  
+なお、provision 実行後は、再度 AppService のアプリケーション設定に SQL_CONNECTION_STRING を設定する必要がある。  
 
-その際、  
+また、  
 ddl/sample_data/InsertDocumentFormat.sql  
 内の GPT モデル名も適宜変更あるいはレコード追加する。  
 
