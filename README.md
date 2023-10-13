@@ -125,6 +125,10 @@ azd deploy
 ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
 AZURE_GPT_MODEL_NAME="gpt-4"  
 
+その際、  
+ddl/sample_data/InsertDocumentFormat.sql  
+内の GPT モデル名も適宜変更あるいはレコード追加する。  
+
 
 # GPT モデルの location を変更する
 gpt-4 の location を強制された等の理由により、 Azure Open AI リソースのみ location を変更したい場合は、  
