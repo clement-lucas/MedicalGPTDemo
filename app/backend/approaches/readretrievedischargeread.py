@@ -7,9 +7,9 @@ import os
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
-from langchainadapters import HtmlCallbackHandler
-from text import nonewlines
 from lib.soapmanager import SOAPManager as SOAPManager
+from lib.tokencounter import TokenCounter
+from lib.gptconfigmanager import GPTConfigManager
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -30,8 +30,17 @@ class ReadRetrieveDischargeReadApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
 
+    # SOAP に割り当て可能なトークン数を計算する
+    def get_max_tokens_for_soap(self, question, system_content, response_max_tokens):
+        messages_without_soap = [{"role":"system","content":system_content},
+                    {"role":"user","content":question + "\n\nmedical record:\n\n"}]
+        num_tokens_without_soap = TokenCounter.num_tokens_from_messages(messages_without_soap, self.gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN"))
+        num_tokens_for_soap = int(self.gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - num_tokens_without_soap - response_max_tokens
+        return num_tokens_for_soap
+
     # 質問文とカルテデータを受け取って GPT に投げる関数
-    def get_answer(self, category_name, temperature, question, sources, system_content):
+    def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens):
+
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":question + "\n\nmedical record:\n\n" + sources}]
         # print(messages)
@@ -40,7 +49,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             engine=self.gpt_deployment,
             messages = messages,
             temperature=temperature,
-            max_tokens=800,
+            max_tokens=response_max_tokens,
             top_p=0.95,
             frequency_penalty=0,
             presence_penalty=0,
@@ -84,6 +93,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # print("run")
         # print(document_name)
         # print(patient_code)
+
+        self.gptconfigmanager = GPTConfigManager()
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
@@ -243,6 +254,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 CategoryName, 
                 Temperature,
                 Question, 
+                ResponseMaxTokens,
                 TargetSoapRecords, 
                 UseAllergyRecords, 
                 UseDischargeMedicineRecords 
@@ -259,7 +271,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         rows = cursor.fetchall() 
 
         # 医師記録の取得
-        soap_manager = SOAPManager(patient_code)
+        soap_manager = SOAPManager(self.gptconfigmanager, patient_code, 
+            self.gpt_deployment)
 
         ret = ""
 
@@ -267,6 +280,10 @@ class ReadRetrieveDischargeReadApproach(Approach):
         sum_of_completion_tokens: int = 0
         sum_of_prompt_tokens: int = 0
         sum_of_total_tokens: int = 0
+
+        # 要約後の SOAP を格納する変数
+        summarized_soap = ""
+        summarized_soap_history = ""
 
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
@@ -276,23 +293,47 @@ class ReadRetrieveDischargeReadApproach(Approach):
             categoryName = row[1]
             temperature = row[2]
             question = row[3]
-            targetSoapRecords = row[4]
+            response_max_tokens = row[4]
+            targetSoapRecords = row[5]
 
             # 以下は今は見ていない
-            useAllergyRecords = row[5]
-            useDischargeMedicineRecords = row[6]
+            useAllergyRecords = row[6]
+            useDischargeMedicineRecords = row[7]
 
             if kind == DOCUMENT_FORMAT_KIND_SOAP:
-                # SOAP からの情報取得
+                # SOAP からの情報取得である
+
+                # SOAP に割り当て可能なトークン数を計算する
+                num_tokens_for_soap = self.get_max_tokens_for_soap(
+                    question, system_content, response_max_tokens)
+
+                soap = soap_manager.SOAP(
+                        targetSoapRecords, num_tokens_for_soap)
+                summarized_soap = soap[0]
+
+                # print("★★★★"+categoryName+"★★★★")
+                # print(summarized_soap)
+                # print("★★★★★★★★")
+
+                # 要約した SOAP を履歴として確保する
+                summarized_soap_history += "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
+                    str(summarized_soap) + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[1]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[2]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[3]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                    str(soap[4]) + "</SUMMARIZE_LOG>"
+
                 answer = self.get_answer(
                     categoryName, temperature, question, 
-                    soap_manager.SOAP(targetSoapRecords), 
-                    system_content)
+                    summarized_soap,
+                    system_content,
+                    response_max_tokens)
                 ret += answer[0]
                 sum_of_completion_tokens += answer[1]
                 sum_of_prompt_tokens += answer[2]
                 sum_of_total_tokens += answer[3]
                 prompts += answer[4] + "\n"
+                
             elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
                 # 【アレルギー・不適応反応】​
                 # ARG001（薬剤アレルギー）
@@ -348,7 +389,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 ret += medicine
 
         # print(ret)
-        records_soap = soap_manager.SOAP("soap")
+        records_soap = soap_manager.SOAP("soap")[0]
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
 
         # History テーブルに追加する
@@ -360,6 +401,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[DocumentName]
            ,[Prompt]
            ,[MedicalRecord]
+           ,[SummarizedMedicalRecord]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
@@ -377,11 +419,13 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,?
            ,?
            ,?
+           ,?
            ,dateadd(hour, 9, GETDATE())
            ,dateadd(hour, 9, GETDATE())
            ,0)"""
         cursor.execute(insert_history_sql, patient_code, 
                        prompts, records_soap + allergy + medicine, 
+                       summarized_soap_history,
                        ret,
                        sum_of_completion_tokens,   
                        sum_of_prompt_tokens,   

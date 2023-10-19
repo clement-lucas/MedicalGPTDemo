@@ -57,6 +57,15 @@ CREATE TABLE DocumentFormat (
     Question NVARCHAR(4000), 
 
     ------------------
+    -- 期待される応答の最大 Token 数
+    -- Kind が 
+    -- 2: アレルギー・不適応反応
+    -- 3: 退院時使用薬剤
+    -- のレコードでは無視される。
+    ------------------
+    ResponseMaxTokens int, 
+
+    ------------------
     -- 使用する SOAP 項目を文字で指定する
     -- Kind が 
     -- 0: システムコンテンツ
