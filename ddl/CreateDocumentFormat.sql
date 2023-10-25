@@ -72,7 +72,12 @@ CREATE TABLE DocumentFormat (
     -- 2: アレルギー・不適応反応
     -- 3: 退院時使用薬剤
     -- のレコードでは無視される。
-    -- Ex) sap ←この場合、 S, O, P の項目を使用することを意味する。
+    -- Ex) sop ←この場合、 S, O, P の項目を使用することを意味する。
+    -- S: Subjective
+    -- O: Objective
+    -- A: Assessment
+    -- P: Plan
+    -- B: Problem
     ------------------
     TargetSoapRecords CHAR(4), 
 

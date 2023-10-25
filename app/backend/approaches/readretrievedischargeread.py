@@ -389,7 +389,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 ret += medicine
 
         # print(ret)
-        records_soap = soap_manager.SOAP("soap")[0]
+        records_soap = soap_manager.SOAP("soapb")[0]
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
 
         # History テーブルに追加する

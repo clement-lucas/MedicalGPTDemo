@@ -13,9 +13,9 @@ class SOAPManager:
              target: str, 
              max_tokens_for_soap: int = -1):
         # print("SOAP の件数：" + str(len(self._soap_by_date_list)))
-        # target には、S, O, A, P のいずれかを指定する。
-        # 指定された target に対応する SOAP を返却する。
-        # SOAP が存在しない場合は、空文字を返却する。
+        # target には、S, O, A, P, B(PLOBLEM) のいずれかを指定する。
+        # 指定された target に対応する SOAP+B を返却する。
+        # SOAP+B が存在しない場合は、空文字を返却する。
         target = target.upper()
         records = ""
         for soap_by_date in self._soap_by_date_list:
@@ -32,6 +32,9 @@ class SOAPManager:
             if target.find('P') >= 0:
                 if soap_by_date[1].P != "":
                     record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
+            if target.find('B') >= 0:
+                if soap_by_date[1].B != "":
+                    record_of_the_day += "PROBLEM：" + soap_by_date[1].B + "\n\n"
             if record_of_the_day == "":
                 continue
             records += "記入日：" + soap_by_date[0] + "\n\n"
@@ -115,6 +118,9 @@ class SOAPManager:
             if target.find('P') >= 0:
                 if soap_by_date[1].P != "":
                     record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
+            if target.find('B') >= 0:
+                if soap_by_date[1].B != "":
+                    record_of_the_day += "PROBLEM：" + soap_by_date[1].B + "\n\n"
             if record_of_the_day == "":
                 continue
             record_of_the_day = "記入日：" + soap_by_date[0] + "\n\n" + record_of_the_day + "\n"

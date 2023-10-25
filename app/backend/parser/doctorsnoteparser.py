@@ -19,6 +19,8 @@ class DoctorsNoteParser(SP):
             return self._index_A
         elif tag == "PLAN":
             return self._index_P
+        elif tag == "PLOBLEM":
+            return self._index_B
         else:
             return self.IS_NOT_SOAP
                 

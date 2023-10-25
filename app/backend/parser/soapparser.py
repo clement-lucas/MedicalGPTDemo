@@ -1,5 +1,6 @@
 # SOAP parser class.
 # XML 形式の文字列を受け取り、SOAP の内容を抽出する。
+# 2023/10/25 SOAP に加え、PLOBLEM を追加。 PLAN と混同しないよう、イニシアルを B とする。
 
 import xml.etree.ElementTree as ET
 
@@ -25,6 +26,11 @@ class SOAPParser:
     def P(self):
         return self._soap[self._index_P]
 
+    # プロパティ B(PLOBLEM)
+    @property
+    def B(self):
+        return self._soap[self._index_B]
+
     # SOAP タグではなかった
     IS_NOT_SOAP = -2
         
@@ -32,12 +38,13 @@ class SOAPParser:
         self.xml = xml
         self._content_tag = content_tag
         self.root = ET.fromstring(self.xml)
-        self._soap = ["","","",""]
+        self._soap = ["","","","",""]
         self._index_nodata = -1
         self._index_S = 0
         self._index_O = 1
         self._index_A = 2
         self._index_P = 3
+        self._index_B = 4
         self._parse()
 
     def _parse(self):
