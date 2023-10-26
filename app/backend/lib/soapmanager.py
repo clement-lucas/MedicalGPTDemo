@@ -34,7 +34,7 @@ class SOAPManager:
                     record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
             if target.find('B') >= 0:
                 if soap_by_date[1].B != "":
-                    record_of_the_day += "PROBLEM：" + soap_by_date[1].B + "\n\n"
+                    record_of_the_day += "＃：" + soap_by_date[1].B + "\n\n"
             if record_of_the_day == "":
                 continue
             records += "記入日：" + soap_by_date[0] + "\n\n"
@@ -120,7 +120,7 @@ class SOAPManager:
                     record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
             if target.find('B') >= 0:
                 if soap_by_date[1].B != "":
-                    record_of_the_day += "PROBLEM：" + soap_by_date[1].B + "\n\n"
+                    record_of_the_day += "＃：" + soap_by_date[1].B + "\n\n"
             if record_of_the_day == "":
                 continue
             record_of_the_day = "記入日：" + soap_by_date[0] + "\n\n" + record_of_the_day + "\n"
