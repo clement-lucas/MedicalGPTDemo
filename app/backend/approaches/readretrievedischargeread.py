@@ -33,7 +33,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
     # SOAP に割り当て可能なトークン数を計算する
     def get_max_tokens_for_soap(self, question, system_content, response_max_tokens):
         messages_without_soap = [{"role":"system","content":system_content},
-                    {"role":"user","content":question + "\n\nmedical record:\n\n"}]
+                    {"role":"user","content":''.join([question, "\n\nmedical record:\n\n"])}]
         num_tokens_without_soap = TokenCounter.num_tokens_from_messages(messages_without_soap, self.gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN"))
         num_tokens_for_soap = int(self.gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - num_tokens_without_soap - response_max_tokens
         return num_tokens_for_soap
@@ -42,7 +42,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
     def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens):
 
         messages = [{"role":"system","content":system_content},
-                    {"role":"user","content":question + "\n\nmedical record:\n\n" + sources}]
+                    {"role":"user","content":''.join([question, "\n\nmedical record:\n\n", sources])}]
         # print(messages)
 
         completion = openai.ChatCompletion.create(
@@ -54,6 +54,11 @@ class ReadRetrieveDischargeReadApproach(Approach):
             frequency_penalty=0,
             presence_penalty=0,
             stop=None)
+        # completion.choices[0].message.content がとして存在するか調べる
+        # 存在しない場合は、「なし」を返却する
+        # print(completion)
+        if hasattr(completion.choices[0].message, 'content') == False:
+            return "【" + category_name+ "】" + "なし\n" + "\n\n", completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, ""
         answer = completion.choices[0].message.content
         answer = answer.lstrip("【" + category_name+ "】")
         answer = answer.lstrip(category_name)
@@ -72,7 +77,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # 例）「なし」と出力します。 -> なし
         # if answer.find("「なし」と出力します。") != -1 or answer.find("「なし」という文言を出力します。") != -1:
         #     answer = "なし"
-        return "【" + category_name+ "】" + "\n" + answer + "\n\n", completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, prompt
+        return ''.join(["【", category_name, "】\n", answer, "\n\n"]), completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, prompt
 
     def get_allergy(self, cursor, pi_item_id, jpn_item_name, patient_code):
         select_allergy_sql = """SELECT PI_ITEM_02, PI_ITEM_03
@@ -85,7 +90,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         rows = cursor.fetchall() 
         records = ""
         for row in rows:
-            records += jpn_item_name + "アレルギー：" + row[0] + "による" + row[1] + "\n"
+            records = ''.join([records, jpn_item_name, "アレルギー：", row[0], "による", row[1], "\n"])
         return records
 
     def run(self, document_name: str, patient_code:str, overrides: dict) -> any:
@@ -110,34 +115,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         # QA No.11 対応により、看護記録は一旦削除する
         # # 看護記録の取得
-        # cursor.execute(select_datax_sql,'ON01', patient_code)
-        # rows = cursor.fetchall() 
-        # is_first = True
-        # for row in rows:
-        #     if is_first:
-        #         records += "\n以下は看護師の書いた SOAP です。\n\n"
-        #     is_first = False
-        #     print("------1")
-        #     print(row[0])
-        #     print("------2")
-        #     print(row[1])
-        #     print("------3")
-        #     datetime = self.get_datetime(row[0])
-        #     # XML のまま GPT に投げても解釈してくれないこともないが、
-        #     # XML のままだとトークン数をとても消費してしまうので、
-        #     # XML を解釈して、平文に変換する。
-        #     soap = NNP(row[1])
-        #     records += "記入日：" + datetime + "\n\n"
-        #     if soap.S != "":
-        #         records += "S：" + soap.S + "\n\n"
-        #     if soap.O != "":
-        #         records += "O：" + soap.O + "\n\n"
-        #     if soap.A != "":
-        #         records += "A：" + soap.A + "\n\n"
-        #     if soap.P != "":
-        #         records += "P：" + soap.P + "\n\n"
-        #     records += "\n\n"
-        # print(records)
 
         # TODO SV08, SV09 への対応
 
@@ -316,23 +293,24 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 # print("★★★★★★★★")
 
                 # 要約した SOAP を履歴として確保する
-                summarized_soap_history += "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
-                    str(summarized_soap) + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[1]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[2]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[3]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
-                    str(soap[4]) + "</SUMMARIZE_LOG>"
+                summarized_soap_history = ''.join([summarized_soap_history,
+                    "<CATEGORY>", str(categoryName), "</CATEGORY><SOAP>",
+                    str(summarized_soap), "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>",
+                    str(soap[1]), "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>",
+                    str(soap[2]), "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>",
+                    str(soap[3]), "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>",
+                    str(soap[4]), "</SUMMARIZE_LOG>"])
 
                 answer = self.get_answer(
                     categoryName, temperature, question, 
                     summarized_soap,
                     system_content,
                     response_max_tokens)
-                ret += answer[0]
+                ret = ''.join([ret, answer[0]])
                 sum_of_completion_tokens += answer[1]
                 sum_of_prompt_tokens += answer[2]
                 sum_of_total_tokens += answer[3]
-                prompts += answer[4] + "\n"
+                prompts = ''.join([prompts, answer[4], "\n"])
                 
             elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
                 # 【アレルギー・不適応反応】​
@@ -341,23 +319,23 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 # ARG040（注意すべき食物）
                 # ARGN10（その他アレルギー）
 
-                allergy = ""
-                # 薬剤アレルギー情報の取得
-                allergy += self.get_allergy(cursor, 'ARG001', '薬剤', patient_code)
-                
-                # 食物アレルギー情報の取得
-                allergy += self.get_allergy(cursor, 'ARG010', '食物', patient_code)
+                allergy = ''.join([
+                    # 薬剤アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARG001', '薬剤', patient_code),
+                    
+                    # 食物アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARG010', '食物', patient_code),
 
-                # 注意すべき食物情報の取得
-                allergy += self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code)
+                    # 注意すべき食物情報の取得
+                    self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code),
 
-                # その他アレルギー情報の取得
-                allergy += self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)
+                    # その他アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
                 if allergy != "":
-                    allergy = "【アレルギー・不適応反応】\n" + allergy + "\n"
+                    allergy = ''.join(["【アレルギー・不適応反応】\n", allergy, "\n"])
                 else :
-                    allergy = "【アレルギー・不適応反応】\n" + "なし\n\n"
-                ret += allergy
+                    allergy = "【アレルギー・不適応反応】\nなし\n\n"
+                ret = ''.join([ret, allergy])
             elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
                 # 【退院時使用薬剤】​
                 select_taiinji_shoho_sql = """
@@ -375,18 +353,18 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 medicine = ""
                 for row in rows:
                     if row[0] == "HY1":
-                        medicine += "　"
+                        medicine = ''.join([medicine, "　"])
                     quantity = str(row[2])
                     # quantity の小数点以下の0を削除する
                     if quantity.find(".") != -1:
                         quantity = quantity.rstrip("0")
                         quantity = quantity.rstrip(".")
-                    medicine += row[1] + "　" + quantity + row[3] + "\n"
+                    medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
                 if medicine != "":
-                    medicine = "【退院時使用薬剤】\n" + medicine + "\n"
+                    medicine = ''.join(["【退院時使用薬剤】\n", medicine, "\n"])
                 else:
-                    medicine = "【退院時使用薬剤】\n" + "なし" + "\n\n"
-                ret += medicine
+                    medicine = "【退院時使用薬剤】\nなし\n\n"
+                ret = ''.join([ret, medicine])
 
         # print(ret)
         records_soap = soap_manager.SOAP("soapb")[0]
@@ -424,7 +402,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,dateadd(hour, 9, GETDATE())
            ,0)"""
         cursor.execute(insert_history_sql, patient_code, 
-                       prompts, records_soap + allergy + medicine, 
+                       prompts, ''.join([records_soap, allergy, medicine]),
                        summarized_soap_history,
                        ret,
                        sum_of_completion_tokens,   
@@ -434,7 +412,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         cursor.commit()
 
         return {"data_points": "test results", 
-                "answer": ret + "\n\n\nカルテデータ：\n" + records_soap + allergy + medicine, 
+                "answer": ''.join([ret, "\n\n\nカルテデータ：\n", records_soap, allergy, medicine]), 
                 "thoughts": prompts, 
                 "completion_tokens": sum_of_completion_tokens,   
                 "prompt_tokens": sum_of_prompt_tokens,   

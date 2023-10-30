@@ -9,6 +9,27 @@ class SOAPManager:
     _soap_by_date_list = []
     _soap_prefix = "\n以下は医師の書いた SOAP です。\n\n"
 
+    @staticmethod
+    def _get_records_of_the_day(target, soap_record):
+        record_of_the_day = ""
+        if target.find('S') >= 0:
+            if soap_record.S != "":
+                record_of_the_day = ''.join([record_of_the_day, "S：", soap_record.S, "\n\n"])
+        if target.find('O') >= 0:
+            if soap_record.O != "":
+                record_of_the_day = ''.join([record_of_the_day, "O：", soap_record.O, "\n\n"])
+        if target.find('A') >= 0:
+            if soap_record.A != "":
+                record_of_the_day = ''.join([record_of_the_day, "A：", soap_record.A, "\n\n"])
+        if target.find('P') >= 0:
+            if soap_record.P != "":
+                record_of_the_day = ''.join([record_of_the_day, "P：", soap_record.P, "\n\n"])
+        if target.find('B') >= 0:
+            if soap_record.B != "":
+                record_of_the_day = ''.join([record_of_the_day, "＃：", soap_record.B, "\n\n"])
+        # print(record_of_the_day)
+        return record_of_the_day
+    
     def SOAP(self, 
              target: str, 
              max_tokens_for_soap: int = -1):
@@ -19,31 +40,14 @@ class SOAPManager:
         target = target.upper()
         records = ""
         for soap_by_date in self._soap_by_date_list:
-            record_of_the_day = ""
-            if target.find('S') >= 0:
-                if soap_by_date[1].S != "":
-                    record_of_the_day += "S：" + soap_by_date[1].S + "\n\n"
-            if target.find('O') >= 0:
-                if soap_by_date[1].O != "":
-                    record_of_the_day += "O：" + soap_by_date[1].O + "\n\n"
-            if target.find('A') >= 0:
-                if soap_by_date[1].A != "":
-                    record_of_the_day += "A：" + soap_by_date[1].A + "\n\n"
-            if target.find('P') >= 0:
-                if soap_by_date[1].P != "":
-                    record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
-            if target.find('B') >= 0:
-                if soap_by_date[1].B != "":
-                    record_of_the_day += "＃：" + soap_by_date[1].B + "\n\n"
+            record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
             if record_of_the_day == "":
                 continue
-            records += "記入日：" + soap_by_date[0] + "\n\n"
-            records += record_of_the_day
-            records += "\n"
+            records = ''.join([records, "記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
 
         # max_tokens_for_soap が -1 の場合は、要約不要とみなし SOAP をそのまま返却する。
         if max_tokens_for_soap == -1:
-            return SOAPManager._soap_prefix + records, 0, 0, 0, ""
+            return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
 
         max_tokens_for_soap_contents = max_tokens_for_soap - self._prefix_tokens
         # print("max_tokens_for_soap_contents:" + str(max_tokens_for_soap_contents))
@@ -55,7 +59,7 @@ class SOAPManager:
         #       そのまま返却する。
         if contents_token <= max_tokens_for_soap_contents:
             # print("Ptn1: SOAP Token 上限に収まる場合")
-            return SOAPManager._soap_prefix + records, 0, 0, 0, ""
+            return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
         
         # Ptn2: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約で収まる場合
         #       要約して返却する。
@@ -75,7 +79,7 @@ class SOAPManager:
             # そうすると、同じトークン上限を持つモデルを使っている場合、
             # 要約前の文書として渡せるトークン数が、退院時サマリ作成時に渡せる SOAP のトークン数よりも大きくなることは考えられない。
             summary = summarizer.summarize(records, max_tokens_for_soap_contents)
-            return SOAPManager._soap_prefix + summary[0], summary[1].completion_tokens, summary[1].prompt_tokens, summary[1].total_tokens, summary[2]
+            return ''.join([SOAPManager._soap_prefix, summary[0]]), summary[1].completion_tokens, summary[1].prompt_tokens, summary[1].total_tokens, summary[2]
         
         # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
         #       段階的に要約して返却する。
@@ -105,28 +109,13 @@ class SOAPManager:
 
         # 段階的要約の開始
         for soap_by_date in self._soap_by_date_list:
-            record_of_the_day = ""
-            if target.find('S') >= 0:
-                if soap_by_date[1].S != "":
-                    record_of_the_day += "S：" + soap_by_date[1].S + "\n\n"
-            if target.find('O') >= 0:
-                if soap_by_date[1].O != "":
-                    record_of_the_day += "O：" + soap_by_date[1].O + "\n\n"
-            if target.find('A') >= 0:
-                if soap_by_date[1].A != "":
-                    record_of_the_day += "A：" + soap_by_date[1].A + "\n\n"
-            if target.find('P') >= 0:
-                if soap_by_date[1].P != "":
-                    record_of_the_day += "P：" + soap_by_date[1].P + "\n\n"
-            if target.find('B') >= 0:
-                if soap_by_date[1].B != "":
-                    record_of_the_day += "＃：" + soap_by_date[1].B + "\n\n"
+            record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
             if record_of_the_day == "":
                 continue
-            record_of_the_day = "記入日：" + soap_by_date[0] + "\n\n" + record_of_the_day + "\n"
+            record_of_the_day = ''.join(["記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
 
             # 今見ているレコードを足してなお、要約バッファに入りきるか調べる。
-            if TokenCounter.count(summarize_buffer + record_of_the_day, 
+            if TokenCounter.count(''.join([summarize_buffer, record_of_the_day]), 
                     self._model_name_for_tiktoken) > capacity_for_befor_text:
                 # print("要約バッファに入りきらないので、要約して確保する。")
                 # これ以上要約バッファに入りきらないので、要約して確保する。
@@ -135,15 +124,15 @@ class SOAPManager:
                 if summarize_token > capacity_for_befor_text - record_of_the_day_token:
                     summarize_token = capacity_for_befor_text - record_of_the_day_token
                 summary = summarizer.summarize(summarize_buffer, summarize_token)
-                summarize_buffer = summary[0] + "\n\n"
+                summarize_buffer = ''.join([summary[0], "\n\n"])
                 # print("summarize_buffer1:" + summarize_buffer)
                 completion_tokens += summary[1].completion_tokens
                 prompt_tokens += summary[1].prompt_tokens
                 total_tokens += summary[1].total_tokens
-                summarize_log += summary[2]
+                summarize_log = ''.join([summarize_log, summary[2]])
 
             # 今見ているレコードを要約バッファに追加する。
-            summarize_buffer += record_of_the_day
+            summarize_buffer = ''.join([summarize_buffer, record_of_the_day])
             # print("summarize_buffer2:" + summarize_buffer)
 
         # 最後まで見終わったので、SOAP Token 上限に収まるか調べて、収まる場合はそのまま返す。
@@ -151,7 +140,7 @@ class SOAPManager:
         # print("contents_token:" + str(contents_token))
         if contents_token <= max_tokens_for_soap_contents:
             # print("最後まで見終わり。SOAP Token 上限に収まるので、そのまま返す。"+str(contents_token)+":"+str(max_tokens_for_soap_contents))
-            return SOAPManager._soap_prefix + summarize_buffer, completion_tokens, prompt_tokens, total_tokens, summarize_log
+            return ''.join([SOAPManager._soap_prefix, summarize_buffer]), completion_tokens, prompt_tokens, total_tokens, summarize_log
 
         # 超過する場合は、最後の要約を行って返す。
         # print("最後まで見終わり。SOAP Token 上を超えるので、最後の要約を行って返す。")
@@ -164,8 +153,8 @@ class SOAPManager:
         completion_tokens += summary[1].completion_tokens
         prompt_tokens += summary[1].prompt_tokens
         total_tokens += summary[1].total_tokens
-        summarize_log += summary[2]
-        return SOAPManager._soap_prefix + summary[0], completion_tokens, prompt_tokens, total_tokens, summarize_log
+        summarize_log = ''.join([summarize_log, summary[2]])
+        return ''.join([SOAPManager._soap_prefix, summary[0]]), completion_tokens, prompt_tokens, total_tokens, summarize_log
 
     def __init__(self, 
                 gptconfigmanager:GPTConfigManager, 
@@ -219,5 +208,5 @@ class SOAPManager:
         hour = strdate[8:10]
         minute = strdate[10:12]
         second = strdate[12:14]
-        return year + "/" + month + "/" + day + " " + hour + ":" + minute + ":" + second
+        return ''.join([year, "/", month, "/", day, " ", hour, ":", minute, ":", second])
     
