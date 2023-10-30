@@ -12,6 +12,9 @@ import { DischargeList } from "../../components/Example";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import bird from "../../assets/bird.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
+import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
+import { EditButton } from "../../components/DocumentFormatSetting/EditButton";
+
 export type HistoryIndex = {
     id: number;
     pid: string;
@@ -50,8 +53,10 @@ const Discharge = () => {
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
+    const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
 
     const onLoad = async () => {
+        setIsDocumnetFormatSettingVisible(false);
         await getHistoryIndex();
     }
 
@@ -272,7 +277,6 @@ const Discharge = () => {
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
                 <img src={bird} alt="bird" style={iconStyle}  />
                              <h1 className={styles.chatEmptyStateTitle}>退院サマリ作成システム</h1>
-                             <h2 className={styles.chatEmptyStateSubtitle}>どの文書を作成しますか？</h2>
                              {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
                              <div className={styles.dischargeInput}>
                                  <PatientCodeInput
@@ -285,6 +289,14 @@ const Discharge = () => {
                                      disabled={isLoading}
                              />
                             </div>
+                            <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3>
+                            <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3>
+                            <EditButton 
+                                documentName="退院時サマリ"
+                                departmentCode=""
+                                icd10Code=""
+                                userId="テストユーザー0001" 
+                                onClick={() => {setIsDocumnetFormatSettingVisible(!isDocumnetFormatSettingVisible)}} />
                             <DischargeList onExampleClicked={onExampleClicked} />
             </div>
             <div className={styles.dischargeBottomSection}>
@@ -330,79 +342,18 @@ const Discharge = () => {
                 )}
             </div>
 
-            <Panel
-                headerText="Configure answer generation"
-                isOpen={isConfigPanelOpen}
-                isBlocking={false}
-                onDismiss={() => setIsConfigPanelOpen(false)}
-                closeButtonAriaLabel="Close"
-                onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
-                isFooterAtBottom={true}
-            >
-                <ChoiceGroup
-                    className={styles.dischargeSettingsSeparator}
-                    label="Approach"
-                    options={approaches}
-                    defaultSelectedKey={approach}
-                    onChange={onApproachChange}
-                />
-
-                {(approach === Approaches.RetrieveThenRead || approach === Approaches.ReadDecomposeAsk) && (
-                    <TextField
-                        className={styles.dischargeSettingsSeparator}
-                        defaultValue={promptTemplate}
-                        label="Override prompt template"
-                        multiline
-                        autoAdjustHeight
-                        onChange={onPromptTemplateChange}
-                    />
-                )}
-
-                {approach === Approaches.ReadRetrieveRead && (
-                    <>
-                        <TextField
-                            className={styles.dischargeSettingsSeparator}
-                            defaultValue={promptTemplatePrefix}
-                            label="Override prompt prefix template"
-                            multiline
-                            autoAdjustHeight
-                            onChange={onPromptTemplatePrefixChange}
-                        />
-                        <TextField
-                            className={styles.dischargeSettingsSeparator}
-                            defaultValue={promptTemplateSuffix}
-                            label="Override prompt suffix template"
-                            multiline
-                            autoAdjustHeight
-                            onChange={onPromptTemplateSuffixChange}
-                        />
-                    </>
-                )}
-
-                <SpinButton
-                    className={styles.dischargeSettingsSeparator}
-                    label="Retrieve this many discharges from search:"
-                    min={1}
-                    max={50}
-                    defaultValue={retrieveCount.toString()}
-                    onChange={onRetrieveCountChange}
-                />
-                <TextField className={styles.dischargeSettingsSeparator} label="Exclude category" onChange={onExcludeCategoryChanged} />
-                <Checkbox
-                    className={styles.dischargeSettingsSeparator}
-                    checked={useSemanticRanker}
-                    label="Use semantic ranker for retrieval"
-                    onChange={onUseSemanticRankerChange}
-                />
-                <Checkbox
-                    className={styles.dischargeSettingsSeparator}
-                    checked={useSemanticCaptions}
-                    label="Use query-contextual summaries instead of whole discharges"
-                    onChange={onUseSemanticCaptionsChange}
-                    disabled={!useSemanticRanker}
-                />
-            </Panel>
         </div>
+        { isDocumnetFormatSettingVisible && (
+            <div className={styles.dischargeDocumentFormatSettingDiv}>
+                <DocumentFormatSetting 
+                    documentName="退院時サマリ"
+                    departmentCode=""
+                    icd10Code=""
+                    userId="テストユーザー0001" 
+                ></DocumentFormatSetting>
+            </div>
+            )}
+
     </Stack>  
     );
 };

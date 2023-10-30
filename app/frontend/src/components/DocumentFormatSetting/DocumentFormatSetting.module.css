@@ -1,0 +1,10 @@
+.documentFormatSettingTable {
+    border-width: 1px;
+    border-color: brown;
+}
+
+.documentFormatSettingIndexTd {
+    border-width: 1px;
+    border-color: brown;
+    text-align: right;
+}
