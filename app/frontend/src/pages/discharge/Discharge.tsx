@@ -14,6 +14,7 @@ import bird from "../../assets/bird.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
 import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
 import { EditButton } from "../../components/DocumentFormatSetting/EditButton";
+import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
 
 export type HistoryIndex = {
     id: number;
@@ -39,6 +40,7 @@ const Discharge = () => {
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [patientCode, setPatientCode] = useState<string>("");
     const [patientName, setPatientName] = useState<string>("");
+    const [previewSoap, setPreviewSoap] = useState<string>("");
 
     const lastQuestionRef = useRef<string>("");
     const [completionTokens, setCompletionTokens] = useState<number>(0);
@@ -171,6 +173,14 @@ const Discharge = () => {
         makeApiRequest(example);
     };
 
+    const onSoapPreviewClicked = (patient_code: string) => {
+        if (patient_code === "") {
+            setPreviewSoap("患者番号を入力してください。");
+            return;
+        }
+        setPreviewSoap("患者番号: " + patient_code + "\n\nSOAP プレビュー");
+    };
+
     const onShowCitation = (citation: string) => {
         if (activeCitation === citation && activeAnalysisPanelTab === AnalysisPanelTabs.CitationTab) {
             setActiveAnalysisPanelTab(undefined);
@@ -289,8 +299,22 @@ const Discharge = () => {
                                      disabled={isLoading}
                              />
                             </div>
-                            <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3>
-                            <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3>
+                            {/* <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3> */}
+                            {/* <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3> */}
+                            <SoapPreviewButton 
+                                patientCode={patientCode}
+                                onClick={onSoapPreviewClicked} />
+                            { previewSoap != "" && (
+                                <TextField
+                                    className={styles.soapPreviewField}
+                                    readOnly={true}
+                                    multiline={true}
+                                    resizable={true}
+                                    scrolling="true"
+                                    value={previewSoap}
+                                    //onChange={onQuestionChange}
+                                    //onKeyDown={onEnterPress}
+                                />)}
                             <EditButton 
                                 documentName="退院時サマリ"
                                 departmentCode=""

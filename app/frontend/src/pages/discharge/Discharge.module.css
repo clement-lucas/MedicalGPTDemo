@@ -85,9 +85,16 @@
 }
 
 .dischargeDocumentFormatSettingDiv {
-    background-color: whitesmoke;
+    background-color: white;
     border: #545454;
     border-width: 1px;
+}
+
+.soapPreviewField {
+    margin-bottom: 10px;
+    margin-top: 5px;
+    padding: 0px;
+    width: 70%;
 }
 
 

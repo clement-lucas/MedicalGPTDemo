@@ -3,7 +3,7 @@ import { Example, ExampleModel } from "./Example";
 import styles from "./Example.module.css";
 
 const EXAMPLES: ExampleModel[] = [
-    { text: "退院時サマリ", 
+    { text: "退院時サマリを作成する",
       value: "退院時サマリ" 
     }
 ];
