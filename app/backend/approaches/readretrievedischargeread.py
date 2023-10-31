@@ -4,6 +4,8 @@
 
 import openai
 import os
+import concurrent.futures
+import time
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
@@ -92,6 +94,143 @@ class ReadRetrieveDischargeReadApproach(Approach):
         for row in rows:
             records = ''.join([records, jpn_item_name, "アレルギー：", row[0], "による", row[1], "\n"])
         return records
+
+    def get_all_answers(self, 
+                        row, 
+                        patient_code, 
+                        system_content, 
+                        soap_manager):
+
+        ret = ""
+        allergy = ""
+        medicine = ""
+
+        # token の集計
+        completion_tokens: int = 0
+        prompt_tokens: int = 0
+        total_tokens: int = 0
+
+        # 要約後の SOAP を格納する変数
+        summarized_soap_history = ""
+        prompt = ""
+
+        kind = row[0]
+        categoryName = row[1]
+        temperature = row[2]
+        question = row[3]
+        response_max_tokens = row[4]
+        targetSoapRecords = row[5]
+
+        # 以下は今は見ていない
+        useAllergyRecords = row[6]
+        useDischargeMedicineRecords = row[7]
+        print(categoryName + "の処理開始")
+
+        if kind == DOCUMENT_FORMAT_KIND_SOAP:
+            # SOAP からの情報取得である
+
+            # SOAP に割り当て可能なトークン数を計算する
+            num_tokens_for_soap = self.get_max_tokens_for_soap(
+                question, system_content, response_max_tokens)
+
+            soap = soap_manager.SOAP(
+                    targetSoapRecords, num_tokens_for_soap)
+            summarized_soap = soap[0]
+
+            # print("★★★★"+categoryName+"★★★★")
+            # print(summarized_soap)
+            # print("★★★★★★★★")
+
+            # 要約した SOAP を履歴として確保する
+            summarized_soap_history = ''.join([summarized_soap_history,
+                "<CATEGORY>", str(categoryName), "</CATEGORY><SOAP>",
+                str(summarized_soap), "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>",
+                str(soap[1]), "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>",
+                str(soap[2]), "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>",
+                str(soap[3]), "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>",
+                str(soap[4]), "</SUMMARIZE_LOG>"])
+
+            answer = self.get_answer(
+                categoryName, temperature, question, 
+                summarized_soap,
+                system_content,
+                response_max_tokens)
+            ret = answer[0]
+            completion_tokens = answer[1]
+            prompt_tokens = answer[2]
+            total_tokens = answer[3]
+            prompts = ''.join([answer[4], "\n"])
+            
+        elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
+            # 【アレルギー・不適応反応】​
+            # ARG001（薬剤アレルギー）
+            # ARG010（食物アレルギー）
+            # ARG040（注意すべき食物）
+            # ARGN10（その他アレルギー）
+
+            # SQL Server に接続する
+            cnxn = SQLConnector.get_conn()
+            cursor = cnxn.cursor()
+
+            allergy = ''.join([
+                # 薬剤アレルギー情報の取得
+                self.get_allergy(cursor, 'ARG001', '薬剤', patient_code),
+                
+                # 食物アレルギー情報の取得
+                self.get_allergy(cursor, 'ARG010', '食物', patient_code),
+
+                # 注意すべき食物情報の取得
+                self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code),
+
+                # その他アレルギー情報の取得
+                self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
+            if allergy != "":
+                allergy = ''.join(["【アレルギー・不適応反応】\n", allergy, "\n"])
+            else :
+                allergy = "【アレルギー・不適応反応】\nなし\n\n"
+            ret = allergy
+        elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
+            # 【退院時使用薬剤】​
+            select_taiinji_shoho_sql = """
+            SELECT EXTBOD1.IATTR, EXTBOD1.INAME, EXTBOD1.NUM, EXTBOD1.UNAME FROM EXTBDH1 
+                INNER JOIN EXTBOD1 
+                ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
+                AND EXTBDH1.DOC_K = 'H004'
+                AND EXTBOD1.IATTR in ('HD1','HY1')
+                AND EXTBDH1.ACTIVE_FLG = 1 
+                AND EXTBOD1.ACTIVE_FLG = 1 
+                AND EXTBDH1.PID = ?
+                ORDER BY EXTBOD1.SEQ"""
+            # SQL Server に接続する
+            cnxn = SQLConnector.get_conn()
+            cursor = cnxn.cursor()
+            cursor.execute(select_taiinji_shoho_sql, patient_code)
+            rows = cursor.fetchall() 
+            medicine = ""
+            for row in rows:
+                if row[0] == "HY1":
+                    medicine = ''.join([medicine, "　"])
+                quantity = str(row[2])
+                # quantity の小数点以下の0を削除する
+                if quantity.find(".") != -1:
+                    quantity = quantity.rstrip("0")
+                    quantity = quantity.rstrip(".")
+                medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
+            if medicine != "":
+                medicine = ''.join(["【退院時使用薬剤】\n", medicine, "\n"])
+            else:
+                medicine = "【退院時使用薬剤】\nなし\n\n"
+            ret = medicine
+
+        print(categoryName + "の処理終了")
+        return ret, \
+                completion_tokens, \
+                prompt_tokens, \
+                total_tokens, \
+                prompt, \
+                summarized_soap_history, \
+                allergy, \
+                medicine
 
     def run(self, document_name: str, patient_code:str, overrides: dict) -> any:
 
@@ -259,116 +398,55 @@ class ReadRetrieveDischargeReadApproach(Approach):
         sum_of_total_tokens: int = 0
 
         # 要約後の SOAP を格納する変数
-        summarized_soap = ""
         summarized_soap_history = ""
 
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
-        for row in rows:
-            # print(row)
-            kind = row[0]
-            categoryName = row[1]
-            temperature = row[2]
-            question = row[3]
-            response_max_tokens = row[4]
-            targetSoapRecords = row[5]
 
-            # 以下は今は見ていない
-            useAllergyRecords = row[6]
-            useDischargeMedicineRecords = row[7]
+        allergy = ""
+        medicine = ""
 
-            if kind == DOCUMENT_FORMAT_KIND_SOAP:
-                # SOAP からの情報取得である
+        start = time.time()
+        print("処理開始")
 
-                # SOAP に割り当て可能なトークン数を計算する
-                num_tokens_for_soap = self.get_max_tokens_for_soap(
-                    question, system_content, response_max_tokens)
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            features = [executor.submit(self.get_all_answers,
+                        row, 
+                        patient_code, 
+                        system_content, 
+                        soap_manager) for row in rows]
+            for feature in features:
+                try:
+                    exception = feature.exception() # 例外が発生しなかった場合はNoneを返す
+                    if exception is not None:
+                        raise exception
+                except Exception as e:
+                    print(e)
+                    raise e
+                future_ret = feature.result()
+                # [0]:ret, \
+                # [1]:completion_tokens, \
+                # [2]:prompt_tokens, \
+                # [3]:total_tokens, \
+                # [4]:prompt, \
+                # [5]:summarized_soap_history
+                # [6]:allergy
+                # [7]:medicine
 
-                soap = soap_manager.SOAP(
-                        targetSoapRecords, num_tokens_for_soap)
-                summarized_soap = soap[0]
-
-                # print("★★★★"+categoryName+"★★★★")
-                # print(summarized_soap)
-                # print("★★★★★★★★")
-
-                # 要約した SOAP を履歴として確保する
-                summarized_soap_history = ''.join([summarized_soap_history,
-                    "<CATEGORY>", str(categoryName), "</CATEGORY><SOAP>",
-                    str(summarized_soap), "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>",
-                    str(soap[1]), "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>",
-                    str(soap[2]), "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>",
-                    str(soap[3]), "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>",
-                    str(soap[4]), "</SUMMARIZE_LOG>"])
-
-                answer = self.get_answer(
-                    categoryName, temperature, question, 
-                    summarized_soap,
-                    system_content,
-                    response_max_tokens)
-                ret = ''.join([ret, answer[0]])
-                sum_of_completion_tokens += answer[1]
-                sum_of_prompt_tokens += answer[2]
-                sum_of_total_tokens += answer[3]
-                prompts = ''.join([prompts, answer[4], "\n"])
-                
-            elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
-                # 【アレルギー・不適応反応】​
-                # ARG001（薬剤アレルギー）
-                # ARG010（食物アレルギー）
-                # ARG040（注意すべき食物）
-                # ARGN10（その他アレルギー）
-
-                allergy = ''.join([
-                    # 薬剤アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARG001', '薬剤', patient_code),
-                    
-                    # 食物アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARG010', '食物', patient_code),
-
-                    # 注意すべき食物情報の取得
-                    self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code),
-
-                    # その他アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
-                if allergy != "":
-                    allergy = ''.join(["【アレルギー・不適応反応】\n", allergy, "\n"])
-                else :
-                    allergy = "【アレルギー・不適応反応】\nなし\n\n"
-                ret = ''.join([ret, allergy])
-            elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
-                # 【退院時使用薬剤】​
-                select_taiinji_shoho_sql = """
-                SELECT EXTBOD1.IATTR, EXTBOD1.INAME, EXTBOD1.NUM, EXTBOD1.UNAME FROM EXTBDH1 
-                    INNER JOIN EXTBOD1 
-                    ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
-                    AND EXTBDH1.DOC_K = 'H004'
-                    AND EXTBOD1.IATTR in ('HD1','HY1')
-                    AND EXTBDH1.ACTIVE_FLG = 1 
-                    AND EXTBOD1.ACTIVE_FLG = 1 
-                    AND EXTBDH1.PID = ?
-                    ORDER BY EXTBOD1.SEQ"""
-                cursor.execute(select_taiinji_shoho_sql, patient_code)
-                rows = cursor.fetchall() 
-                medicine = ""
-                for row in rows:
-                    if row[0] == "HY1":
-                        medicine = ''.join([medicine, "　"])
-                    quantity = str(row[2])
-                    # quantity の小数点以下の0を削除する
-                    if quantity.find(".") != -1:
-                        quantity = quantity.rstrip("0")
-                        quantity = quantity.rstrip(".")
-                    medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
-                if medicine != "":
-                    medicine = ''.join(["【退院時使用薬剤】\n", medicine, "\n"])
-                else:
-                    medicine = "【退院時使用薬剤】\nなし\n\n"
-                ret = ''.join([ret, medicine])
+                ret = ''.join([ret, future_ret[0]])
+                sum_of_completion_tokens += future_ret[1]
+                sum_of_prompt_tokens += future_ret[2]
+                sum_of_total_tokens += future_ret[3]
+                prompts = ''.join([prompts, future_ret[4], "\n"])
+                summarized_soap_history = ''.join([summarized_soap_history, future_ret[5]])
+                allergy = ''.join([allergy, future_ret[6]])
+                medicine = ''.join([medicine, future_ret[7]])
 
         # print(ret)
         records_soap = soap_manager.SOAP("soapb")[0]
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
+        end = time.time()
+        print("処理終了" + str(end-start))
 
         # History テーブルに追加する
         # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする
