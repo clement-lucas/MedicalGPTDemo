@@ -6,7 +6,8 @@ import { PrimaryButton } from '@fluentui/react/lib/Button';
 
 import styles from "./Discharge.module.css";
 
-import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi } from "../../api";
+import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi
+    , getSoapApi, GetSoapRequest } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
 import { DischargeList } from "../../components/Example";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
@@ -29,6 +30,9 @@ export type DayOfHistoryIndex = {
 };
 
 const Discharge = () => {
+    const DEFAULT_DEPARTMENT_CODE: string = "0000";
+    const DEFAULT_ICD10_CODE: string = "0000";
+    const DOCUMENT_NAME: string = "退院時サマリ";
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [approach, setApproach] = useState<Approaches>(Approaches.RetrieveThenRead);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
@@ -48,6 +52,7 @@ const Discharge = () => {
     const [totalTokens, setTotalTokens] = useState<number>(0);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isSoapLoading, setIsSoapLoading] = useState<boolean>(false);
     const [error, setError] = useState<unknown>();
     const [answer, setAnswer] = useState<AskResponse>();
 
@@ -65,7 +70,7 @@ const Discharge = () => {
     const getHistoryIndex = async () => {
         try {
             const request: GetHistoryIndexRequest = {
-                document_name: "退院時サマリ",
+                document_name: DOCUMENT_NAME,
             };
             const result = await getHistoryIndexApi(request);
             setHistoryItems(result.history_date_list);
@@ -112,6 +117,8 @@ const Discharge = () => {
             const request: DischargeRequest = {
                 documentName: documentName,
                 patientCode: patientCode,
+                departmentCode: DEFAULT_DEPARTMENT_CODE,
+                icd10Code: DEFAULT_ICD10_CODE,
                 approach: Approaches.ReadRetrieveRead,
                 overrides: {
                     promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
@@ -173,12 +180,28 @@ const Discharge = () => {
         makeApiRequest(example);
     };
 
+    const getSoap = async () => {
+        setIsSoapLoading(true);
+        try {
+            const request: GetSoapRequest = {
+                patient_code: patientCode,
+            };
+            const result = await getSoapApi(request);
+            setPreviewSoap("患者番号: " + patientCode + "\n" + result.soap);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setIsSoapLoading(false);
+        }
+    }
+
     const onSoapPreviewClicked = (patient_code: string) => {
         if (patient_code === "") {
             setPreviewSoap("患者番号を入力してください。");
             return;
         }
-        setPreviewSoap("患者番号: " + patient_code + "\n\nSOAP プレビュー");
+        setPreviewSoap("");
+        getSoap();
     };
 
     const onShowCitation = (citation: string) => {
@@ -304,6 +327,7 @@ const Discharge = () => {
                             <SoapPreviewButton 
                                 patientCode={patientCode}
                                 onClick={onSoapPreviewClicked} />
+                            {isSoapLoading && <Spinner label="Generating soap" />}
                             { previewSoap != "" && (
                                 <TextField
                                     className={styles.soapPreviewField}
@@ -316,9 +340,9 @@ const Discharge = () => {
                                     //onKeyDown={onEnterPress}
                                 />)}
                             <EditButton 
-                                documentName="退院時サマリ"
-                                departmentCode=""
-                                icd10Code=""
+                                documentName={DOCUMENT_NAME}
+                                departmentCode={DEFAULT_DEPARTMENT_CODE}
+                                icd10Code={DEFAULT_ICD10_CODE}
                                 userId="テストユーザー0001" 
                                 onClick={() => {setIsDocumnetFormatSettingVisible(!isDocumnetFormatSettingVisible)}} />
                             <DischargeList onExampleClicked={onExampleClicked} />
@@ -370,9 +394,9 @@ const Discharge = () => {
         { isDocumnetFormatSettingVisible && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
-                    documentName="退院時サマリ"
-                    departmentCode=""
-                    icd10Code=""
+                    documentName={DOCUMENT_NAME}
+                    departmentCode={DEFAULT_DEPARTMENT_CODE}
+                    icd10Code={DEFAULT_ICD10_CODE}
                     userId="テストユーザー0001" 
                 ></DocumentFormatSetting>
             </div>

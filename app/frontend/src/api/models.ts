@@ -32,6 +32,8 @@ export type DocumentRequest = {
 export type DischargeRequest = {
     patientCode: string;
     documentName: string;
+    departmentCode: string;
+    icd10Code: string;
     approach: Approaches;
     overrides?: AskRequestOverrides;
 };
@@ -112,3 +114,50 @@ export type GetHistoryDetailRequest = {
     id: number;
 };
 
+export type GetSoapRequest = {
+    patient_code: string;
+};
+
+export type GetSoapResponse = {
+    soap: string;
+    error?: string;
+};
+
+export type DocumentFormat = {
+    kind: number;
+    category_name: string;
+    temperature: number;
+    question: string;
+    question_suffix: string;
+    response_max_tokens: number;
+    is_s: boolean;
+    is_o: boolean;
+    is_a: boolean;
+    is_p: boolean;
+    is_b: boolean;
+    use_allergy_records: boolean;
+    use_discharge_medicine_records: boolean;
+};
+
+export type GetDocumentFormatRequest = {
+    document_name: string;
+    department_code: string;
+    icd10_code: string;
+    force_master: boolean;
+};
+
+export type GetDocumentFormatResponse = {
+    document_formats: DocumentFormat[];
+    error?: string;
+};
+
+export type UpdateDocumentFormatListRequest = {
+    document_name: string;
+    department_code: string;
+    icd10_code: string;
+    document_formats: DocumentFormat[];
+};
+
+export type UpdateDocumentFormatListResponse = {
+    error?: string;
+};

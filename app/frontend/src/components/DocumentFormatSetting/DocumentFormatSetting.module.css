@@ -1,4 +1,4 @@
-.documentFormatSettingTable {
+/* .documentFormatSettingTable {
     border-width: 1px;
     border-color: brown;
     margin: 24px;
@@ -9,7 +9,7 @@
     border-color: brown;
     padding: 12px;
     width: fit-content;
-}
+} */
 
 .footer {
     position: sticky;

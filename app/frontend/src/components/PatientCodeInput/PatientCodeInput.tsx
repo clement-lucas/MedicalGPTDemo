@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Stack, TextField, Label } from "@fluentui/react";
 import { Search24Filled } from "@fluentui/react-icons";
 import { getPatientApi, GetPatientResponse, GetPatientRequest } from "../../api";
