@@ -3,7 +3,7 @@ import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest,
     GetHistoryIndexRequest, GetHistoryIndexResponse,
     GetSoapRequest, GetSoapResponse, 
     GetDocumentFormatRequest, GetDocumentFormatResponse,
-    UpdateDocumentFormatListRequest, UpdateDocumentFormatListResponse } from "./models";
+    UpdateDocumentFormatRequest as UpdateDocumentFormatRequest, UpdateDocumentFormatResponse as UpdateDocumentFormatResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -328,8 +328,8 @@ export async function getDocumentFormatApi( options: GetDocumentFormatRequest): 
     return parsedResponse;
 }
 
-export async function updateDocumentFormatListApi( options: UpdateDocumentFormatListRequest): Promise<UpdateDocumentFormatListResponse> {
-    const response = await fetch("/update_document_format_list", {
+export async function updateDocumentFormatApi( options: UpdateDocumentFormatRequest): Promise<UpdateDocumentFormatResponse> {
+    const response = await fetch("/update_document_format", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -338,11 +338,12 @@ export async function updateDocumentFormatListApi( options: UpdateDocumentFormat
             document_name: options.document_name,
             department_code: options.department_code,
             icd10_code: options.icd10_code,
+            user_id: options.user_id,
             document_formats: options.document_formats,
         })
     });
 
-    const parsedResponse: UpdateDocumentFormatListResponse = await response.json();
+    const parsedResponse: UpdateDocumentFormatResponse = await response.json();
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }

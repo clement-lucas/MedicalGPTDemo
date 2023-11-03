@@ -3,18 +3,20 @@ import { Checkbox, ChoiceGroup, IChoiceGroupOption, Panel, DefaultButton, Spinne
 import { Label, Stack } from "@fluentui/react";
 import { PrimaryButton } from '@fluentui/react/lib/Button';
 
-
 import styles from "./Discharge.module.css";
 
 import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi
-    , getSoapApi, GetSoapRequest } from "../../api";
+    , getSoapApi, GetSoapRequest
+    , DocumentFormat
+    , getDocumentFormatApi, GetDocumentFormatRequest
+    , updateDocumentFormatApi, UpdateDocumentFormatRequest } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
-import { DischargeList } from "../../components/Example";
+import { DischargeButton } from "../../components/Example/DischargeButton";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import bird from "../../assets/bird.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
 import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
-import { EditButton } from "../../components/DocumentFormatSetting/EditButton";
+import { DocumentFormatEditButton } from "../../components/DocumentFormatSetting/DocumentFormatEditButton";
 import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
 
 export type HistoryIndex = {
@@ -32,6 +34,8 @@ export type DayOfHistoryIndex = {
 const Discharge = () => {
     const DEFAULT_DEPARTMENT_CODE: string = "0000";
     const DEFAULT_ICD10_CODE: string = "0000";
+    const DEFAULT_ICD10_NAME: string = "指定なし";
+    const DEFAULT_USER_ID: string = "00000001";
     const DOCUMENT_NAME: string = "退院時サマリ";
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [approach, setApproach] = useState<Approaches>(Approaches.RetrieveThenRead);
@@ -61,6 +65,8 @@ const Discharge = () => {
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
+    const [isDocumnetFormatSettingLoading, setIsDocumnetFormatSettingLoading] = useState<boolean>(false);
+    const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
 
     const onLoad = async () => {
         setIsDocumnetFormatSettingVisible(false);
@@ -105,6 +111,41 @@ const Discharge = () => {
         }
     }
 
+    const getDocumentFormat = async (force_master:boolean) => {
+        setIsDocumnetFormatSettingLoading(true);
+        try {
+            const request: GetDocumentFormatRequest = {
+                document_name: DOCUMENT_NAME,
+                department_code: DEFAULT_DEPARTMENT_CODE,
+                icd10_code: DEFAULT_ICD10_CODE,
+                force_master: force_master,
+            };
+            const result = await getDocumentFormatApi(request);
+            setDocumentFormats(result.document_formats);
+        } catch (e) {
+            alert(e)
+            //setError(e);
+        } finally {
+            setIsDocumnetFormatSettingLoading(false);
+        }
+    }
+
+    const updateDocumentFormat = async () => {
+        try {
+            const request: UpdateDocumentFormatRequest = {
+                document_name: DOCUMENT_NAME,
+                department_code: DEFAULT_DEPARTMENT_CODE,
+                icd10_code: DEFAULT_ICD10_CODE,
+                user_id: DEFAULT_USER_ID,
+                document_formats: documentFormats,
+            };
+            await updateDocumentFormatApi(request);
+            alert("保存しました。");
+        } catch (e) {
+            alert(e)
+        }
+    }
+
     const makeApiRequest = async (documentName: string) => {
         lastQuestionRef.current = documentName;
 
@@ -144,41 +185,140 @@ const Discharge = () => {
         }
     };
 
-    const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplate(newValue || "");
-    };
-
-    const onPromptTemplatePrefixChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplatePrefix(newValue || "");
-    };
-
-    const onPromptTemplateSuffixChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplateSuffix(newValue || "");
-    };
-
-    const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setRetrieveCount(parseInt(newValue || "3"));
-    };
-
-    const onApproachChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-        setApproach((option?.key as Approaches) || Approaches.RetrieveThenRead);
-    };
-
-    const onUseSemanticRankerChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticRanker(!!checked);
-    };
-
-    const onUseSemanticCaptionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticCaptions(!!checked);
-    };
-
-    const onExcludeCategoryChanged = (_ev?: React.FormEvent, newValue?: string) => {
-        setExcludeCategory(newValue || "");
-    };
-
     const onExampleClicked = (example: string) => {
         makeApiRequest(example);
     };
+
+    const onSaveDocumentFormatClicked = () => {
+        updateDocumentFormat();
+    }
+
+    const onCancelDocumentFormatClicked = () => {
+        // 実行を確認する
+        const result = window.confirm("保存していない編集内容は破棄されます。\nよろしいですか？");
+        if (result) {
+            getDocumentFormat(false);
+            setIsDocumnetFormatSettingVisible(false);
+        }
+    }
+
+    const onReloadFromMasterClicked = () => {
+        // 実行を確認する
+        const result = window.confirm("マスターから再取得します。\n保存していない編集内容は破棄されます。\nよろしいですか？");
+        if (result) {
+            getDocumentFormat(true);
+        }
+    }
+
+    const onCategoryNameChanged = (newValue:string, documentFormatId : number) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === documentFormatId) {
+                documentFormat.category_name = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onKindChanged = (newValue:number, documentFormatId : number) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === documentFormatId) {
+                documentFormat.kind = newValue as number;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onTargetSoapChanged = (targetSection:string, newValue:boolean, documentFormatId : number) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === documentFormatId) {
+                if (targetSection === "S") {
+                    documentFormat.is_s = newValue;
+                } else if (targetSection === "O") {
+                    documentFormat.is_o = newValue;
+                } else if (targetSection === "A") {
+                    documentFormat.is_a = newValue;
+                } else if (targetSection === "P") {
+                    documentFormat.is_p = newValue;
+                } else if (targetSection === "B") {
+                    documentFormat.is_b = newValue;
+                }
+
+
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onQuestionChanged = (newValue:string, documentFormatId : number) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === documentFormatId) {
+                documentFormat.question = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onDocumentFormatUpClicked = (documentFormat : DocumentFormat) => {
+        if (documentFormats[0].id === documentFormat.id) {
+            return;
+        }
+        const newDocumentFormats: DocumentFormat[] = [];
+        const oldOrderNoOfTarget: number = documentFormat.order_no;
+        for (let i = 0; i < oldOrderNoOfTarget - 1; i++) {
+            newDocumentFormats.push(documentFormats[i]);
+        }
+        documentFormat.order_no = oldOrderNoOfTarget - 1;
+        newDocumentFormats.push(documentFormat);
+        for (let i = oldOrderNoOfTarget - 1; i < documentFormats.length; i++) {
+            if (documentFormats[i].id !== documentFormat.id) {
+                if (documentFormats[i].order_no === oldOrderNoOfTarget - 1) {
+                    documentFormats[i].order_no ++;
+                }
+                newDocumentFormats.push(documentFormats[i]);
+            }
+        }
+        setDocumentFormats(newDocumentFormats);
+    }
+
+    const onDocumentFormatDownClicked = (documentFormat : DocumentFormat) => {
+        if (documentFormats[documentFormats.length - 1].id === documentFormat.id) {
+            return;
+        }
+        const newDocumentFormats: DocumentFormat[] = [];
+        const oldOrderNoOfTarget: number = documentFormat.order_no;
+        for (let i = 0; i < oldOrderNoOfTarget; i++) {
+            newDocumentFormats.push(documentFormats[i]);
+        }
+        const nextRow = documentFormats[oldOrderNoOfTarget+1];
+        nextRow.order_no --;
+        newDocumentFormats.push(nextRow);
+        documentFormat.order_no = oldOrderNoOfTarget + 1;
+        newDocumentFormats.push(documentFormat);
+        for (let i = oldOrderNoOfTarget + 2; i < documentFormats.length; i++) {
+            if (documentFormats[i].id !== documentFormat.id 
+                && documentFormats[i].id !== nextRow.id) {
+                newDocumentFormats.push(documentFormats[i]);
+            }
+        }
+        setDocumentFormats(newDocumentFormats);
+    }
+
+    const onDocumentSettingDeleteClicked = (documentFormatId : number) => {
+        const newDocumentFormats: DocumentFormat[] = [];
+        let order:number = 0;
+        for (let documentFormat of documentFormats) {
+            if (documentFormat.id !== documentFormatId) {
+                documentFormat.order_no = order;
+                newDocumentFormats.push(documentFormat);
+            }
+            order ++;
+        }
+        setDocumentFormats(newDocumentFormats);
+    }
 
     const getSoap = async () => {
         setIsSoapLoading(true);
@@ -204,6 +344,16 @@ const Discharge = () => {
         getSoap();
     };
 
+    const onDocumentFormatEditClicked = () => {
+        if (!isDocumnetFormatSettingVisible) {
+            getDocumentFormat(false);
+            setIsDocumnetFormatSettingVisible(true);
+        }
+        else {
+            setIsDocumnetFormatSettingVisible(false);
+        }
+    }
+
     const onShowCitation = (citation: string) => {
         if (activeCitation === citation && activeAnalysisPanelTab === AnalysisPanelTabs.CitationTab) {
             setActiveAnalysisPanelTab(undefined);
@@ -220,21 +370,6 @@ const Discharge = () => {
             setActiveAnalysisPanelTab(tab);
         }
     };
-
-    const approaches: IChoiceGroupOption[] = [
-        {
-            key: Approaches.RetrieveThenRead,
-            text: "Retrieve-Then-Read"
-        },
-        {
-            key: Approaches.ReadRetrieveRead,
-            text: "Read-Retrieve-Read"
-        },
-        {
-            key: Approaches.ReadDecomposeAsk,
-            text: "Read-Decompose-Ask"
-        }
-    ];
 
     function onHistoryButtonClicked(id:number): void {
         getHistoryDetail(id);
@@ -327,7 +462,7 @@ const Discharge = () => {
                             <SoapPreviewButton 
                                 patientCode={patientCode}
                                 onClick={onSoapPreviewClicked} />
-                            {isSoapLoading && <Spinner label="Generating soap" />}
+                            {isSoapLoading && <Spinner label="Loading soap" />}
                             { previewSoap != "" && (
                                 <TextField
                                     className={styles.soapPreviewField}
@@ -339,13 +474,12 @@ const Discharge = () => {
                                     //onChange={onQuestionChange}
                                     //onKeyDown={onEnterPress}
                                 />)}
-                            <EditButton 
-                                documentName={DOCUMENT_NAME}
-                                departmentCode={DEFAULT_DEPARTMENT_CODE}
-                                icd10Code={DEFAULT_ICD10_CODE}
-                                userId="テストユーザー0001" 
-                                onClick={() => {setIsDocumnetFormatSettingVisible(!isDocumnetFormatSettingVisible)}} />
-                            <DischargeList onExampleClicked={onExampleClicked} />
+                            <DocumentFormatEditButton 
+                                onClick={ onDocumentFormatEditClicked } />
+                            <DischargeButton
+                                text="退院時サマリを作成する"
+                                value="退院時サマリ"
+                                onClick={onExampleClicked} />
             </div>
             <div className={styles.dischargeBottomSection}>
                 {isLoading && <Spinner label="Generating answer" />}
@@ -397,7 +531,20 @@ const Discharge = () => {
                     documentName={DOCUMENT_NAME}
                     departmentCode={DEFAULT_DEPARTMENT_CODE}
                     icd10Code={DEFAULT_ICD10_CODE}
-                    userId="テストユーザー0001" 
+                    icd10Name={DEFAULT_ICD10_NAME}
+                    userId={DEFAULT_USER_ID}
+                    documentFormats={documentFormats}
+                    isLoading={isDocumnetFormatSettingLoading}
+                    onSaveClicked={onSaveDocumentFormatClicked}
+                    onCancelClicked={onCancelDocumentFormatClicked}
+                    onReloadFromMasterClicked={onReloadFromMasterClicked}
+                    onCategoryNameChanged={onCategoryNameChanged}
+                    onKindChanged={onKindChanged}
+                    onTargetSoapChanged={onTargetSoapChanged}
+                    onQuestionChanged={onQuestionChanged}
+                    onUpClicked={onDocumentFormatUpClicked}
+                    onDownClicked={onDocumentFormatDownClicked}
+                    onDeleteClicked={onDocumentSettingDeleteClicked}
                 ></DocumentFormatSetting>
             </div>
             )}

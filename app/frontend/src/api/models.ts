@@ -124,8 +124,10 @@ export type GetSoapResponse = {
 };
 
 export type DocumentFormat = {
+    id: number;
     kind: number;
     category_name: string;
+    order_no: number;
     temperature: number;
     question: string;
     question_suffix: string;
@@ -151,13 +153,14 @@ export type GetDocumentFormatResponse = {
     error?: string;
 };
 
-export type UpdateDocumentFormatListRequest = {
+export type UpdateDocumentFormatRequest = {
     document_name: string;
     department_code: string;
     icd10_code: string;
+    user_id: string;
     document_formats: DocumentFormat[];
 };
 
-export type UpdateDocumentFormatListResponse = {
+export type UpdateDocumentFormatResponse = {
     error?: string;
 };

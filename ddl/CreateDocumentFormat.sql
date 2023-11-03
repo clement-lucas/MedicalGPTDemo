@@ -1,5 +1,11 @@
 CREATE TABLE DocumentFormat ( 
     ------------------
+    -- ID
+    -- DocumentFormat 編集機能にてレコードを一意に識別するための ID
+    ------------------
+    Id INT NOT NULL IDENTITY,
+
+    ------------------
     -- マスターフラグ
     -- 処理種別がシステムコンテンツの場合、必ず 1 に設定する。
     ------------------
@@ -124,7 +130,10 @@ CREATE TABLE DocumentFormat (
     -- 2023/10/02 現在使用していない。
     ------------------
     UseDischargeMedicineRecords BIT, 
+    CreatedBy VARCHAR(50),
+    UpdatedBy VARCHAR(50),
     CreatedDateTime datetime,
     UpdatedDateTime datetime,
     IsDeleted bit,
+    PRIMARY KEY (Id)
 ) 

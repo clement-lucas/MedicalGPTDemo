@@ -24,8 +24,10 @@ class GetDocumentFormatApproach(Approach):
 
         # ドキュメントフォーマットの取得
         select_document_format_sql = """SELECT 
+                Id, 
                 Kind, 
                 CategoryName, 
+                OrderNo,
                 Temperature,
                 ISNULL(Question, '') AS Question,
                 ISNULL(QuestionSuffix, '') AS QuestionSuffix,
@@ -66,7 +68,7 @@ class GetDocumentFormatApproach(Approach):
             isP = False
             isB = False
 
-            target = row[6].upper()
+            target = row[8].upper()
             if target.find('S') >= 0:
                 isS = True
             if target.find('O') >= 0:
@@ -79,18 +81,20 @@ class GetDocumentFormatApproach(Approach):
                 isB = True
 
             ret.append({
-                "kind":row[0],
-                "category_name":row[1],
-                "temperature":row[2],
-                "question":row[3],
-                "question_suffix":row[4],
-                "response_max_tokens":row[5],
+                "id":row[0],
+                "kind":row[1],
+                "category_name":row[2],
+                "order_no":row[3], 
+                "temperature":row[4],
+                "question":row[5],
+                "question_suffix":row[6],
+                "response_max_tokens":row[7],
                 "is_s":isS,
                 "is_o":isO,
                 "is_a":isA,
                 "is_p":isP,
                 "is_b":isB,
-                "use_allergy_records":row[7],
-                "use_discharge_medicine_records":row[8]
+                "use_allergy_records":row[9],
+                "use_discharge_medicine_records":row[10]
             })
         return {"document_formats":ret}

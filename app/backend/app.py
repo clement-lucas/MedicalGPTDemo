@@ -288,7 +288,8 @@ def update_document_format():
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(request.json["document_name"], 
                      request.json["department_code"], 
-                     request.json["icd10_code"], 
+                     request.json["icd10_code"],
+                     request.json["user_id"], 
                      request.json["document_formats"])
         return jsonify(r)
     except Exception as e:

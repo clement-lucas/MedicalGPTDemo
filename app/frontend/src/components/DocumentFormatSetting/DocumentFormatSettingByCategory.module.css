@@ -15,3 +15,19 @@
     background-color: white;
     margin: 0px;
 }
+
+.documentFormatSettingIconButton {
+    margin: 10px;
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+}
+
+.documentFormatSettingIconButton:hover {
+    outline: 2px solid rgba(115, 118, 225, 1);
+}
+
+.documentFormatSettingIconButtonContainer{
+    display: flex;
+    justify-content: space-between;
+}
