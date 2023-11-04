@@ -12,8 +12,6 @@ class UpdateDocumentFormatApproach(Approach):
             icd10_code:str, user_id:str, document_formats: []
             ) -> any:
 
-        print(document_formats)
-
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
         # print(gpt_model_name)
         if gpt_model_name is None:
@@ -100,7 +98,6 @@ class UpdateDocumentFormatApproach(Approach):
                     user_id,
                     user_id
                 ))
-                order += 1
             cursor.executemany(insert_document_format_sql, rows_to_insert)
 
             # トランザクションのコミット

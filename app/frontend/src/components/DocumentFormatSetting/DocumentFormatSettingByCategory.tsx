@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, Label } from "@fluentui/react";
-import { ArrowUp16Filled, ArrowDown16Filled, Delete16Filled } from "@fluentui/react-icons";
+import { ArrowUp20Filled, ArrowDown20Filled, Delete20Filled } from "@fluentui/react-icons";
 
 import styles from "./DocumentFormatSettingByCategory.module.css";
 import { DocumentFormat } from "../../api";
@@ -31,38 +31,26 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
     onUpClicked, onDownClicked, onDeleteClicked
 }: Props) => {
-    const [selectedKind, setSelected] = useState<IDropdownOption | undefined>(undefined);
-
-    const kind2key = (kind: number) : number => {
-        if (kind < 1 || kind > 3) {
-            throw new Error("kind is out of range");
-        }
-        return kind - 1;
-    };
-
-    // Dropdown の初期選択値を設定する
-    selectedKind === undefined && setSelected(kindOptions[kind2key(documentFormat.kind)]);
-
     return (
         <div className={styles.backPanel}>
             <div className={styles.container}>
-                {/* <div className={styles.documentFormatSettingIconButtonContainer}>
+                <div className={styles.documentFormatSettingIconButtonContainer}>
                     <div className={styles.documentFormatSettingIconButton}  
                         onClick={() => onDeleteClicked(documentFormat.id)}>
-                        <Delete16Filled primaryFill={"rgba(DD, 0, 0, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                        <Delete20Filled primaryFill={"rgba(100, 100, 100, 1)"} aria-hidden="true" aria-label="Delete logo" />
                     </div>
                     <Stack horizontal>
-                        <Label>{documentFormat.order_no}</Label> 
                         <div className={styles.documentFormatSettingIconButton}
                             onClick={() => onUpClicked(documentFormat)}>
-                            <ArrowUp16Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                            <ArrowUp20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Up logo" />
                         </div>
                         <div className={styles.documentFormatSettingIconButton}
                             onClick={() => onDownClicked(documentFormat)}>
-                            <ArrowDown16Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                            <ArrowDown20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Down logo" />
                         </div>
+                        <Label>{"No." + (documentFormat.order_no + 1) as string}</Label> 
                     </Stack>
-                </div> */}
+                </div>
                 <p>カテゴリー：<br></br>
                     <TextField
                         className={styles.questionInputTextArea}
@@ -70,6 +58,7 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         multiline={false}
                         resizable={false}
                         defaultValue={documentFormat.category_name}
+                        value={documentFormat.category_name}
                         onChange={(e, newValue) => onCategoryNameChanged(newValue || "", documentFormat.id)}
                         onBlur={(e) => onCategoryNameChanged(e.target.value || "", documentFormat.id)}
                     />
@@ -78,14 +67,14 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                     <Dropdown id="hoge"
                         placeholder="Select an option"
                         options={kindOptions}
-                        selectedKey={selectedKind ? selectedKind.key : undefined}
+                        selectedKey={documentFormat.kind}
                         onChange={(e, newValue) => {
-                            setSelected(newValue);
+                            documentFormat.kind = newValue?.key as number || 0;
                             onKindChanged(newValue?.key as number || 0, documentFormat.id);
                         }}
                     />            
                 </p>
-                { selectedKind?.key == 1 && (
+                { documentFormat.kind == 1 && (
                 <div>
                     <p>入力情報として使用する項目：<br></br>
                         <Stack horizontal>
@@ -113,6 +102,7 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                             resizable={true}
                             scrolling="true"
                             defaultValue={documentFormat.question}
+                            value={documentFormat.question}
                             onChange={(e, newValue) => onQuestionChanged(newValue || "", documentFormat.id)}
                             onBlur={(e) => onQuestionChanged(e.target.value || "", documentFormat.id)}
                             //onChange={onQuestionChange}

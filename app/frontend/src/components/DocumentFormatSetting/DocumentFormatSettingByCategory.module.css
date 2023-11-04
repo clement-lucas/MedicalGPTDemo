@@ -17,7 +17,9 @@
 }
 
 .documentFormatSettingIconButton {
-    margin: 10px;
+    margin-right: 4px;
+    margin-top: 6px;
+    margin-left: 0px;
     cursor: pointer;
     height: 20px;
     width: 20px;

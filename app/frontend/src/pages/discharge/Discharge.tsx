@@ -37,6 +37,9 @@ const Discharge = () => {
     const DEFAULT_ICD10_NAME: string = "指定なし";
     const DEFAULT_USER_ID: string = "00000001";
     const DOCUMENT_NAME: string = "退院時サマリ";
+    const DEFAULT_TEMPERATURE = 0.01
+    const DEFAULT_RESPONSE_MAX_TOKENS = 1000
+    const DEFAULT_QUESTION_SUFFIX = "作成される文章は 900 Token以内とします。"
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [approach, setApproach] = useState<Approaches>(Approaches.RetrieveThenRead);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
@@ -67,6 +70,7 @@ const Discharge = () => {
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
     const [isDocumnetFormatSettingLoading, setIsDocumnetFormatSettingLoading] = useState<boolean>(false);
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
+    const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
 
     const onLoad = async () => {
         setIsDocumnetFormatSettingVisible(false);
@@ -186,28 +190,56 @@ const Discharge = () => {
     };
 
     const onExampleClicked = (example: string) => {
+        // 実行を確認する
+        if (isDocumentFormatSettingEdited) {
+            const result = window.confirm("プロンプト編集内容が保存されていません。\n保存しない場合、以前のプロンプトのまま実行されます。\nよろしいですか？");
+            if (!result) {
+                return;
+            }
+        }
         makeApiRequest(example);
     };
 
     const onSaveDocumentFormatClicked = () => {
+        // 入力チェック
+        let errorMessages:string = "";
+        for (let documentFormat of documentFormats) {
+            if (documentFormat.category_name === "") {
+                errorMessages += "カテゴリ名が入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+            }
+            if (documentFormat.kind === 1 && documentFormat.question === "") {
+                errorMessages += "プロンプトが入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+            }
+        }
+        if (errorMessages !== "") {
+            alert(errorMessages);
+            return;
+        }
         updateDocumentFormat();
+        setIsDocumentFormatSettingEdited(false);
     }
 
     const onCancelDocumentFormatClicked = () => {
         // 実行を確認する
-        const result = window.confirm("保存していない編集内容は破棄されます。\nよろしいですか？");
-        if (result) {
-            getDocumentFormat(false);
-            setIsDocumnetFormatSettingVisible(false);
+        if (isDocumentFormatSettingEdited) {
+            const result = window.confirm("保存していない編集内容は破棄されます。\nよろしいですか？");
+            if (!result) {
+                return;
+            }
         }
+        getDocumentFormat(false);
+        setIsDocumnetFormatSettingVisible(false);
+        setIsDocumentFormatSettingEdited(false);
     }
 
     const onReloadFromMasterClicked = () => {
         // 実行を確認する
-        const result = window.confirm("マスターから再取得します。\n保存していない編集内容は破棄されます。\nよろしいですか？");
-        if (result) {
-            getDocumentFormat(true);
+        const result = window.confirm("マスターから再取得します。\n保存していない編集内容は破棄されます。\nマスターから取得した内容は、保存ボタンを押されるまで保存されません。\nよろしいですか？");
+        if (!result) {
+            return;
         }
+        getDocumentFormat(true);
+        setIsDocumentFormatSettingEdited(true);
     }
 
     const onCategoryNameChanged = (newValue:string, documentFormatId : number) => {
@@ -218,6 +250,7 @@ const Discharge = () => {
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
     const onKindChanged = (newValue:number, documentFormatId : number) => {
@@ -228,6 +261,7 @@ const Discharge = () => {
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
     const onTargetSoapChanged = (targetSection:string, newValue:boolean, documentFormatId : number) => {
@@ -250,6 +284,7 @@ const Discharge = () => {
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
     const onQuestionChanged = (newValue:string, documentFormatId : number) => {
@@ -260,6 +295,7 @@ const Discharge = () => {
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
     const onDocumentFormatUpClicked = (documentFormat : DocumentFormat) => {
@@ -281,10 +317,22 @@ const Discharge = () => {
                 newDocumentFormats.push(documentFormats[i]);
             }
         }
+        //setDocumentFormats([]);
+        //alert(JSON.stringify(newDocumentFormats));
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     }
 
     const onDocumentFormatDownClicked = (documentFormat : DocumentFormat) => {
+        // const newDocumentFormats = documentFormats.map((documentFormat) => {
+        //     documentFormat.order_no = documentFormat.order_no + 1;
+        //     documentFormat.category_name = "あああ";
+        //     return documentFormat;
+        // });
+        // setDocumentFormats([]);
+        // setDocumentFormats(newDocumentFormats);
+
+
         if (documentFormats[documentFormats.length - 1].id === documentFormat.id) {
             return;
         }
@@ -304,7 +352,39 @@ const Discharge = () => {
                 newDocumentFormats.push(documentFormats[i]);
             }
         }
+        //setDocumentFormats([]);
+        //alert(JSON.stringify(newDocumentFormats));
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const onAddDocumentFormatClicked = () => {
+        const newDocumentFormat: DocumentFormat = {
+            id: -1,
+            kind: 1,
+            category_name: "",
+            order_no: documentFormats.length,
+            question: "",
+            is_s: false,
+            is_o: false,
+            is_a: false,
+            is_p: false,
+            is_b: false,
+            temperature: DEFAULT_TEMPERATURE,
+            response_max_tokens: DEFAULT_RESPONSE_MAX_TOKENS,
+            question_suffix: DEFAULT_QUESTION_SUFFIX,
+            use_allergy_records: false,
+            use_discharge_medicine_records: false,
+        };
+
+        const newDocumentFormats: DocumentFormat[] = [];
+        for (let documentFormat of documentFormats) {
+            newDocumentFormats.push(documentFormat);
+        }
+
+        newDocumentFormats.push(newDocumentFormat);
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     }
 
     const onDocumentSettingDeleteClicked = (documentFormatId : number) => {
@@ -318,6 +398,7 @@ const Discharge = () => {
             order ++;
         }
         setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     }
 
     const getSoap = async () => {
@@ -535,6 +616,7 @@ const Discharge = () => {
                     userId={DEFAULT_USER_ID}
                     documentFormats={documentFormats}
                     isLoading={isDocumnetFormatSettingLoading}
+                    isEdited={isDocumentFormatSettingEdited}
                     onSaveClicked={onSaveDocumentFormatClicked}
                     onCancelClicked={onCancelDocumentFormatClicked}
                     onReloadFromMasterClicked={onReloadFromMasterClicked}
@@ -545,6 +627,7 @@ const Discharge = () => {
                     onUpClicked={onDocumentFormatUpClicked}
                     onDownClicked={onDocumentFormatDownClicked}
                     onDeleteClicked={onDocumentSettingDeleteClicked}
+                    onAddClicked={onAddDocumentFormatClicked}
                 ></DocumentFormatSetting>
             </div>
             )}

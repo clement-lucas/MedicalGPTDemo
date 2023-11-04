@@ -1,7 +1,7 @@
 import { Stack, Spinner, Label } from "@fluentui/react";
 
 import styles from "./DocumentFormatSetting.module.css";
-import { Save24Filled } from "@fluentui/react-icons";
+import { Save24Filled, Add24Filled } from "@fluentui/react-icons";
 import { DocumentFormatSettingByCategory } from "./DocumentFormatSettingByCategory";
 import { DocumentFormat } from "../../api";
 
@@ -26,6 +26,8 @@ interface Props {
 
     isLoading: boolean;
 
+    isEdited: boolean;
+
     onSaveClicked: () => void;
     onCancelClicked: () => void;
     onReloadFromMasterClicked: () => void;
@@ -38,13 +40,14 @@ interface Props {
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
     onDeleteClicked: (documentFormatId : number) => void;
+    onAddClicked: () => void;
 }
 
 export const DocumentFormatSetting = ({
-    documentName, departmentCode, icd10Code, icd10Name, userId, documentFormats, isLoading,
+    documentName, departmentCode, icd10Code, icd10Name, userId, documentFormats, isLoading, isEdited,
     onSaveClicked, onCancelClicked, onReloadFromMasterClicked,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
-    onUpClicked, onDownClicked, onDeleteClicked
+    onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
 }: Props) => {
     
     //icd10Name === undefined && setIcd10Name("hoge" + icd10Code);
@@ -61,7 +64,7 @@ export const DocumentFormatSetting = ({
                         <p className={styles.subDocumentFormatSettingButtonText}>マスター再取得</p>
                     </div>
                     <div className={styles.subDocumentFormatSettingButton} onClick={onCancelClicked}>
-                        <p className={styles.subDocumentFormatSettingButtonText}>編集結果を破棄</p>
+                        <p className={styles.subDocumentFormatSettingButtonText}>閉じる</p>
                     </div>
                 </Stack>
                 {isLoading && <Spinner label="Loading document settings" />}
@@ -98,12 +101,18 @@ export const DocumentFormatSetting = ({
                             onDeleteClicked={onDeleteClicked}
                             />
                     ))}
+                <div className={styles.backPanelAddButton}>
+                    <div className={styles.documentFormatSettingAddButton}
+                        onClick={() => onAddClicked()}>
+                        <Add24Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                    </div>
+                </div>
                 </Stack>
                 <div className={styles.footer}>
-                    <div className={styles.saveDocumentFormatSettingButton} onClick={onSaveClicked}>
+                    <div className={isEdited ? styles.saveDocumentFormatSettingButton : styles.saveDocumentFormatSettingButtonDisabled} onClick={isEdited ? onSaveClicked : undefined}>
                         <Stack horizontal>
-                            <Save24Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Edit logo" />
-                            <p className={styles.saveDocumentFormatSettingButtonText}>保存する</p>
+                            <Save24Filled primaryFill={isEdited ? "rgba(115, 118, 225, 1)" : "rgba(85, 85, 85, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                            <p className={isEdited ? styles.saveDocumentFormatSettingButtonText : styles.saveDocumentFormatSettingButtonTextDisabled}>保存する</p>
                         </Stack>
                     </div>
                 </div>
