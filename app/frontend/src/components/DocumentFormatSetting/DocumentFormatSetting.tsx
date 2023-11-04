@@ -32,10 +32,10 @@ interface Props {
     onCancelClicked: () => void;
     onReloadFromMasterClicked: () => void;
 
-    onCategoryNameChanged: (newValue:string, documentFormatId : number) => void;
-    onKindChanged: (newValue:number, documentFormatId : number) => void;
-    onTargetSoapChanged: (targetSection:string, newValue:boolean, documentFormatId : number) => void;
-    onQuestionChanged: (newValue:string, documentFormatId : number) => void;
+    onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
+    onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
+    onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
 
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;

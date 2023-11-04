@@ -242,20 +242,24 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(true);
     }
 
-    const onCategoryNameChanged = (newValue:string, documentFormatId : number) => {
+    const onCategoryNameChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.category_name !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
         const newDocumentFormats = documentFormats.map((documentFormat) => {
-            if (documentFormat.id === documentFormatId) {
+            if (documentFormat.id === targetDocumentFormat.id) {
                 documentFormat.category_name = newValue;
             }
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
-        setIsDocumentFormatSettingEdited(true);
     };
 
-    const onKindChanged = (newValue:number, documentFormatId : number) => {
+    const onKindChanged = (targetDocumentFormat:DocumentFormat, newValue:number) => {
         const newDocumentFormats = documentFormats.map((documentFormat) => {
-            if (documentFormat.id === documentFormatId) {
+            if (documentFormat.id === targetDocumentFormat.id) {
                 documentFormat.kind = newValue as number;
             }
             return documentFormat;
@@ -264,9 +268,9 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(true);
     };
 
-    const onTargetSoapChanged = (targetSection:string, newValue:boolean, documentFormatId : number) => {
+    const onTargetSoapChanged = (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => {
         const newDocumentFormats = documentFormats.map((documentFormat) => {
-            if (documentFormat.id === documentFormatId) {
+            if (documentFormat.id === targetDocumentFormat.id) {
                 if (targetSection === "S") {
                     documentFormat.is_s = newValue;
                 } else if (targetSection === "O") {
@@ -278,8 +282,6 @@ const Discharge = () => {
                 } else if (targetSection === "B") {
                     documentFormat.is_b = newValue;
                 }
-
-
             }
             return documentFormat;
         });
@@ -287,15 +289,22 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(true);
     };
 
-    const onQuestionChanged = (newValue:string, documentFormatId : number) => {
+    const onQuestionChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        // 改行コード 統一
+        const targetQ = targetDocumentFormat.question.replace(/\r?\n/g, "\n");
+        const newQ = newValue.replace(/\r?\n/g, "\n");
+        if (targetQ !== newQ) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
         const newDocumentFormats = documentFormats.map((documentFormat) => {
-            if (documentFormat.id === documentFormatId) {
+            if (documentFormat.id === targetDocumentFormat.id) {
                 documentFormat.question = newValue;
             }
             return documentFormat;
         });
         setDocumentFormats(newDocumentFormats);
-        setIsDocumentFormatSettingEdited(true);
     };
 
     const onDocumentFormatUpClicked = (documentFormat : DocumentFormat) => {

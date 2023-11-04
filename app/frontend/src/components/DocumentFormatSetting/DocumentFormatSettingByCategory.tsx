@@ -7,10 +7,10 @@ import { DocumentFormat } from "../../api";
 
 interface Props {
     documentFormat : DocumentFormat;
-    onCategoryNameChanged: (newValue:string, documentFormatId : number) => void;
-    onKindChanged: (newValue: number, documentFormatId : number) => void;
-    onTargetSoapChanged: (targetSection:string, newValue:boolean, documentFormatId : number) => void;
-    onQuestionChanged: (newValue:string, documentFormatId : number) => void;
+    onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
+    onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
+    onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
     onDeleteClicked: (documentFormatId : number) => void;
@@ -59,8 +59,8 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         resizable={false}
                         defaultValue={documentFormat.category_name}
                         value={documentFormat.category_name}
-                        onChange={(e, newValue) => onCategoryNameChanged(newValue || "", documentFormat.id)}
-                        onBlur={(e) => onCategoryNameChanged(e.target.value || "", documentFormat.id)}
+                        onChange={(e, newValue) => onCategoryNameChanged(documentFormat, newValue || "")}
+                        onBlur={(e) => onCategoryNameChanged(documentFormat, e.target.value || "")}
                     />
                 </p>
                 <p>種類：<br></br>
@@ -70,7 +70,7 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         selectedKey={documentFormat.kind}
                         onChange={(e, newValue) => {
                             documentFormat.kind = newValue?.key as number || 0;
-                            onKindChanged(newValue?.key as number || 0, documentFormat.id);
+                            onKindChanged(documentFormat, newValue?.key as number || 0);
                         }}
                     />            
                 </p>
@@ -80,19 +80,19 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         <Stack horizontal>
                             <Checkbox label="S　　"
                                 checked={documentFormat.is_s}
-                                onChange={(e, newValue) => onTargetSoapChanged("S", newValue ? true : false, documentFormat.id)}/>
+                                onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "S", newValue ? true : false)}/>
                             <Checkbox label="O　　" 
                                 checked={documentFormat.is_o}
-                                onChange={(e, newValue) => onTargetSoapChanged("O", newValue ? true : false, documentFormat.id)}/>
+                                onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "O", newValue ? true : false)}/>
                             <Checkbox label="A　　" 
                                 checked={documentFormat.is_a}
-                                onChange={(e, newValue) => onTargetSoapChanged("A", newValue ? true : false, documentFormat.id)}/>
+                                onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "A", newValue ? true : false)}/>
                             <Checkbox label="P　　" 
                                 checked={documentFormat.is_p}
-                                onChange={(e, newValue) => onTargetSoapChanged("P", newValue ? true : false, documentFormat.id)}/>
+                                onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "P", newValue ? true : false)}/>
                             <Checkbox label="＃" 
                                 checked={documentFormat.is_b}
-                                onChange={(e, newValue) => onTargetSoapChanged("B", newValue ? true : false, documentFormat.id)}/>
+                                onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "B", newValue ? true : false)}/>
                         </Stack>
                     </p>
                     <p>プロンプト：<br></br>
@@ -103,8 +103,8 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                             scrolling="true"
                             defaultValue={documentFormat.question}
                             value={documentFormat.question}
-                            onChange={(e, newValue) => onQuestionChanged(newValue || "", documentFormat.id)}
-                            onBlur={(e) => onQuestionChanged(e.target.value || "", documentFormat.id)}
+                            onChange={(e, newValue) => onQuestionChanged(documentFormat, newValue || "")}
+                            onBlur={(e) => onQuestionChanged(documentFormat, e.target.value || "")}
                             //onChange={onQuestionChange}
                             //onKeyDown={onEnterPress}
                         />

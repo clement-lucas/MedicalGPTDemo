@@ -115,7 +115,7 @@ CREATE TABLE DocumentFormat (
     -- P: Plan
     -- B: Problem
     ------------------
-    TargetSoapRecords CHAR(4), 
+    TargetSoapRecords CHAR(8), 
 
     ------------------
     -- アレルギー情報を使用するかどうか。
