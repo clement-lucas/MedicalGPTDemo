@@ -58,6 +58,11 @@ export const DocumentFormatSetting = ({
                 <Label>　疾病分類: </Label>
                 <Label>{icd10Name}</Label>
             </Stack> 
+            {isLoading && (
+                <div className={styles.loadingDocumentFormatSpinner}>
+                    <Spinner label="Loading document settings" />
+                </div>
+                )}
             {!isLoading && <div>
                 <Stack horizontal>
                     <div className={styles.subDocumentFormatSettingButton} onClick={onReloadFromMasterClicked}>
@@ -67,7 +72,6 @@ export const DocumentFormatSetting = ({
                         <p className={styles.subDocumentFormatSettingButtonText}>閉じる</p>
                     </div>
                 </Stack>
-                {isLoading && <Spinner label="Loading document settings" />}
                 {/* <Label>文書名: </Label>
                 <Label>{documentName}</Label><br></br>
                 <Label>診療科コード: </Label>

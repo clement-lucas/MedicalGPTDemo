@@ -59,7 +59,9 @@ const Discharge = () => {
     const [totalTokens, setTotalTokens] = useState<number>(0);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isSoapLoading, setIsSoapLoading] = useState<boolean>(false);
+    const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+    const [isLoadingSoap, setIsLoadingSoap] = useState<boolean>(false);
+    const [isLoadingDocumnetFormatSetting, setIsLoadingDocumnetFormatSetting] = useState<boolean>(false);
     const [error, setError] = useState<unknown>();
     const [answer, setAnswer] = useState<AskResponse>();
 
@@ -68,7 +70,6 @@ const Discharge = () => {
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
-    const [isDocumnetFormatSettingLoading, setIsDocumnetFormatSettingLoading] = useState<boolean>(false);
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
     const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
 
@@ -78,6 +79,7 @@ const Discharge = () => {
     }
 
     const getHistoryIndex = async () => {
+        setIsLoadingHistory(true);
         try {
             const request: GetHistoryIndexRequest = {
                 document_name: DOCUMENT_NAME,
@@ -85,9 +87,9 @@ const Discharge = () => {
             const result = await getHistoryIndexApi(request);
             setHistoryItems(result.history_date_list);
         } catch (e) {
-            // TODO エラー表示処理
             alert(e)
-            //setError(e);
+        } finally { 
+            setIsLoadingHistory(false);
         }
     }
 
@@ -116,7 +118,7 @@ const Discharge = () => {
     }
 
     const getDocumentFormat = async (force_master:boolean) => {
-        setIsDocumnetFormatSettingLoading(true);
+        setIsLoadingDocumnetFormatSetting(true);
         try {
             const request: GetDocumentFormatRequest = {
                 document_name: DOCUMENT_NAME,
@@ -130,7 +132,7 @@ const Discharge = () => {
             alert(e)
             //setError(e);
         } finally {
-            setIsDocumnetFormatSettingLoading(false);
+            setIsLoadingDocumnetFormatSetting(false);
         }
     }
 
@@ -189,7 +191,7 @@ const Discharge = () => {
         }
     };
 
-    const onExampleClicked = (example: string) => {
+    const onCreateClicked = (documentName:string) => {
         // 実行を確認する
         if (isDocumentFormatSettingEdited) {
             const result = window.confirm("プロンプト編集内容が保存されていません。\n保存しない場合、以前のプロンプトのまま実行されます。\nよろしいですか？");
@@ -197,7 +199,7 @@ const Discharge = () => {
                 return;
             }
         }
-        makeApiRequest(example);
+        makeApiRequest(documentName);
     };
 
     const onSaveDocumentFormatClicked = () => {
@@ -397,21 +399,26 @@ const Discharge = () => {
     }
 
     const onDocumentSettingDeleteClicked = (documentFormatId : number) => {
+        // 実行確認
+        const result = window.confirm("カテゴリーを削除してよろしいですか？");
+        if (!result) {
+            return;
+        }
         const newDocumentFormats: DocumentFormat[] = [];
         let order:number = 0;
         for (let documentFormat of documentFormats) {
             if (documentFormat.id !== documentFormatId) {
                 documentFormat.order_no = order;
                 newDocumentFormats.push(documentFormat);
+                order ++;
             }
-            order ++;
         }
         setDocumentFormats(newDocumentFormats);
         setIsDocumentFormatSettingEdited(true);
     }
 
     const getSoap = async () => {
-        setIsSoapLoading(true);
+        setIsLoadingSoap(true);
         try {
             const request: GetSoapRequest = {
                 patient_code: patientCode,
@@ -421,7 +428,7 @@ const Discharge = () => {
         } catch (e) {
             setError(e);
         } finally {
-            setIsSoapLoading(false);
+            setIsLoadingSoap(false);
         }
     }
 
@@ -516,6 +523,11 @@ const Discharge = () => {
     <Stack styles={rootStackStyles} horizontal onLoad={onLoad}>  
         <div className={styles.dischargeHistoryDiv}>
             <Label styles={hitoryTitleLabelStyles}>作成履歴</Label>
+            {isLoadingHistory && (
+                <div className={styles.loadingHistorySpinner}>
+                    <Spinner label="Loading history" />
+                </div>
+            )}
             {historyItems.map((item) => (
                 <div>
                     <Label styles={hitoryDateLabelStyles}>{item.created_date}</Label>
@@ -552,7 +564,7 @@ const Discharge = () => {
                             <SoapPreviewButton 
                                 patientCode={patientCode}
                                 onClick={onSoapPreviewClicked} />
-                            {isSoapLoading && <Spinner label="Loading soap" />}
+                            {isLoadingSoap && <Spinner label="Loading soap" />}
                             { previewSoap != "" && (
                                 <TextField
                                     className={styles.soapPreviewField}
@@ -569,7 +581,7 @@ const Discharge = () => {
                             <DischargeButton
                                 text="退院時サマリを作成する"
                                 value="退院時サマリ"
-                                onClick={onExampleClicked} />
+                                onClick={onCreateClicked} />
             </div>
             <div className={styles.dischargeBottomSection}>
                 {isLoading && <Spinner label="Generating answer" />}
@@ -624,7 +636,7 @@ const Discharge = () => {
                     icd10Name={DEFAULT_ICD10_NAME}
                     userId={DEFAULT_USER_ID}
                     documentFormats={documentFormats}
-                    isLoading={isDocumnetFormatSettingLoading}
+                    isLoading={isLoadingDocumnetFormatSetting}
                     isEdited={isDocumentFormatSettingEdited}
                     onSaveClicked={onSaveDocumentFormatClicked}
                     onCancelClicked={onCancelDocumentFormatClicked}
