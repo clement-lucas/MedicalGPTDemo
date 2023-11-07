@@ -3,15 +3,22 @@ import { Checkbox, ChoiceGroup, IChoiceGroupOption, Panel, DefaultButton, Spinne
 import { Label, Stack } from "@fluentui/react";
 import { PrimaryButton } from '@fluentui/react/lib/Button';
 
-
 import styles from "./Discharge.module.css";
 
-import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi } from "../../api";
+import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryIndexRequest, HistoryDate, getHistoryIndexApi, GetHistoryDetailRequest, getHistoryDetailApi
+    , getSoapApi, GetSoapRequest
+    , DocumentFormat
+    , getDocumentFormatApi, GetDocumentFormatRequest
+    , updateDocumentFormatApi, UpdateDocumentFormatRequest } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
-import { DischargeList } from "../../components/Example";
+import { DischargeButton } from "../../components/Example/DischargeButton";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import bird from "../../assets/bird.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
+import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
+import { DocumentFormatEditButton } from "../../components/DocumentFormatSetting/DocumentFormatEditButton";
+import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
+
 export type HistoryIndex = {
     id: number;
     pid: string;
@@ -25,6 +32,14 @@ export type DayOfHistoryIndex = {
 };
 
 const Discharge = () => {
+    const DEFAULT_DEPARTMENT_CODE: string = "0000";
+    const DEFAULT_ICD10_CODE: string = "0000";
+    const DEFAULT_ICD10_NAME: string = "指定なし";
+    const DEFAULT_USER_ID: string = "00000001";
+    const DOCUMENT_NAME: string = "退院時サマリ";
+    const DEFAULT_TEMPERATURE = 0.01
+    const DEFAULT_RESPONSE_MAX_TOKENS = 1000
+    const DEFAULT_QUESTION_SUFFIX = "作成される文章は 900 Token以内とします。"
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [approach, setApproach] = useState<Approaches>(Approaches.RetrieveThenRead);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
@@ -36,6 +51,7 @@ const Discharge = () => {
     const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [patientCode, setPatientCode] = useState<string>("");
     const [patientName, setPatientName] = useState<string>("");
+    const [previewSoap, setPreviewSoap] = useState<string>("");
 
     const lastQuestionRef = useRef<string>("");
     const [completionTokens, setCompletionTokens] = useState<number>(0);
@@ -43,6 +59,9 @@ const Discharge = () => {
     const [totalTokens, setTotalTokens] = useState<number>(0);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+    const [isLoadingSoap, setIsLoadingSoap] = useState<boolean>(false);
+    const [isLoadingDocumnetFormatSetting, setIsLoadingDocumnetFormatSetting] = useState<boolean>(false);
     const [error, setError] = useState<unknown>();
     const [answer, setAnswer] = useState<AskResponse>();
 
@@ -50,22 +69,27 @@ const Discharge = () => {
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
+    const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
+    const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
+    const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
 
     const onLoad = async () => {
+        setIsDocumnetFormatSettingVisible(false);
         await getHistoryIndex();
     }
 
     const getHistoryIndex = async () => {
+        setIsLoadingHistory(true);
         try {
             const request: GetHistoryIndexRequest = {
-                document_name: "退院時サマリ",
+                document_name: DOCUMENT_NAME,
             };
             const result = await getHistoryIndexApi(request);
             setHistoryItems(result.history_date_list);
         } catch (e) {
-            // TODO エラー表示処理
             alert(e)
-            //setError(e);
+        } finally { 
+            setIsLoadingHistory(false);
         }
     }
 
@@ -93,6 +117,41 @@ const Discharge = () => {
         }
     }
 
+    const getDocumentFormat = async (force_master:boolean) => {
+        setIsLoadingDocumnetFormatSetting(true);
+        try {
+            const request: GetDocumentFormatRequest = {
+                document_name: DOCUMENT_NAME,
+                department_code: DEFAULT_DEPARTMENT_CODE,
+                icd10_code: DEFAULT_ICD10_CODE,
+                force_master: force_master,
+            };
+            const result = await getDocumentFormatApi(request);
+            setDocumentFormats(result.document_formats);
+        } catch (e) {
+            alert(e)
+            //setError(e);
+        } finally {
+            setIsLoadingDocumnetFormatSetting(false);
+        }
+    }
+
+    const updateDocumentFormat = async () => {
+        try {
+            const request: UpdateDocumentFormatRequest = {
+                document_name: DOCUMENT_NAME,
+                department_code: DEFAULT_DEPARTMENT_CODE,
+                icd10_code: DEFAULT_ICD10_CODE,
+                user_id: DEFAULT_USER_ID,
+                document_formats: documentFormats,
+            };
+            await updateDocumentFormatApi(request);
+            alert("保存しました。");
+        } catch (e) {
+            alert(e)
+        }
+    }
+
     const makeApiRequest = async (documentName: string) => {
         lastQuestionRef.current = documentName;
 
@@ -105,6 +164,8 @@ const Discharge = () => {
             const request: DischargeRequest = {
                 documentName: documentName,
                 patientCode: patientCode,
+                departmentCode: DEFAULT_DEPARTMENT_CODE,
+                icd10Code: DEFAULT_ICD10_CODE,
                 approach: Approaches.ReadRetrieveRead,
                 overrides: {
                     promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
@@ -130,41 +191,265 @@ const Discharge = () => {
         }
     };
 
-    const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplate(newValue || "");
+    const onCreateClicked = (documentName:string) => {
+        // 実行を確認する
+        if (isDocumentFormatSettingEdited) {
+            const result = window.confirm("プロンプト編集内容が保存されていません。\n保存しない場合、以前のプロンプトのまま実行されます。\nよろしいですか？");
+            if (!result) {
+                return;
+            }
+        }
+        makeApiRequest(documentName);
     };
 
-    const onPromptTemplatePrefixChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplatePrefix(newValue || "");
+    const onSaveDocumentFormatClicked = () => {
+        // 入力チェック
+        let errorMessages:string = "";
+        for (let documentFormat of documentFormats) {
+            if (documentFormat.category_name === "") {
+                errorMessages += "カテゴリ名が入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+            }
+            if (documentFormat.kind === 1 && documentFormat.question === "") {
+                errorMessages += "プロンプトが入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+            }
+        }
+        if (errorMessages !== "") {
+            alert(errorMessages);
+            return;
+        }
+        updateDocumentFormat();
+        setIsDocumentFormatSettingEdited(false);
+    }
+
+    const onCancelDocumentFormatClicked = () => {
+        // 実行を確認する
+        if (isDocumentFormatSettingEdited) {
+            const result = window.confirm("保存していない編集内容は破棄されます。\nよろしいですか？");
+            if (!result) {
+                return;
+            }
+        }
+        getDocumentFormat(false);
+        setIsDocumnetFormatSettingVisible(false);
+        setIsDocumentFormatSettingEdited(false);
+    }
+
+    const onReloadFromMasterClicked = () => {
+        // 実行を確認する
+        const result = window.confirm("マスターから再取得します。\n保存していない編集内容は破棄されます。\nマスターから取得した内容は、保存ボタンを押されるまで保存されません。\nよろしいですか？");
+        if (!result) {
+            return;
+        }
+        getDocumentFormat(true);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const onCategoryNameChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.category_name !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.category_name = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
     };
 
-    const onPromptTemplateSuffixChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-        setPromptTemplateSuffix(newValue || "");
+    const onKindChanged = (targetDocumentFormat:DocumentFormat, newValue:number) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.kind = newValue as number;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
-    const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setRetrieveCount(parseInt(newValue || "3"));
+    const onTargetSoapChanged = (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => {
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                if (targetSection === "S") {
+                    documentFormat.is_s = newValue;
+                } else if (targetSection === "O") {
+                    documentFormat.is_o = newValue;
+                } else if (targetSection === "A") {
+                    documentFormat.is_a = newValue;
+                } else if (targetSection === "P") {
+                    documentFormat.is_p = newValue;
+                } else if (targetSection === "B") {
+                    documentFormat.is_b = newValue;
+                }
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
     };
 
-    const onApproachChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-        setApproach((option?.key as Approaches) || Approaches.RetrieveThenRead);
+    const onQuestionChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        // 改行コード 統一
+        const targetQ = targetDocumentFormat.question.replace(/\r?\n/g, "\n");
+        const newQ = newValue.replace(/\r?\n/g, "\n");
+        if (targetQ !== newQ) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.question = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
     };
 
-    const onUseSemanticRankerChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticRanker(!!checked);
+    const onDocumentFormatUpClicked = (documentFormat : DocumentFormat) => {
+        if (documentFormats[0].id === documentFormat.id) {
+            return;
+        }
+        const newDocumentFormats: DocumentFormat[] = [];
+        const oldOrderNoOfTarget: number = documentFormat.order_no;
+        for (let i = 0; i < oldOrderNoOfTarget - 1; i++) {
+            newDocumentFormats.push(documentFormats[i]);
+        }
+        documentFormat.order_no = oldOrderNoOfTarget - 1;
+        newDocumentFormats.push(documentFormat);
+        for (let i = oldOrderNoOfTarget - 1; i < documentFormats.length; i++) {
+            if (documentFormats[i].id !== documentFormat.id) {
+                if (documentFormats[i].order_no === oldOrderNoOfTarget - 1) {
+                    documentFormats[i].order_no ++;
+                }
+                newDocumentFormats.push(documentFormats[i]);
+            }
+        }
+        //setDocumentFormats([]);
+        //alert(JSON.stringify(newDocumentFormats));
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const onDocumentFormatDownClicked = (documentFormat : DocumentFormat) => {
+        // const newDocumentFormats = documentFormats.map((documentFormat) => {
+        //     documentFormat.order_no = documentFormat.order_no + 1;
+        //     documentFormat.category_name = "あああ";
+        //     return documentFormat;
+        // });
+        // setDocumentFormats([]);
+        // setDocumentFormats(newDocumentFormats);
+
+
+        if (documentFormats[documentFormats.length - 1].id === documentFormat.id) {
+            return;
+        }
+        const newDocumentFormats: DocumentFormat[] = [];
+        const oldOrderNoOfTarget: number = documentFormat.order_no;
+        for (let i = 0; i < oldOrderNoOfTarget; i++) {
+            newDocumentFormats.push(documentFormats[i]);
+        }
+        const nextRow = documentFormats[oldOrderNoOfTarget+1];
+        nextRow.order_no --;
+        newDocumentFormats.push(nextRow);
+        documentFormat.order_no = oldOrderNoOfTarget + 1;
+        newDocumentFormats.push(documentFormat);
+        for (let i = oldOrderNoOfTarget + 2; i < documentFormats.length; i++) {
+            if (documentFormats[i].id !== documentFormat.id 
+                && documentFormats[i].id !== nextRow.id) {
+                newDocumentFormats.push(documentFormats[i]);
+            }
+        }
+        //setDocumentFormats([]);
+        //alert(JSON.stringify(newDocumentFormats));
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const onAddDocumentFormatClicked = () => {
+        const newDocumentFormat: DocumentFormat = {
+            id: -1,
+            kind: 1,
+            category_name: "",
+            order_no: documentFormats.length,
+            question: "",
+            is_s: false,
+            is_o: false,
+            is_a: false,
+            is_p: false,
+            is_b: false,
+            temperature: DEFAULT_TEMPERATURE,
+            response_max_tokens: DEFAULT_RESPONSE_MAX_TOKENS,
+            question_suffix: DEFAULT_QUESTION_SUFFIX,
+            use_allergy_records: false,
+            use_discharge_medicine_records: false,
+        };
+
+        const newDocumentFormats: DocumentFormat[] = [];
+        for (let documentFormat of documentFormats) {
+            newDocumentFormats.push(documentFormat);
+        }
+
+        newDocumentFormats.push(newDocumentFormat);
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const onDocumentSettingDeleteClicked = (documentFormatId : number) => {
+        // 実行確認
+        const result = window.confirm("カテゴリーを削除してよろしいですか？");
+        if (!result) {
+            return;
+        }
+        const newDocumentFormats: DocumentFormat[] = [];
+        let order:number = 0;
+        for (let documentFormat of documentFormats) {
+            if (documentFormat.id !== documentFormatId) {
+                documentFormat.order_no = order;
+                newDocumentFormats.push(documentFormat);
+                order ++;
+            }
+        }
+        setDocumentFormats(newDocumentFormats);
+        setIsDocumentFormatSettingEdited(true);
+    }
+
+    const getSoap = async () => {
+        setIsLoadingSoap(true);
+        try {
+            const request: GetSoapRequest = {
+                patient_code: patientCode,
+            };
+            const result = await getSoapApi(request);
+            setPreviewSoap("患者番号: " + patientCode + "\n" + result.soap);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setIsLoadingSoap(false);
+        }
+    }
+
+    const onSoapPreviewClicked = (patient_code: string) => {
+        if (patient_code === "") {
+            setPreviewSoap("患者番号を入力してください。");
+            return;
+        }
+        setPreviewSoap("");
+        getSoap();
     };
 
-    const onUseSemanticCaptionsChange = (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-        setUseSemanticCaptions(!!checked);
-    };
-
-    const onExcludeCategoryChanged = (_ev?: React.FormEvent, newValue?: string) => {
-        setExcludeCategory(newValue || "");
-    };
-
-    const onExampleClicked = (example: string) => {
-        makeApiRequest(example);
-    };
+    const onDocumentFormatEditClicked = () => {
+        if (!isDocumnetFormatSettingVisible) {
+            getDocumentFormat(false);
+            setIsDocumnetFormatSettingVisible(true);
+        }
+        else {
+            setIsDocumnetFormatSettingVisible(false);
+        }
+    }
 
     const onShowCitation = (citation: string) => {
         if (activeCitation === citation && activeAnalysisPanelTab === AnalysisPanelTabs.CitationTab) {
@@ -182,21 +467,6 @@ const Discharge = () => {
             setActiveAnalysisPanelTab(tab);
         }
     };
-
-    const approaches: IChoiceGroupOption[] = [
-        {
-            key: Approaches.RetrieveThenRead,
-            text: "Retrieve-Then-Read"
-        },
-        {
-            key: Approaches.ReadRetrieveRead,
-            text: "Read-Retrieve-Read"
-        },
-        {
-            key: Approaches.ReadDecomposeAsk,
-            text: "Read-Decompose-Ask"
-        }
-    ];
 
     function onHistoryButtonClicked(id:number): void {
         getHistoryDetail(id);
@@ -253,6 +523,11 @@ const Discharge = () => {
     <Stack styles={rootStackStyles} horizontal onLoad={onLoad}>  
         <div className={styles.dischargeHistoryDiv}>
             <Label styles={hitoryTitleLabelStyles}>作成履歴</Label>
+            {isLoadingHistory && (
+                <div className={styles.loadingHistorySpinner}>
+                    <Spinner label="Loading history" />
+                </div>
+            )}
             {historyItems.map((item) => (
                 <div>
                     <Label styles={hitoryDateLabelStyles}>{item.created_date}</Label>
@@ -272,7 +547,6 @@ const Discharge = () => {
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
                 <img src={bird} alt="bird" style={iconStyle}  />
                              <h1 className={styles.chatEmptyStateTitle}>退院サマリ作成システム</h1>
-                             <h2 className={styles.chatEmptyStateSubtitle}>どの文書を作成しますか？</h2>
                              {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
                              <div className={styles.dischargeInput}>
                                  <PatientCodeInput
@@ -285,7 +559,29 @@ const Discharge = () => {
                                      disabled={isLoading}
                              />
                             </div>
-                            <DischargeList onExampleClicked={onExampleClicked} />
+                            {/* <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3> */}
+                            {/* <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3> */}
+                            <SoapPreviewButton 
+                                patientCode={patientCode}
+                                onClick={onSoapPreviewClicked} />
+                            {isLoadingSoap && <Spinner label="Loading soap" />}
+                            { previewSoap != "" && (
+                                <TextField
+                                    className={styles.soapPreviewField}
+                                    readOnly={true}
+                                    multiline={true}
+                                    resizable={true}
+                                    scrolling="true"
+                                    value={previewSoap}
+                                    //onChange={onQuestionChange}
+                                    //onKeyDown={onEnterPress}
+                                />)}
+                            <DocumentFormatEditButton 
+                                onClick={ onDocumentFormatEditClicked } />
+                            <DischargeButton
+                                text="退院時サマリを作成する"
+                                value="退院時サマリ"
+                                onClick={onCreateClicked} />
             </div>
             <div className={styles.dischargeBottomSection}>
                 {isLoading && <Spinner label="Generating answer" />}
@@ -330,79 +626,33 @@ const Discharge = () => {
                 )}
             </div>
 
-            <Panel
-                headerText="Configure answer generation"
-                isOpen={isConfigPanelOpen}
-                isBlocking={false}
-                onDismiss={() => setIsConfigPanelOpen(false)}
-                closeButtonAriaLabel="Close"
-                onRenderFooterContent={() => <DefaultButton onClick={() => setIsConfigPanelOpen(false)}>Close</DefaultButton>}
-                isFooterAtBottom={true}
-            >
-                <ChoiceGroup
-                    className={styles.dischargeSettingsSeparator}
-                    label="Approach"
-                    options={approaches}
-                    defaultSelectedKey={approach}
-                    onChange={onApproachChange}
-                />
-
-                {(approach === Approaches.RetrieveThenRead || approach === Approaches.ReadDecomposeAsk) && (
-                    <TextField
-                        className={styles.dischargeSettingsSeparator}
-                        defaultValue={promptTemplate}
-                        label="Override prompt template"
-                        multiline
-                        autoAdjustHeight
-                        onChange={onPromptTemplateChange}
-                    />
-                )}
-
-                {approach === Approaches.ReadRetrieveRead && (
-                    <>
-                        <TextField
-                            className={styles.dischargeSettingsSeparator}
-                            defaultValue={promptTemplatePrefix}
-                            label="Override prompt prefix template"
-                            multiline
-                            autoAdjustHeight
-                            onChange={onPromptTemplatePrefixChange}
-                        />
-                        <TextField
-                            className={styles.dischargeSettingsSeparator}
-                            defaultValue={promptTemplateSuffix}
-                            label="Override prompt suffix template"
-                            multiline
-                            autoAdjustHeight
-                            onChange={onPromptTemplateSuffixChange}
-                        />
-                    </>
-                )}
-
-                <SpinButton
-                    className={styles.dischargeSettingsSeparator}
-                    label="Retrieve this many discharges from search:"
-                    min={1}
-                    max={50}
-                    defaultValue={retrieveCount.toString()}
-                    onChange={onRetrieveCountChange}
-                />
-                <TextField className={styles.dischargeSettingsSeparator} label="Exclude category" onChange={onExcludeCategoryChanged} />
-                <Checkbox
-                    className={styles.dischargeSettingsSeparator}
-                    checked={useSemanticRanker}
-                    label="Use semantic ranker for retrieval"
-                    onChange={onUseSemanticRankerChange}
-                />
-                <Checkbox
-                    className={styles.dischargeSettingsSeparator}
-                    checked={useSemanticCaptions}
-                    label="Use query-contextual summaries instead of whole discharges"
-                    onChange={onUseSemanticCaptionsChange}
-                    disabled={!useSemanticRanker}
-                />
-            </Panel>
         </div>
+        { isDocumnetFormatSettingVisible && (
+            <div className={styles.dischargeDocumentFormatSettingDiv}>
+                <DocumentFormatSetting 
+                    documentName={DOCUMENT_NAME}
+                    departmentCode={DEFAULT_DEPARTMENT_CODE}
+                    icd10Code={DEFAULT_ICD10_CODE}
+                    icd10Name={DEFAULT_ICD10_NAME}
+                    userId={DEFAULT_USER_ID}
+                    documentFormats={documentFormats}
+                    isLoading={isLoadingDocumnetFormatSetting}
+                    isEdited={isDocumentFormatSettingEdited}
+                    onSaveClicked={onSaveDocumentFormatClicked}
+                    onCancelClicked={onCancelDocumentFormatClicked}
+                    onReloadFromMasterClicked={onReloadFromMasterClicked}
+                    onCategoryNameChanged={onCategoryNameChanged}
+                    onKindChanged={onKindChanged}
+                    onTargetSoapChanged={onTargetSoapChanged}
+                    onQuestionChanged={onQuestionChanged}
+                    onUpClicked={onDocumentFormatUpClicked}
+                    onDownClicked={onDocumentFormatDownClicked}
+                    onDeleteClicked={onDocumentSettingDeleteClicked}
+                    onAddClicked={onAddDocumentFormatClicked}
+                ></DocumentFormatSetting>
+            </div>
+            )}
+
     </Stack>  
     );
 };
