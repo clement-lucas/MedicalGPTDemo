@@ -232,7 +232,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 allergy, \
                 medicine
 
-    def run(self, document_name: str, patient_code:str, department_code:str, icd10_code:str, overrides: dict) -> any:
+    def run(self, document_name: str, patient_code:str, overrides: dict) -> any:
 
         # print("run")
         # print(document_name)
@@ -346,8 +346,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         select_system_content_sql = """SELECT 
                 Question
             FROM DocumentFormat 
-            WHERE IsMaster = 1
-            AND DocumentName = ?
+            WHERE DocumentName = ?
             AND Kind = ?
             AND GPTModelName = ?
             AND IsDeleted = 0"""
@@ -370,35 +369,22 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 Kind, 
                 CategoryName, 
                 Temperature,
-                ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question,
+                Question, 
                 ResponseMaxTokens,
                 TargetSoapRecords, 
                 UseAllergyRecords, 
                 UseDischargeMedicineRecords 
             FROM DocumentFormat 
-            WHERE IsMaster = ?
-            AND DepartmentCode = ?
-            AND Icd10Code = ?
-            AND DocumentName = ?
+            WHERE DocumentName = ?
             AND Kind <> ?
             AND GPTModelName = ?
             AND IsDeleted = 0
             ORDER BY OrderNo"""
         cursor.execute(select_document_format_sql,
-                       0, department_code, icd10_code,
                        document_name,
                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                        gpt_model_name)
         rows = cursor.fetchall() 
-
-        # マスター以外が HIT しなかった場合は、マスターを取得する
-        if len(rows) == 0:
-            cursor.execute(select_document_format_sql,
-                        1, department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-            rows = cursor.fetchall() 
 
         # 医師記録の取得
         soap_manager = SOAPManager(self.gptconfigmanager, patient_code, 
@@ -435,7 +421,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     if exception is not None:
                         raise exception
                 except Exception as e:
-                    # print(e)
+                    print(e)
                     raise e
                 future_ret = feature.result()
                 # [0]:ret, \
