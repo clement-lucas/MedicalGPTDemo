@@ -1,0 +1,35 @@
+.container {
+    align-items: center;
+    gap: 6px;
+    background-color: white;
+    border-radius: 10px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 10px;
+    padding-right: 10px;
+    margin: 10px;
+    border: 3px solid rgb(184, 184, 184);
+}
+
+.backPanel {
+    background-color: white;
+    margin: 0px;
+}
+
+.documentFormatSettingIconButton {
+    margin-right: 4px;
+    margin-top: 6px;
+    margin-left: 0px;
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+}
+
+.documentFormatSettingIconButton:hover {
+    outline: 2px solid rgba(115, 118, 225, 1);
+}
+
+.documentFormatSettingIconButtonContainer{
+    display: flex;
+    justify-content: space-between;
+}

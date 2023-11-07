@@ -17,6 +17,9 @@ from approaches.getpatient import GetPatientApproach
 from approaches.getpatientold import GetPatientOldApproach
 from approaches.gethistoryinex import GetHistoryIndexApproach
 from approaches.gethistorydetail import GetHistoryDetailApproach
+from approaches.getsoap import GetSoapApproach
+from approaches.getdocumentfotmat import GetDocumentFormatApproach
+from approaches.updatedocumentfotmat import UpdateDocumentFormatApproach
 from azure.storage.blob import BlobServiceClient
 
 # Replace these with your own values, either in environment variables or directly here
@@ -100,6 +103,16 @@ get_history_detail_approaches = {
     "rrr": GetHistoryDetailApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
+soap_approaches = {
+    "get": GetSoapApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
+document_format_approaches = {
+    "get": GetDocumentFormatApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
+    "upd": UpdateDocumentFormatApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
+
 app = Flask(__name__)
 
 @app.route("/", defaults={"path": "index.html"})
@@ -154,7 +167,11 @@ def discharge():
         impl = discharge_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["document_name"], request.json["patient_code"], request.json.get("overrides") or {})
+        r = impl.run(request.json["document_name"], 
+                     request.json["patient_code"], 
+                     request.json["icd10_code"], 
+                     request.json["department_code"], 
+                     request.json.get("overrides") or {})
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /discharge")
@@ -236,6 +253,49 @@ def get_history_detail():
         logging.exception("Exception in /get_history_detail")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/soap", methods=["POST"])
+def soap():
+    try:
+        impl = soap_approaches.get("get")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["patient_code"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /soap")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get_document_format", methods=["POST"])
+def get_document_format():
+    try:
+        impl = document_format_approaches.get("get")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_name"], 
+                     request.json["department_code"], 
+                     request.json["icd10_code"],
+                     request.json["force_master"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_document_format")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/update_document_format", methods=["POST"])
+def update_document_format():
+    try:
+        impl = document_format_approaches.get("upd")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_name"], 
+                     request.json["department_code"], 
+                     request.json["icd10_code"],
+                     request.json["user_id"], 
+                     request.json["document_formats"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /update_document_format")
+        return jsonify({"error": str(e)}), 500
+    
 def ensure_openai_token():
     global openai_token
     if openai_token.expires_on < int(time.time()) - 60:

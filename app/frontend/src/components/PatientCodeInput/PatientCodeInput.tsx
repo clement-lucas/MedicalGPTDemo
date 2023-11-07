@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Stack, TextField, Label } from "@fluentui/react";
 import { Search24Filled } from "@fluentui/react-icons";
 import { getPatientApi, GetPatientResponse, GetPatientRequest } from "../../api";
@@ -55,7 +54,7 @@ export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, d
         }
     };
 
-    const onBlue = () => {
+    const onBlur = () => {
         // 患者名検索
         makeApiRequest(patientCode);
         onPatientCodeChanged(patientCode);
@@ -75,7 +74,7 @@ export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, d
                     value={patientCode}
                     onChange={onPatientCodeChange}
                     onKeyDown={onPatientCodeEnterPress}
-                    onBlur={onBlue}
+                    onBlur={onBlur}
                     />
                 <div className={styles.patientCodeInputButtonsContainer}>
                     <div

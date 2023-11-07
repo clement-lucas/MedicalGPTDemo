@@ -1,5 +1,31 @@
 CREATE TABLE DocumentFormat ( 
     ------------------
+    -- ID
+    -- DocumentFormat 編集機能にてレコードを一意に識別するための ID
+    ------------------
+    Id INT NOT NULL IDENTITY,
+
+    ------------------
+    -- マスターフラグ
+    -- 処理種別がシステムコンテンツの場合、必ず 1 に設定する。
+    ------------------
+    IsMaster bit,
+
+    ------------------
+    -- 診療科コード
+    -- 処理種別がシステムコンテンツの場合、無視される。
+    -- 将来使用のため。現在は使用していない。
+    ------------------
+    DepartmentCode NVARCHAR(16),
+
+    ------------------
+    -- ICD10 コード
+    -- 処理種別がシステムコンテンツの場合、無視される。
+    -- 将来使用のため。現在は使用していない。
+    ------------------
+    Icd10Code NVARCHAR(16),
+
+    ------------------
     -- ドキュメント名
     -- Ex) 退院時サマリ
     ------------------
@@ -57,6 +83,16 @@ CREATE TABLE DocumentFormat (
     Question NVARCHAR(4000), 
 
     ------------------
+    -- 質問文サフィックス
+    -- 質問文の後に付与する文字列
+    -- Kind が 
+    -- 2: アレルギー・不適応反応
+    -- 3: 退院時使用薬剤
+    -- のレコードでは無視される。
+    ------------------
+    QuestionSuffix NVARCHAR(4000), 
+
+    ------------------
     -- 期待される応答の最大 Token 数
     -- Kind が 
     -- 2: アレルギー・不適応反応
@@ -94,7 +130,10 @@ CREATE TABLE DocumentFormat (
     -- 2023/10/02 現在使用していない。
     ------------------
     UseDischargeMedicineRecords BIT, 
+    CreatedBy VARCHAR(50),
+    UpdatedBy VARCHAR(50),
     CreatedDateTime datetime,
     UpdatedDateTime datetime,
     IsDeleted bit,
+    PRIMARY KEY (Id)
 ) 

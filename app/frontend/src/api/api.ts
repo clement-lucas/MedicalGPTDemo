@@ -1,6 +1,9 @@
 import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest, 
     GetPatientResponse, GetHistoryDetailRequest, AskResponse, ChatRequest, ChatPatientRequest,
-    GetHistoryIndexRequest, GetHistoryIndexResponse } from "./models";
+    GetHistoryIndexRequest, GetHistoryIndexResponse,
+    GetSoapRequest, GetSoapResponse, 
+    GetDocumentFormatRequest, GetDocumentFormatResponse,
+    UpdateDocumentFormatRequest as UpdateDocumentFormatRequest, UpdateDocumentFormatResponse as UpdateDocumentFormatResponse } from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -72,6 +75,8 @@ export async function dischargeApi(options: DischargeRequest): Promise<AskRespon
         body: JSON.stringify({
             document_name: options.documentName,
             patient_code: options.patientCode,
+            department_code: options.departmentCode,
+            icd10_code: options.icd10Code,
             approach: options.approach,
             overrides: {
                 semantic_ranker: options.overrides?.semanticRanker,
@@ -260,6 +265,88 @@ export async function getHistoryDetailApi(options: GetHistoryDetailRequest): Pro
         throw Error(parsedResponse.error || "Unknown error");
     }
 
+    return parsedResponse;
+}
+
+export async function getSoapApi( options: GetSoapRequest): Promise<GetSoapResponse> {
+    // return new Promise((resolve, reject) => {
+    //     const xhr = new XMLHttpRequest();
+    //     xhr.open("POST", "/soap");
+    //     xhr.setRequestHeader("Content-Type", "application/json");
+    //     xhr.responseType = "json";
+    //     xhr.onload = () => {
+    //         if (xhr.status > 299 || !xhr.response) {
+    //             reject(Error(xhr.response?.error || "Unknown error"));
+    //         } else {
+    //             resolve(xhr.response);
+    //         }
+    //     };
+    //     xhr.onerror = () => {
+    //         reject(Error("Unknown error"));
+    //     };
+    //     xhr.send(JSON.stringify({
+    //         patient_code: options.patient_code,
+    //     }));
+    // });
+
+    const response = await fetch("/soap", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            patient_code: options.patient_code,
+        })
+    });
+
+    const parsedResponse: GetSoapResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+
+    return parsedResponse;
+}
+
+export async function getDocumentFormatApi( options: GetDocumentFormatRequest): Promise<GetDocumentFormatResponse> {
+    const response = await fetch("/get_document_format", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            document_name: options.document_name,
+            department_code: options.department_code,
+            icd10_code: options.icd10_code,
+            force_master: options.force_master,
+        })
+    });
+
+    const parsedResponse: GetDocumentFormatResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
+}
+
+export async function updateDocumentFormatApi( options: UpdateDocumentFormatRequest): Promise<UpdateDocumentFormatResponse> {
+    const response = await fetch("/update_document_format", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            document_name: options.document_name,
+            department_code: options.department_code,
+            icd10_code: options.icd10_code,
+            user_id: options.user_id,
+            document_formats: options.document_formats,
+        })
+    });
+
+    const parsedResponse: UpdateDocumentFormatResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
     return parsedResponse;
 }
 

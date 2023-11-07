@@ -84,6 +84,23 @@
     background-color: transparent;
 }
 
+.dischargeDocumentFormatSettingDiv {
+    background-color: white;
+    border: #545454;
+    border-width: 1px;
+}
+
+.soapPreviewField {
+    margin-bottom: 10px;
+    margin-top: 5px;
+    padding: 0px;
+    width: 70%;
+}
+
+.loadingHistorySpinner {
+    margin: 30px;
+}
+
 
   
 
