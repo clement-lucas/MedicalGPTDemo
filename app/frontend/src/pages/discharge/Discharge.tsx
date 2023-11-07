@@ -207,10 +207,10 @@ const Discharge = () => {
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
             if (documentFormat.category_name === "") {
-                errorMessages += "カテゴリ名が入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+                errorMessages += "カテゴリ名が入力されていません。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
             if (documentFormat.kind === 1 && documentFormat.question === "") {
-                errorMessages += "プロンプトが入力されていません。No." + (documentFormat.order_no + 1) + "\n";
+                errorMessages += "プロンプトが入力されていません。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
         }
         if (errorMessages !== "") {
@@ -221,7 +221,7 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(false);
     }
 
-    const onCancelDocumentFormatClicked = () => {
+    const cancelDocumentSetting = () => {
         // 実行を確認する
         if (isDocumentFormatSettingEdited) {
             const result = window.confirm("保存していない編集内容は破棄されます。\nよろしいですか？");
@@ -229,9 +229,13 @@ const Discharge = () => {
                 return;
             }
         }
-        getDocumentFormat(false);
+        setDocumentFormats([]);
         setIsDocumnetFormatSettingVisible(false);
         setIsDocumentFormatSettingEdited(false);
+    }
+
+    const onCancelDocumentFormatClicked = () => {
+        cancelDocumentSetting();
     }
 
     const onReloadFromMasterClicked = () => {
@@ -443,11 +447,12 @@ const Discharge = () => {
 
     const onDocumentFormatEditClicked = () => {
         if (!isDocumnetFormatSettingVisible) {
+            // 開く
             getDocumentFormat(false);
             setIsDocumnetFormatSettingVisible(true);
-        }
-        else {
-            setIsDocumnetFormatSettingVisible(false);
+        } else {
+            // 閉じる
+            cancelDocumentSetting();
         }
     }
 
@@ -528,19 +533,23 @@ const Discharge = () => {
                     <Spinner label="Loading history" />
                 </div>
             )}
-            {historyItems.map((item) => (
+            {!isLoadingHistory && (
                 <div>
-                    <Label styles={hitoryDateLabelStyles}>{item.created_date}</Label>
-                {item.history_list.map((history) => (
-                    <div>
-                        <PrimaryButton styles={hitoryButtonStyles} 
-                            text={history.pid + " " + history.patient_name}
-                            onClick={() => onHistoryButtonClicked(history.id)}>
-                        </PrimaryButton>                 
-                    </div>
-                    ))}
-                    </div>
-                ))}
+                    {historyItems.map((item) => (
+                        <div>
+                            <Label styles={hitoryDateLabelStyles}>{item.created_date}</Label>
+                        {item.history_list.map((history) => (
+                            <div>
+                                <PrimaryButton styles={hitoryButtonStyles} 
+                                    text={history.pid + " " + history.patient_name}
+                                    onClick={() => onHistoryButtonClicked(history.id)}>
+                                </PrimaryButton>                 
+                            </div>
+                            ))}
+                            </div>
+                        ))}
+                </div>
+            )}
         </div>            
         <div className={styles.dischargeContainer}>
             <div className={styles.dischargeTopSection}>

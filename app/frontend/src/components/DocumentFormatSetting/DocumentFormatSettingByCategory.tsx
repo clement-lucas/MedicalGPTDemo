@@ -48,7 +48,7 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                             onClick={() => onDownClicked(documentFormat)}>
                             <ArrowDown20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Down logo" />
                         </div>
-                        <Label>{"No." + (documentFormat.order_no + 1) as string}</Label> 
+                        <Label>{"表示順: " + (documentFormat.order_no + 1) as string}</Label> 
                     </Stack>
                 </div>
                 <p>カテゴリー：<br></br>

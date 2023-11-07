@@ -185,9 +185,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 # その他アレルギー情報の取得
                 self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
             if allergy != "":
-                allergy = ''.join(["【アレルギー・不適応反応】\n", allergy, "\n"])
+                allergy = ''.join(["【", categoryName, "】\n", allergy, "\n"])
             else :
-                allergy = "【アレルギー・不適応反応】\nなし\n\n"
+                allergy = "【" + categoryName + "】\nなし\n\n"
             ret = allergy
         elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
             # 【退院時使用薬剤】​
@@ -217,9 +217,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     quantity = quantity.rstrip(".")
                 medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
             if medicine != "":
-                medicine = ''.join(["【退院時使用薬剤】\n", medicine, "\n"])
+                medicine = ''.join(["【", categoryName, "】\n", medicine, "\n"])
             else:
-                medicine = "【退院時使用薬剤】\nなし\n\n"
+                medicine = "【" + categoryName + "】\nなし\n\n"
             ret = medicine
 
         print(categoryName + "の処理終了")
