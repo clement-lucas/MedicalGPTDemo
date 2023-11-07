@@ -93,8 +93,11 @@ export const DocumentFormatSetting = ({
                             <td>{icd10Name}</td>
                         </tr>
                     </table> */}
-                    {documentFormats.map((item) => (
+                    {
+                    documentFormats.map((item) => (
                         <DocumentFormatSettingByCategory 
+                            isTop={item.order_no === 0}
+                            isBottom={item.order_no === documentFormats.length - 1}
                             documentFormat={item}
                             onCategoryNameChanged={onCategoryNameChanged}
                             onKindChanged={onKindChanged}
@@ -104,7 +107,8 @@ export const DocumentFormatSetting = ({
                             onDownClicked={onDownClicked}
                             onDeleteClicked={onDeleteClicked}
                             />
-                    ))}
+                    ))
+                    }
                 <div className={styles.backPanelAddButton}>
                     <div className={styles.documentFormatSettingAddButton}
                         onClick={() => onAddClicked()}>

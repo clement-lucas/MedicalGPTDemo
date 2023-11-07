@@ -7,6 +7,8 @@ import { DocumentFormat } from "../../api";
 
 interface Props {
     documentFormat : DocumentFormat;
+    isTop: boolean;
+    isBottom: boolean;
     onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
@@ -29,7 +31,7 @@ const kindOptions: IDropdownOption[] = [
  
 export const DocumentFormatSettingByCategory = ({ documentFormat, 
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
-    onUpClicked, onDownClicked, onDeleteClicked
+    onUpClicked, onDownClicked, onDeleteClicked, isTop, isBottom
 }: Props) => {
     return (
         <div className={styles.backPanel}>
@@ -40,14 +42,18 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         <Delete20Filled primaryFill={"rgba(100, 100, 100, 1)"} aria-hidden="true" aria-label="Delete logo" />
                     </div>
                     <Stack horizontal>
-                        <div className={styles.documentFormatSettingIconButton}
-                            onClick={() => onUpClicked(documentFormat)}>
-                            <ArrowUp20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Up logo" />
-                        </div>
-                        <div className={styles.documentFormatSettingIconButton}
-                            onClick={() => onDownClicked(documentFormat)}>
-                            <ArrowDown20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Down logo" />
-                        </div>
+                        {!isTop && (
+                            <div className={styles.documentFormatSettingIconButton}
+                                onClick={() => onUpClicked(documentFormat)}>
+                                <ArrowUp20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Up logo" />
+                            </div>
+                        )}
+                        {!isBottom && (
+                            <div className={styles.documentFormatSettingIconButton}
+                                onClick={() => onDownClicked(documentFormat)}>
+                                <ArrowDown20Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Down logo" />
+                            </div>
+                        )}
                         <Label>{"表示順: " + (documentFormat.order_no + 1) as string}</Label> 
                     </Stack>
                 </div>
