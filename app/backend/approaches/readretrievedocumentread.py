@@ -2,9 +2,6 @@ import openai
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
-from langchainadapters import HtmlCallbackHandler
-from text import nonewlines
-from lookuptool import CsvLookupTool
 
 # Attempt to answer questions by iteratively evaluating the question to see what information is missing, and once all information
 # is present then formulate an answer. Each iteration consists of two parts: first use GPT to see if we need more information, 
