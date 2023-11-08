@@ -161,6 +161,20 @@ SQL_CONNECTION_STRING="Driver={ODBC Driver 18 for SQL Server};Server=tcp:<sql-se
 この設定は、Azure 上にて Webアプリケーションを実行する際に参照される。  
 
 
+# Azure OpenAI への認証方式を切り替える方法
+Azure OpenAI への認証方式は、AD 認証を用いる方法と、API key を用いる方法がある。  
+.env ファイルおよび App Service のアプリケーション設定にて、両者を切り替えることができる。  
+
+## AD 認証を用いるには  
+以下の設定を行う。もしくは、以下のキーを設定しない。もしくは、空文字を設定する。  
+AZURE_OPENAI_AUTHENTICATION="ActiveDirectory"  
+
+## API key 認証を用いるには  
+以下の設定を行う。  
+AZURE_OPENAI_AUTHENTICATION="ApiKey"  
+AZURE_OPENAI_KEY="{your_key}"  
+
+
 # トラブルシューティング
 ## hogehoge.ps1 がロックされていて実行できない旨のエラーが発生
 デプロイ作業中、 hogehoge.ps1 がロックされていて実行できない旨のエラーが発生した場合、power shell から以下のコマンドを実行し、ロックを解除し、再試行する。  
