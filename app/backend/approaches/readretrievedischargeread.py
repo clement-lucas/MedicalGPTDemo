@@ -5,13 +5,13 @@
 import openai
 import os
 import concurrent.futures
-import time
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
 from lib.soapmanager import SOAPManager as SOAPManager
 from lib.tokencounter import TokenCounter
 from lib.gptconfigmanager import GPTConfigManager
+from lib.laptimer import LapTimer
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -47,6 +47,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     {"role":"user","content":''.join([question, "\n\nmedical record:\n\n", sources])}]
         # print(messages)
 
+        timer = LapTimer()
+        timer.start("GPTによる回答取得 " + category_name)
         completion = openai.ChatCompletion.create(
             engine=self.gpt_deployment,
             messages = messages,
@@ -56,6 +58,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
             frequency_penalty=0,
             presence_penalty=0,
             stop=None)
+        timer.stop()
+
         # completion.choices[0].message.content がとして存在するか調べる
         # 存在しない場合は、「なし」を返却する
         # print(completion)
@@ -420,8 +424,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         allergy = ""
         medicine = ""
 
-        start = time.time()
-        print("処理開始")
+        timer = LapTimer()
+        timer.start("退院時サマリ作成処理")
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
@@ -459,8 +463,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # print(ret)
         records_soap = soap_manager.SOAP("soapb")[0]
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
-        end = time.time()
-        print("処理終了" + str(end-start))
+        timer.stop()
 
         # History テーブルに追加する
         # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする

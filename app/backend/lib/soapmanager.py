@@ -3,8 +3,8 @@ from parser.doctorsnoteparser import DoctorsNoteParser as DNP
 from lib.soapsummarizer import SOAPSummarizer
 from lib.tokencounter import TokenCounter
 from lib.gptconfigmanager import GPTConfigManager
+from lib.laptimer import LapTimer
 import math
-
 class SOAPManager:
     _soap_by_date_list = []
     _soap_prefix = "\n以下は医師の書いた SOAP です。\n\n"
@@ -39,21 +39,27 @@ class SOAPManager:
         # SOAP+B が存在しない場合は、空文字を返却する。
         target = target.upper()
         records = ""
+
+        timer = LapTimer()
+        timer.start("SOAP 連結処理")
         for soap_by_date in self._soap_by_date_list:
             record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
             if record_of_the_day == "":
                 continue
             records = ''.join([records, "記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
+        timer.stop()
 
         # max_tokens_for_soap が -1 の場合は、要約不要とみなし SOAP をそのまま返却する。
         if max_tokens_for_soap == -1:
             return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
 
+        timer.start("TokenCount 処理")
         max_tokens_for_soap_contents = max_tokens_for_soap - self._prefix_tokens
         # print("max_tokens_for_soap_contents:" + str(max_tokens_for_soap_contents))
         summarizer = SOAPSummarizer(self._gptconfigmanager, self._engine)
         contents_token = TokenCounter.count(records, self._model_name_for_tiktoken)
-        # print("contents_token:" + str(contents_token))
+        print("contents_token:" + str(contents_token))
+        timer.stop()
 
         # Ptn1: 作成された SOAP が SOAP Token 上限に収まる場合
         #       そのまま返却する。
@@ -68,6 +74,8 @@ class SOAPManager:
         # print("summarizer.capacity_for_befor_and_after_summarize_text" + str(summarizer.capacity_for_befor_and_after_summarize_text))
         # print("max_tokens_for_soap" + str(max_tokens_for_soap))
 
+        timer.start("要約処理")
+
         if max_tokens_for_soap_contents < contents_token  and \
             contents_token <= summarizer.capacity_for_befor_and_after_summarize_text - max_tokens_for_soap:
             # print("Ptn2: SOAP Token 上限を超え、且つ、一回の要約で収まる場合")
@@ -80,11 +88,16 @@ class SOAPManager:
             # 要約前の文書として渡せるトークン数が、退院時サマリ作成時に渡せる SOAP のトークン数よりも大きくなることは考えられない。
             summary = summarizer.summarize(records, max_tokens_for_soap_contents)
             return ''.join([SOAPManager._soap_prefix, summary[0]]), summary[1].completion_tokens, summary[1].prompt_tokens, summary[1].total_tokens, summary[2]
-        
+
+        timer.stop()        
+
+        timer.start("Ptn3")
         # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
         #       段階的に要約して返却する。
         # print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合")
         summary = self._summarize(summarizer, target, max_tokens_for_soap_contents)
+        timer.stop()
+
         return summary[0], summary[1], summary[2], summary[3], summary[4]
 
     # 段階的に要約する。
@@ -160,6 +173,8 @@ class SOAPManager:
                 gptconfigmanager:GPTConfigManager, 
                 patient_code: str, 
                 engine:str):
+        timer = LapTimer()
+        timer.start("SQL SELECT 処理")
         
         self._gptconfigmanager = gptconfigmanager
         self._model_name_for_tiktoken = gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN")
@@ -187,13 +202,16 @@ class SOAPManager:
         
         self._soap_by_date_list = []
         # print("SOAP の取得件数：" + str(len(rows)))
-        for row in rows:
-            datetime = SOAPManager.get_datetime(row[0])
-            # XML のまま GPT に投げても解釈してくれないこともないが、
-            # XML のままだとトークン数をとても消費してしまうので、
-            # XML を解釈して、平文に変換する。
-            soap = DNP(row[1])
-            self._soap_by_date_list.append((datetime, soap))
+        for i in range(200):
+            for row in rows:
+                datetime = SOAPManager.get_datetime(row[0])
+                # XML のまま GPT に投げても解釈してくれないこともないが、
+                # XML のままだとトークン数をとても消費してしまうので、
+                # XML を解釈して、平文に変換する。
+                soap = DNP(row[1])
+                self._soap_by_date_list.append((datetime, soap))
+        
+        timer.stop()
 
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
     # 例）20140224095813 -> 2014/02/24 09:58:13
