@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, Label } from "@fluentui/react";
 import { ArrowUp20Filled, ArrowDown20Filled, Delete20Filled } from "@fluentui/react-icons";
 
@@ -70,7 +69,7 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                     />
                 </p>
                 <p>種類：<br></br>
-                    <Dropdown id="hoge"
+                    <Dropdown
                         placeholder="Select an option"
                         options={kindOptions}
                         selectedKey={documentFormat.kind}

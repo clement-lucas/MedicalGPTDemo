@@ -78,6 +78,7 @@ export async function dischargeApi(options: DischargeRequest): Promise<AskRespon
             department_code: options.departmentCode,
             icd10_code: options.icd10Code,
             approach: options.approach,
+            user_id: options.userId,
             overrides: {
                 semantic_ranker: options.overrides?.semanticRanker,
                 semantic_captions: options.overrides?.semanticCaptions,
@@ -317,6 +318,7 @@ export async function getDocumentFormatApi( options: GetDocumentFormatRequest): 
             document_name: options.document_name,
             department_code: options.department_code,
             icd10_code: options.icd10_code,
+            user_id: options.user_id,
             force_master: options.force_master,
         })
     });

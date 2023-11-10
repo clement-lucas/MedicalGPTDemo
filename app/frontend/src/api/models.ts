@@ -35,6 +35,7 @@ export type DischargeRequest = {
     departmentCode: string;
     icd10Code: string;
     approach: Approaches;
+    userId: string;
     overrides?: AskRequestOverrides;
 };
 
@@ -145,6 +146,7 @@ export type GetDocumentFormatRequest = {
     document_name: string;
     department_code: string;
     icd10_code: string;
+    user_id: string;
     force_master: boolean;
 };
 

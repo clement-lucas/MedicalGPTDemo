@@ -29,6 +29,7 @@ class UpdateDocumentFormatApproach(Approach):
                     UpdatedBy = ?,
                     UpdatedDateTime = GETDATE()
                 WHERE IsMaster = 0
+                AND UserId = ?
                 AND DepartmentCode = ?
                 AND Icd10Code = ?
                 AND DocumentName = ?
@@ -36,6 +37,7 @@ class UpdateDocumentFormatApproach(Approach):
                 AND GPTModelName = ?
                 AND IsDeleted = 0"""
             cursor.execute(update_document_format_sql,
+                        user_id,
                         user_id,
                         department_code, icd10_code,
                         document_name,
@@ -46,6 +48,7 @@ class UpdateDocumentFormatApproach(Approach):
             insert_document_format_sql = """INSERT INTO DocumentFormat
                 ( 
                     IsMaster,
+                    UserId,
                     DepartmentCode,
                     Icd10Code,
                     DocumentName,
@@ -67,7 +70,7 @@ class UpdateDocumentFormatApproach(Approach):
                     IsDeleted
                 )
                 VALUES
-                ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, GETDATE(), GETDATE(), 0)"""
+                ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, GETDATE(), GETDATE(), 0)"""
 
             rows_to_insert = []
             for document_format in document_formats:
@@ -83,6 +86,7 @@ class UpdateDocumentFormatApproach(Approach):
                 if document_format['is_b']:
                     target_soap += "b"
                 rows_to_insert.append((
+                    user_id,
                     department_code,
                     icd10_code,
                     document_name,

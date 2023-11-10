@@ -1,5 +1,5 @@
 import { useRef, useState} from "react";
-import { Checkbox, ChoiceGroup, IChoiceGroupOption, Panel, DefaultButton, Spinner, TextField, SpinButton } from "@fluentui/react";
+import { Dropdown, IDropdownOption, Spinner, TextField} from "@fluentui/react";
 import { Label, Stack } from "@fluentui/react";
 import { PrimaryButton } from '@fluentui/react/lib/Button';
 
@@ -30,6 +30,26 @@ export type DayOfHistoryIndex = {
     createddate: string;
     historylist: HistoryIndex[];
 };
+
+// TODO ユーザー認証の仕組みができるまでのつなぎとしての SLOT。
+const momorySlotOptions: IDropdownOption[] = [
+    { key: 'slot1', text: 'Prompt Slot 1' },
+    { key: 'slot2', text: 'Prompt Slot 2' },
+    { key: 'slot3', text: 'Prompt Slot 3' },
+    { key: 'slot4', text: 'Prompt Slot 4' },
+    { key: 'slot5', text: 'Prompt Slot 5' },
+    { key: 'slot6', text: 'Prompt Slot 6' },
+    { key: 'slot7', text: 'Prompt Slot 7' },
+    { key: 'slot8', text: 'Prompt Slot 8' },
+    { key: 'slot9', text: 'Prompt Slot 9' },
+    { key: 'slot10', text: 'Prompt Slot 10' },
+    { key: 'slot11', text: 'Prompt Slot 11' },
+    { key: 'slot12', text: 'Prompt Slot 12' },
+    { key: 'slot13', text: 'Prompt Slot 13' },
+    { key: 'slot14', text: 'Prompt Slot 14' },
+    { key: 'slot15', text: 'Prompt Slot 15' },
+    { key: 'slot16', text: 'Prompt Slot 16' },
+  ];
 
 const Discharge = () => {
     const DEFAULT_DEPARTMENT_CODE: string = "0000";
@@ -72,9 +92,11 @@ const Discharge = () => {
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
     const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
+    const [slot, setSlot] = useState<string>();
 
     const onLoad = async () => {
         setIsDocumnetFormatSettingVisible(false);
+        setSlot('slot1');
         await getHistoryIndex();
     }
 
@@ -117,13 +139,14 @@ const Discharge = () => {
         }
     }
 
-    const getDocumentFormat = async (force_master:boolean) => {
+    const getDocumentFormat = async (force_master:boolean, slotValue:string) => {
         setIsLoadingDocumnetFormatSetting(true);
         try {
             const request: GetDocumentFormatRequest = {
                 document_name: DOCUMENT_NAME,
                 department_code: DEFAULT_DEPARTMENT_CODE,
                 icd10_code: DEFAULT_ICD10_CODE,
+                user_id: slotValue ? slotValue : '',
                 force_master: force_master,
             };
             const result = await getDocumentFormatApi(request);
@@ -142,7 +165,7 @@ const Discharge = () => {
                 document_name: DOCUMENT_NAME,
                 department_code: DEFAULT_DEPARTMENT_CODE,
                 icd10_code: DEFAULT_ICD10_CODE,
-                user_id: DEFAULT_USER_ID,
+                user_id: slot ? slot : '',
                 document_formats: documentFormats,
             };
             await updateDocumentFormatApi(request);
@@ -153,6 +176,11 @@ const Discharge = () => {
     }
 
     const makeApiRequest = async (documentName: string) => {
+        if (patientCode === "") {
+            alert("患者番号を入力してください。");
+            return;
+        }
+
         lastQuestionRef.current = documentName;
 
         error && setError(undefined);
@@ -166,6 +194,7 @@ const Discharge = () => {
                 patientCode: patientCode,
                 departmentCode: DEFAULT_DEPARTMENT_CODE,
                 icd10Code: DEFAULT_ICD10_CODE,
+                userId: slot ? slot : '',
                 approach: Approaches.ReadRetrieveRead,
                 overrides: {
                     promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
@@ -206,6 +235,9 @@ const Discharge = () => {
         // 入力チェック
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
+            if (slot === undefined || slot === "") {
+                errorMessages += "保存先のスロットが選択されていません。\n";
+            }
             if (documentFormat.category_name === "") {
                 errorMessages += "カテゴリ名が入力されていません。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
@@ -244,7 +276,7 @@ const Discharge = () => {
         if (!result) {
             return;
         }
-        getDocumentFormat(true);
+        getDocumentFormat(true, slot ? slot : '');
         setIsDocumentFormatSettingEdited(true);
     }
 
@@ -445,10 +477,24 @@ const Discharge = () => {
         getSoap();
     };
 
+    const onChangeSlot = (newSlot: string) => {
+        if (isDocumnetFormatSettingVisible) {
+            if (isDocumentFormatSettingEdited) {
+                const result = window.confirm("スロットを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
+                if (!result) {
+                    setSlot(slot ? slot : '');
+                    return;
+                }
+            }
+            getDocumentFormat(false, newSlot);
+            setIsDocumentFormatSettingEdited(false);
+        }
+    }
+
     const onDocumentFormatEditClicked = () => {
         if (!isDocumnetFormatSettingVisible) {
             // 開く
-            getDocumentFormat(false);
+            getDocumentFormat(false, slot ? slot : '');
             setIsDocumnetFormatSettingVisible(true);
         } else {
             // 閉じる
@@ -636,6 +682,15 @@ const Discharge = () => {
             </div>
 
         </div>
+        <Dropdown 
+                placeholder="Select prompt slot"
+                options={momorySlotOptions}
+                selectedKey={slot}
+                onChange={(e, newValue) => {
+                    setSlot(newValue?.key as string || '');
+                    onChangeSlot(newValue?.key as string || '');
+                }}
+            />            
         { isDocumnetFormatSettingVisible && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
@@ -643,7 +698,7 @@ const Discharge = () => {
                     departmentCode={DEFAULT_DEPARTMENT_CODE}
                     icd10Code={DEFAULT_ICD10_CODE}
                     icd10Name={DEFAULT_ICD10_NAME}
-                    userId={DEFAULT_USER_ID}
+                    userId={slot ? slot : ''}
                     documentFormats={documentFormats}
                     isLoading={isLoadingDocumnetFormatSetting}
                     isEdited={isDocumentFormatSettingEdited}
@@ -660,8 +715,7 @@ const Discharge = () => {
                     onAddClicked={onAddDocumentFormatClicked}
                 ></DocumentFormatSetting>
             </div>
-            )}
-
+        )}
     </Stack>  
     );
 };

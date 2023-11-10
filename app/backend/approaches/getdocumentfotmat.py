@@ -8,10 +8,14 @@ class GetDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
+
     def run(self, document_name: str, department_code:str, 
             icd10_code:str, 
+            user_id:str,
             force_master:bool   # マスターを強制的に取得するかどうか
             ) -> any:
+        
+        print(user_id)
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
@@ -23,7 +27,7 @@ class GetDocumentFormatApproach(Approach):
             gpt_model_name = "gpt-35-turbo"
 
         # ドキュメントフォーマットの取得
-        select_document_format_sql = """SELECT 
+        select_document_format_master_sql = """SELECT 
                 Id, 
                 Kind, 
                 CategoryName, 
@@ -36,7 +40,7 @@ class GetDocumentFormatApproach(Approach):
                 UseAllergyRecords, 
                 UseDischargeMedicineRecords 
             FROM DocumentFormat 
-            WHERE IsMaster = ?
+            WHERE IsMaster = 1
             AND DepartmentCode = ?
             AND Icd10Code = ?
             AND DocumentName = ?
@@ -44,17 +48,47 @@ class GetDocumentFormatApproach(Approach):
             AND GPTModelName = ?
             AND IsDeleted = 0
             ORDER BY OrderNo"""
-        cursor.execute(select_document_format_sql,
-                       1 if force_master else 0, department_code, icd10_code,
-                       document_name,
-                       DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                       gpt_model_name)
+        if force_master:
+            cursor.execute(select_document_format_master_sql,
+                        department_code, icd10_code,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)
+        else:
+            select_document_format_sql = """SELECT 
+                    Id, 
+                    Kind, 
+                    CategoryName, 
+                    OrderNo,
+                    Temperature,
+                    ISNULL(Question, '') AS Question,
+                    ISNULL(QuestionSuffix, '') AS QuestionSuffix,
+                    ResponseMaxTokens,
+                    TargetSoapRecords, 
+                    UseAllergyRecords, 
+                    UseDischargeMedicineRecords 
+                FROM DocumentFormat 
+                WHERE IsMaster = 0
+                AND UserId = ?
+                AND DepartmentCode = ?
+                AND Icd10Code = ?
+                AND DocumentName = ?
+                AND Kind <> ?
+                AND GPTModelName = ?
+                AND IsDeleted = 0
+                ORDER BY OrderNo"""
+            cursor.execute(select_document_format_sql,
+                        user_id,
+                        department_code, icd10_code,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)            
         rows = cursor.fetchall() 
 
-        # マスター以外が HIT しなかった場合は、マスターを取得する
-        if force_master == False and len(rows) == 0:
-            cursor.execute(select_document_format_sql,
-                        1, department_code, icd10_code,
+        # HIT しなかった場合は、マスターを取得する
+        if len(rows) == 0:
+            cursor.execute(select_document_format_master_sql,
+                        department_code, icd10_code,
                         document_name,
                         DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                         gpt_model_name)

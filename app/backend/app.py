@@ -179,6 +179,7 @@ def discharge():
                      request.json["patient_code"], 
                      request.json["icd10_code"], 
                      request.json["department_code"], 
+                     request.json["user_id"],
                      request.json.get("overrides") or {})
         return jsonify(r)
     except Exception as e:
@@ -282,6 +283,7 @@ def get_document_format():
         r = impl.run(request.json["document_name"], 
                      request.json["department_code"], 
                      request.json["icd10_code"],
+                     request.json["user_id"],
                      request.json["force_master"])
         return jsonify(r)
     except Exception as e:

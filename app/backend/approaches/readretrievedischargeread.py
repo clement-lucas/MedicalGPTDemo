@@ -236,7 +236,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 allergy, \
                 medicine
 
-    def run(self, document_name: str, patient_code:str, department_code:str, icd10_code:str, overrides: dict) -> any:
+    def run(self, document_name: str, patient_code:str, department_code:str, icd10_code:str, user_id:str, overrides: dict) -> any:
 
         # print("run")
         # print(document_name)
@@ -370,6 +370,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             system_content = row[0]
 
         # ドキュメントフォーマットの取得
+        print(user_id)
         select_document_format_sql = """SELECT 
                 Kind, 
                 CategoryName, 
@@ -380,7 +381,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 UseAllergyRecords, 
                 UseDischargeMedicineRecords 
             FROM DocumentFormat 
-            WHERE IsMaster = ?
+            WHERE IsMaster = 0
+            AND UserId = ?
             AND DepartmentCode = ?
             AND Icd10Code = ?
             AND DocumentName = ?
@@ -389,7 +391,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             AND IsDeleted = 0
             ORDER BY OrderNo"""
         cursor.execute(select_document_format_sql,
-                       0, department_code, icd10_code,
+                       user_id, department_code, icd10_code,
                        document_name,
                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                        gpt_model_name)
@@ -397,8 +399,26 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         # マスター以外が HIT しなかった場合は、マスターを取得する
         if len(rows) == 0:
-            cursor.execute(select_document_format_sql,
-                        1, department_code, icd10_code,
+            select_document_format_master_sql = """SELECT 
+                    Kind, 
+                    CategoryName, 
+                    Temperature,
+                    ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question,
+                    ResponseMaxTokens,
+                    TargetSoapRecords, 
+                    UseAllergyRecords, 
+                    UseDischargeMedicineRecords 
+                FROM DocumentFormat 
+                WHERE IsMaster = 1
+                AND DepartmentCode = ?
+                AND Icd10Code = ?
+                AND DocumentName = ?
+                AND Kind <> ?
+                AND GPTModelName = ?
+                AND IsDeleted = 0
+                ORDER BY OrderNo"""
+            cursor.execute(select_document_format_master_sql,
+                        department_code, icd10_code,
                         document_name,
                         DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                         gpt_model_name)
