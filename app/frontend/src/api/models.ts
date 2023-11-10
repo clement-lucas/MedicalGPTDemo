@@ -130,6 +130,7 @@ export type DocumentFormat = {
     category_name: string;
     order_no: number;
     temperature: number;
+    temperature_str: string;
     question: string;
     question_suffix: string;
     response_max_tokens: number;

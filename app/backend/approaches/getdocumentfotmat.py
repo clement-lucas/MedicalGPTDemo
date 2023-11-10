@@ -120,6 +120,7 @@ class GetDocumentFormatApproach(Approach):
                 "category_name":row[2],
                 "order_no":row[3], 
                 "temperature":row[4],
+                "temperature_str":str(row[4]),
                 "question":row[5],
                 "question_suffix":row[6],
                 "response_max_tokens":row[7],

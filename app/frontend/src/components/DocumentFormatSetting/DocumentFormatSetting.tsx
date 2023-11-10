@@ -36,6 +36,7 @@ interface Props {
     onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
     onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onTemperatureChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
 
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
@@ -47,6 +48,7 @@ export const DocumentFormatSetting = ({
     documentName, departmentCode, icd10Code, icd10Name, userId, documentFormats, isLoading, isEdited,
     onSaveClicked, onCancelClicked, onReloadFromMasterClicked,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
+    onTemperatureChanged,
     onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
 }: Props) => {
     
@@ -103,6 +105,7 @@ export const DocumentFormatSetting = ({
                             onKindChanged={onKindChanged}
                             onTargetSoapChanged={onTargetSoapChanged}
                             onQuestionChanged={onQuestionChanged}
+                            onTemperatureChanged={onTemperatureChanged}
                             onUpClicked={onUpClicked}
                             onDownClicked={onDownClicked}
                             onDeleteClicked={onDeleteClicked}

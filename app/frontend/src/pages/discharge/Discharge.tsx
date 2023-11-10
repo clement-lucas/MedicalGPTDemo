@@ -230,13 +230,20 @@ const Discharge = () => {
         }
         makeApiRequest(documentName);
     };
-
     const onSaveDocumentFormatClicked = () => {
         // 入力チェック
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
             if (slot === undefined || slot === "") {
                 errorMessages += "保存先のスロットが選択されていません。\n";
+            }
+            // newValue が float に変換できるかチェック
+            const temperature = Number(documentFormat.temperature_str);
+            if (isNaN(temperature) || temperature < 0 || temperature > 1) {
+                errorMessages += "Temperature には 0~1 までの整数または小数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            }
+            else {
+                documentFormat.temperature = temperature;
             }
             if (documentFormat.category_name === "") {
                 errorMessages += "カテゴリ名が入力されていません。表示順: " + (documentFormat.order_no + 1) + "\n";
@@ -279,6 +286,22 @@ const Discharge = () => {
         getDocumentFormat(true, slot ? slot : '');
         setIsDocumentFormatSettingEdited(true);
     }
+
+
+    const onTemperatureChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.temperature.toString() !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.temperature_str = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
 
     const onCategoryNameChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
         // 値が変わっているかチェック
@@ -418,6 +441,7 @@ const Discharge = () => {
             is_p: false,
             is_b: false,
             temperature: DEFAULT_TEMPERATURE,
+            temperature_str: DEFAULT_TEMPERATURE.toString(),
             response_max_tokens: DEFAULT_RESPONSE_MAX_TOKENS,
             question_suffix: DEFAULT_QUESTION_SUFFIX,
             use_allergy_records: false,
@@ -709,6 +733,7 @@ const Discharge = () => {
                     onKindChanged={onKindChanged}
                     onTargetSoapChanged={onTargetSoapChanged}
                     onQuestionChanged={onQuestionChanged}
+                    onTemperatureChanged={onTemperatureChanged}
                     onUpClicked={onDocumentFormatUpClicked}
                     onDownClicked={onDocumentFormatDownClicked}
                     onDeleteClicked={onDocumentSettingDeleteClicked}

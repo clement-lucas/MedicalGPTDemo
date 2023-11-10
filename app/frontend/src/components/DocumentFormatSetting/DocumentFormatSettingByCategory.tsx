@@ -12,6 +12,7 @@ interface Props {
     onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
     onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onTemperatureChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
     onDeleteClicked: (documentFormatId : number) => void;
@@ -30,6 +31,7 @@ const kindOptions: IDropdownOption[] = [
  
 export const DocumentFormatSettingByCategory = ({ documentFormat, 
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
+    onTemperatureChanged,
     onUpClicked, onDownClicked, onDeleteClicked, isTop, isBottom
 }: Props) => {
     return (
@@ -99,6 +101,17 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                 checked={documentFormat.is_b}
                                 onChange={(e, newValue) => onTargetSoapChanged(documentFormat, "B", newValue ? true : false)}/>
                         </Stack>
+                    </p>
+                    <p>Temperature：<br></br>
+                        <TextField
+                            readOnly={false}
+                            multiline={false}
+                            resizable={false}
+                            defaultValue={documentFormat.temperature_str}
+                            value={documentFormat.temperature_str}
+                            onChange={(e, newValue) => onTemperatureChanged(documentFormat, newValue || "")}
+                            onBlur={(e) => onTemperatureChanged(documentFormat, e.target.value || "")}
+                        />
                     </p>
                     <p>プロンプト：<br></br>
                         <TextField
