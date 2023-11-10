@@ -202,14 +202,13 @@ class SOAPManager:
         
         self._soap_by_date_list = []
         # print("SOAP の取得件数：" + str(len(rows)))
-        for i in range(200):
-            for row in rows:
-                datetime = SOAPManager.get_datetime(row[0])
-                # XML のまま GPT に投げても解釈してくれないこともないが、
-                # XML のままだとトークン数をとても消費してしまうので、
-                # XML を解釈して、平文に変換する。
-                soap = DNP(row[1])
-                self._soap_by_date_list.append((datetime, soap))
+        for row in rows:
+            datetime = SOAPManager.get_datetime(row[0])
+            # XML のまま GPT に投げても解釈してくれないこともないが、
+            # XML のままだとトークン数をとても消費してしまうので、
+            # XML を解釈して、平文に変換する。
+            soap = DNP(row[1])
+            self._soap_by_date_list.append((datetime, soap))
         
         timer.stop()
 
