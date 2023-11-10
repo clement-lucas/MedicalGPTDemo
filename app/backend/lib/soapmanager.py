@@ -32,7 +32,7 @@ class SOAPManager:
     
     def SOAP(self, 
              target: str, 
-             max_tokens_for_soap: int = -1):
+             get_original: bool = False):
         # print("SOAP の件数：" + str(len(self._soap_by_date_list)))
         # target には、S, O, A, P, B(PLOBLEM) のいずれかを指定する。
         # 指定された target に対応する SOAP+B を返却する。
@@ -49,8 +49,7 @@ class SOAPManager:
             records = ''.join([records, "記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
         timer.stop()
 
-        # max_tokens_for_soap が -1 の場合は、要約不要とみなし SOAP をそのまま返却する。
-        if max_tokens_for_soap == -1:
+        if get_original:
             return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
 
         timer.start("TokenCount 処理")
@@ -172,7 +171,8 @@ class SOAPManager:
     def __init__(self, 
                 gptconfigmanager:GPTConfigManager, 
                 patient_code: str, 
-                engine:str):
+                engine: str,
+                max_tokens_for_soap: int):
         timer = LapTimer()
         timer.start("SQL SELECT 処理")
         
@@ -213,6 +213,55 @@ class SOAPManager:
         
         timer.stop()
 
+        records = self.SOAP("SOAP", False)
+        contents_token = TokenCounter.count(records, self._model_name_for_tiktoken)
+        max_tokens_for_soap_contents = max_tokens_for_soap - self._prefix_tokens
+        print("contents_token:" + str(contents_token))
+        # 作成された SOAP が SOAP Token 上限に収まる場合、要約を行わない。
+        if contents_token <= max_tokens_for_soap_contents:
+            return
+        
+        # 収まらない場合は、要約を行う。
+        # まずは、各セクションごとの比率を計算する。
+        # 比率の計算は概算で良いので、"S:"というセクション名や日付を除いた文字列の長さで計算する。
+        # （処理時間をなるべく削減するため）
+        for soap_by_date in self._soap_by_date_list:
+            if (soap_by_date[1].S != ""):
+                s = ''.join([s, "記入日：", soap_by_date[0], "\n\n", soap_by_date[1].S, "\n\n"])
+            if (soap_by_date[1].O != ""):
+                o = ''.join([o, "記入日：", soap_by_date[0], "\n\n", soap_by_date[1].O, "\n\n"])
+            if (soap_by_date[1].A != ""):
+                a = ''.join([a, "記入日：", soap_by_date[0], "\n\n", soap_by_date[1].A, "\n\n"])
+            if (soap_by_date[1].P != ""):
+                p = ''.join([p, "記入日：", soap_by_date[0], "\n\n", soap_by_date[1].P, "\n\n"])
+            if (soap_by_date[1].B != ""):
+                b = ''.join([b, "記入日：", soap_by_date[0], "\n\n", soap_by_date[1].B, "\n\n"])
+            
+        s_tokens = TokenCounter.count(s, self._model_name_for_tiktoken)
+        o_tokens = TokenCounter.count(o, self._model_name_for_tiktoken)
+        a_tokens = TokenCounter.count(a, self._model_name_for_tiktoken)
+        p_tokens = TokenCounter.count(p, self._model_name_for_tiktoken)
+        b_tokens = TokenCounter.count(b, self._model_name_for_tiktoken)
+        total_tokens = s_tokens + o_tokens + a_tokens + p_tokens + b_tokens
+        s_ratio = s_tokens / total_tokens
+        o_ratio = o_tokens / total_tokens
+        a_ratio = a_tokens / total_tokens
+        p_ratio = p_tokens / total_tokens
+        b_ratio = b_tokens / total_tokens
+
+        # 各セクションに割り当てられる max token 数を計算する。
+        max_tokens_for_soap_contents_s = math.floor(max_tokens_for_soap_contents * s_ratio)
+        max_tokens_for_soap_contents_o = math.floor(max_tokens_for_soap_contents * o_ratio)
+        max_tokens_for_soap_contents_a = math.floor(max_tokens_for_soap_contents * a_ratio)
+        max_tokens_for_soap_contents_p = math.floor(max_tokens_for_soap_contents * p_ratio)
+        max_tokens_for_soap_contents_b = math.floor(max_tokens_for_soap_contents * b_ratio)
+
+        # 要約はキャッシュしておく
+        # 最終カルテ記載日を記録しておく
+
+
+
+        
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
     # 例）20140224095813 -> 2014/02/24 09:58:13
     @staticmethod
