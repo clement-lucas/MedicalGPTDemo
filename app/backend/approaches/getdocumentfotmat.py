@@ -15,7 +15,7 @@ class GetDocumentFormatApproach(Approach):
             force_master:bool   # マスターを強制的に取得するかどうか
             ) -> any:
         
-        print(user_id)
+        # print(user_id)
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()

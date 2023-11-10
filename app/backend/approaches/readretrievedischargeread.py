@@ -370,7 +370,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             system_content = row[0]
 
         # ドキュメントフォーマットの取得
-        print(user_id)
+        # print(user_id)
         select_document_format_sql = """SELECT 
                 Kind, 
                 CategoryName, 
