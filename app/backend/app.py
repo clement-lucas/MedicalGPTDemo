@@ -300,6 +300,8 @@ def update_document_format():
                      request.json["department_code"], 
                      request.json["icd10_code"],
                      request.json["user_id"], 
+                     request.json["system_contents"],
+                     request.json["system_contents_suffix"],
                      request.json["document_formats"])
         return jsonify(r)
     except Exception as e:

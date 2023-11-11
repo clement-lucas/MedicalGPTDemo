@@ -341,6 +341,8 @@ export async function updateDocumentFormatApi( options: UpdateDocumentFormatRequ
             department_code: options.department_code,
             icd10_code: options.icd10_code,
             user_id: options.user_id,
+            system_contents: options.system_contents,
+            system_contents_suffix: options.system_contents_suffix,
             document_formats: options.document_formats,
         })
     });

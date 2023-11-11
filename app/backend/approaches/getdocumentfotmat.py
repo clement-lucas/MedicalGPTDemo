@@ -26,6 +26,62 @@ class GetDocumentFormatApproach(Approach):
         if gpt_model_name is None:
             gpt_model_name = "gpt-35-turbo"
 
+        # システムコンテンツの取得
+        select_system_content_master_sql = """SELECT 
+                ISNULL(Question, '') AS Question,
+                ISNULL(QuestionSuffix, '') AS QuestionSuffix
+            FROM DocumentFormat 
+            WHERE IsMaster = 1
+            AND DepartmentCode = ?
+            AND Icd10Code = ?
+            AND DocumentName = ?
+            AND Kind = ?
+            AND GPTModelName = ?
+            AND IsDeleted = 0"""
+        if force_master:
+            cursor.execute(select_system_content_master_sql,
+                        department_code, icd10_code,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)
+        else:
+            select_system_contents_sql = """SELECT 
+                    ISNULL(Question, '') AS Question,
+                    ISNULL(QuestionSuffix, '') AS QuestionSuffix
+                FROM DocumentFormat 
+                WHERE IsMaster = 0
+                AND UserId = ?
+                AND DepartmentCode = ?
+                AND Icd10Code = ?
+                AND DocumentName = ?
+                AND Kind = ?
+                AND GPTModelName = ?
+                AND IsDeleted = 0
+                ORDER BY OrderNo"""
+            cursor.execute(select_system_contents_sql,
+                        user_id,
+                        department_code, icd10_code,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)            
+        rows = cursor.fetchall() 
+
+        # HIT しなかった場合は、マスターを取得する
+        if len(rows) == 0:
+            cursor.execute(select_system_content_master_sql,
+                        department_code, icd10_code,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)
+            rows = cursor.fetchall() 
+        
+        system_contetns = ""
+        system_contetns_suffix = ""
+        for row in rows:
+            system_contetns = row[0]
+            system_contetns_suffix = row[1]
+            break
+        
         # ドキュメントフォーマットの取得
         select_document_format_master_sql = """SELECT 
                 Id, 
@@ -132,4 +188,7 @@ class GetDocumentFormatApproach(Approach):
                 "use_allergy_records":row[9],
                 "use_discharge_medicine_records":row[10]
             })
-        return {"document_formats":ret}
+        return {
+            "system_contents":system_contetns,
+            "system_contents_suffix":system_contetns_suffix,
+            "document_formats":ret}

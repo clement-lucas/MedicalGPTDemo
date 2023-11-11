@@ -60,11 +60,7 @@ const Discharge = () => {
     const DEFAULT_TEMPERATURE = 0.01
     const DEFAULT_RESPONSE_MAX_TOKENS = 1000
     const DEFAULT_QUESTION_SUFFIX = "作成される文章は 900 Token以内とします。"
-    const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
-    const [approach, setApproach] = useState<Approaches>(Approaches.RetrieveThenRead);
     const [promptTemplate, setPromptTemplate] = useState<string>("");
-    const [promptTemplatePrefix, setPromptTemplatePrefix] = useState<string>("");
-    const [promptTemplateSuffix, setPromptTemplateSuffix] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
@@ -90,6 +86,8 @@ const Discharge = () => {
     const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
+    const [systemContents, setSystemContents] = useState<string>("");
+    const [systemContentsSuffix, setSystemContentsSuffix] = useState<string>("");
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
     const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
     const [slot, setSlot] = useState<string>();
@@ -150,6 +148,8 @@ const Discharge = () => {
                 force_master: force_master,
             };
             const result = await getDocumentFormatApi(request);
+            setSystemContents(result.system_contents);
+            setSystemContentsSuffix(result.system_contents_suffix);
             setDocumentFormats(result.document_formats);
         } catch (e) {
             alert(e)
@@ -166,6 +166,8 @@ const Discharge = () => {
                 department_code: DEFAULT_DEPARTMENT_CODE,
                 icd10_code: DEFAULT_ICD10_CODE,
                 user_id: slot ? slot : '',
+                system_contents: systemContents,
+                system_contents_suffix: systemContentsSuffix,
                 document_formats: documentFormats,
             };
             await updateDocumentFormatApi(request);
@@ -287,6 +289,16 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(true);
     }
 
+    const onSystemContentsChanged = (newValue:string) => {
+        // 値が変わっているかチェック
+        // 改行コード 統一
+        const targetQ = systemContents.replace(/\r?\n/g, "\n");
+        const newQ = newValue.replace(/\r?\n/g, "\n");
+        if (targetQ !== newQ) {
+            setIsDocumentFormatSettingEdited(true);
+            setSystemContents(newValue);
+        }
+    }
 
     const onTemperatureChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
         // 値が変わっているかチェック
@@ -723,12 +735,14 @@ const Discharge = () => {
                     icd10Code={DEFAULT_ICD10_CODE}
                     icd10Name={DEFAULT_ICD10_NAME}
                     userId={slot ? slot : ''}
+                    systemContents={systemContents}
                     documentFormats={documentFormats}
                     isLoading={isLoadingDocumnetFormatSetting}
                     isEdited={isDocumentFormatSettingEdited}
                     onSaveClicked={onSaveDocumentFormatClicked}
                     onCancelClicked={onCancelDocumentFormatClicked}
                     onReloadFromMasterClicked={onReloadFromMasterClicked}
+                    onSystemContentsChanged={onSystemContentsChanged}
                     onCategoryNameChanged={onCategoryNameChanged}
                     onKindChanged={onKindChanged}
                     onTargetSoapChanged={onTargetSoapChanged}

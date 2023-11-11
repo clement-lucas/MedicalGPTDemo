@@ -1,4 +1,4 @@
-import { Stack, Spinner, Label } from "@fluentui/react";
+import { Stack, Spinner, Label, TextField } from "@fluentui/react";
 
 import styles from "./DocumentFormatSetting.module.css";
 import { Save24Filled, Add24Filled } from "@fluentui/react-icons";
@@ -20,6 +20,8 @@ interface Props {
 
     // user id
     userId: string; 
+
+    systemContents: string;
     
     // DocumentFormats
     documentFormats: DocumentFormat[];
@@ -32,6 +34,7 @@ interface Props {
     onCancelClicked: () => void;
     onReloadFromMasterClicked: () => void;
 
+    onSystemContentsChanged: (newValue:string) => void;
     onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
@@ -45,8 +48,11 @@ interface Props {
 }
 
 export const DocumentFormatSetting = ({
-    documentName, departmentCode, icd10Code, icd10Name, userId, documentFormats, isLoading, isEdited,
+    documentName, departmentCode, icd10Code, icd10Name, userId, 
+    systemContents, 
+    documentFormats, isLoading, isEdited,
     onSaveClicked, onCancelClicked, onReloadFromMasterClicked,
+    onSystemContentsChanged,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
     onTemperatureChanged,
     onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
@@ -95,6 +101,20 @@ export const DocumentFormatSetting = ({
                             <td>{icd10Name}</td>
                         </tr>
                     </table> */}
+                    <p className={styles.systemContens} >System Contents Prompt : <br></br>
+                        <TextField
+                            readOnly={false}
+                            multiline={true}
+                            resizable={true}
+                            scrolling="true"
+                            defaultValue={systemContents}
+                            value={systemContents}
+                            onChange={(e, newValue) => onSystemContentsChanged(newValue || "")}
+                            onBlur={(e) => onSystemContentsChanged(e.target.value || "")}
+                            //onChange={onQuestionChange}
+                            //onKeyDown={onEnterPress}
+                        />
+                    </p>
                     {
                     documentFormats.map((item) => (
                         <DocumentFormatSettingByCategory 

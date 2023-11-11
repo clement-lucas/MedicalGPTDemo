@@ -122,6 +122,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         categoryName = row[1]
         temperature = row[2]
         question = row[3]
+
         response_max_tokens = row[4]
         targetSoapRecords = row[5]
 
@@ -348,7 +349,16 @@ class ReadRetrieveDischargeReadApproach(Approach):
             """
         # system content 部分の文言取得
         select_system_content_sql = """SELECT 
-                Question
+                ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question
+            FROM DocumentFormat 
+            WHERE IsMaster = 0
+            AND UserId = ?
+            AND DocumentName = ?
+            AND Kind = ?
+            AND GPTModelName = ?
+            AND IsDeleted = 0"""
+        select_system_content_master_sql = """SELECT 
+                ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question
             FROM DocumentFormat 
             WHERE IsMaster = 1
             AND DocumentName = ?
@@ -360,6 +370,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         if gpt_model_name is None:
             gpt_model_name = "gpt-35-turbo"
         cursor.execute(select_system_content_sql,
+                       user_id,
                        document_name,
                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                        gpt_model_name)
@@ -368,6 +379,19 @@ class ReadRetrieveDischargeReadApproach(Approach):
         for row in rows:
             # print(row)
             system_content = row[0]
+        if system_content == "":
+            print("ユーザー " + user_id + " のシステムコンテンツが取得できませんでした。マスターデータを使用します。")
+            cursor.execute(select_system_content_master_sql,
+                        document_name,
+                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
+                        gpt_model_name)
+            rows = cursor.fetchall() 
+            for row in rows:
+                system_content = row[0]
+            if system_content == "":
+                raise Exception("システムコンテンツが取得できませんでした。")
+        else :
+            print("ユーザー " + user_id + " のシステムコンテンツが取得できました。")
 
         # ドキュメントフォーマットの取得
         # print(user_id)

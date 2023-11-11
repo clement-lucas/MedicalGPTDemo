@@ -1,7 +1,6 @@
 import os
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
-DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 
 class UpdateDocumentFormatApproach(Approach):
     def __init__(self, sourcepage_field: str, content_field: str):
@@ -9,7 +8,8 @@ class UpdateDocumentFormatApproach(Approach):
         self.content_field = content_field
         
     def run(self, document_name: str, department_code:str, 
-            icd10_code:str, user_id:str, document_formats: []
+            icd10_code:str, user_id:str, 
+            system_contents:str, system_contents_suffix:str, document_formats: []
             ) -> any:
 
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
@@ -33,7 +33,6 @@ class UpdateDocumentFormatApproach(Approach):
                 AND DepartmentCode = ?
                 AND Icd10Code = ?
                 AND DocumentName = ?
-                AND Kind <> ?
                 AND GPTModelName = ?
                 AND IsDeleted = 0"""
             cursor.execute(update_document_format_sql,
@@ -41,7 +40,6 @@ class UpdateDocumentFormatApproach(Approach):
                         user_id,
                         department_code, icd10_code,
                         document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                         gpt_model_name)
             
             # ドキュメントフォーマットの登録
@@ -102,6 +100,25 @@ class UpdateDocumentFormatApproach(Approach):
                     user_id,
                     user_id
                 ))
+
+            # システムコンテンツの登録
+            rows_to_insert.append((
+                user_id,
+                department_code,
+                icd10_code,
+                document_name,
+                gpt_model_name,
+                0,
+                0,
+                '',
+                0,
+                system_contents,
+                system_contents_suffix,
+                0,
+                '',
+                user_id,
+                user_id
+            ))
             cursor.executemany(insert_document_format_sql, rows_to_insert)
 
             # トランザクションのコミット

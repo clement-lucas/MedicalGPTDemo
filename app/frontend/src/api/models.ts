@@ -152,6 +152,8 @@ export type GetDocumentFormatRequest = {
 };
 
 export type GetDocumentFormatResponse = {
+    system_contents: string;
+    system_contents_suffix: string;
     document_formats: DocumentFormat[];
     error?: string;
 };
@@ -161,6 +163,8 @@ export type UpdateDocumentFormatRequest = {
     department_code: string;
     icd10_code: string;
     user_id: string;
+    system_contents: string;
+    system_contents_suffix: string;
     document_formats: DocumentFormat[];
 };
 
