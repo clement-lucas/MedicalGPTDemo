@@ -20,7 +20,6 @@ gpt-4-32k-0613',
 
 ('SUMMARIZE_SOAP_PROMPT_USER_CONTENTS', N'SOAP の要約に用いるプロンプト（user contents の部分）。', '
 Summarize the following text that captures the main idea within {expected_token_num} tokens.
-The text has S,O,A,P format. The result of the summary is also in S,O,A,P format. Do not mix categories of S,O,A,P. You summarize S to S, O to O, A to A, P to P.
 Answers should be provided in the same language as the text. If the text is Japanese, please provide the summary result in Japanese as well.
 Text:
 {soap}', GETDATE(), GETDATE(), 0),

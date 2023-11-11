@@ -48,5 +48,8 @@ class SOAPSummarizer:
         # print(completion.usage.completion_tokens)
         # print(completion.usage.prompt_tokens)
         # print(completion.usage.total_tokens)
-        log = ''.join([str(TokenCounter.num_tokens_from_messages(messages, self._model_name_for_tiktoken)), "=>", str(completion.usage.completion_tokens), ", "])
-        return completion.choices[0].message.content, completion.usage, log
+        ret = completion.choices[0].message.content
+        log = ''.join([str(TokenCounter.count(soap, self._model_name_for_tiktoken)), 
+                       "=>", 
+                       str(TokenCounter.count(ret, self._model_name_for_tiktoken)), ", "])
+        return ret, completion.usage, log

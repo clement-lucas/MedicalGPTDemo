@@ -18,6 +18,8 @@ DOCUMENT_FORMAT_KIND_SOAP = 1
 DOCUMENT_FORMAT_KIND_ALLERGY = 2
 DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE = 3
 
+TOKEN_NUM_FOR_QUESTION = 1000
+
 # Attempt to answer questions by iteratively evaluating the question to see what information is missing, and once all information
 # is present then formulate an answer. Each iteration consists of two parts: first use GPT to see if we need more information, 
 # second if more data is needed use the requested "tool" to retrieve it. The last call to GPT answers the actual question.
@@ -33,11 +35,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         self.content_field = content_field
 
     # SOAP に割り当て可能なトークン数を計算する
-    def get_max_tokens_for_soap(self, question, system_content, response_max_tokens):
-        messages_without_soap = [{"role":"system","content":system_content},
-                    {"role":"user","content":''.join([question, "\n\nmedical record:\n\n"])}]
-        num_tokens_without_soap = TokenCounter.num_tokens_from_messages(messages_without_soap, self.gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN"))
-        num_tokens_for_soap = int(self.gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - num_tokens_without_soap - response_max_tokens
+    def get_max_tokens_for_soap(self):
+        num_tokens_for_soap = int(self.gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - TOKEN_NUM_FOR_QUESTION
         return num_tokens_for_soap
 
     # 質問文とカルテデータを受け取って GPT に投げる関数
@@ -103,7 +102,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         row, 
                         patient_code, 
                         system_content, 
-                        soap_manager):
+                        soap_manager:SOAPManager):
 
         ret = ""
         allergy = ""
@@ -134,26 +133,14 @@ class ReadRetrieveDischargeReadApproach(Approach):
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
-            # SOAP に割り当て可能なトークン数を計算する
-            num_tokens_for_soap = self.get_max_tokens_for_soap(
-                question, system_content, response_max_tokens)
-
             soap = soap_manager.SOAP(
-                    targetSoapRecords, num_tokens_for_soap)
-            summarized_soap = soap[0]
+                    targetSoapRecords)
+            # print(soap)
+            summarized_soap = soap
 
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
             # print("★★★★★★★★")
-
-            # 要約した SOAP を履歴として確保する
-            summarized_soap_history = ''.join([summarized_soap_history,
-                "<CATEGORY>", str(categoryName), "</CATEGORY><SOAP>",
-                str(summarized_soap), "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>",
-                str(soap[1]), "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>",
-                str(soap[2]), "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>",
-                str(soap[3]), "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>",
-                str(soap[4]), "</SUMMARIZE_LOG>"])
 
             answer = self.get_answer(
                 categoryName, temperature, question, 
@@ -164,7 +151,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             completion_tokens = answer[1]
             prompt_tokens = answer[2]
             total_tokens = answer[3]
-            prompts = ''.join([answer[4], "\n"])
+            prompt = ''.join([answer[4], "\n"])
             
         elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
             # 【アレルギー・不適応反応】​
@@ -233,11 +220,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 prompt_tokens, \
                 total_tokens, \
                 prompt, \
-                summarized_soap_history, \
                 allergy, \
                 medicine
 
     def run(self, document_name: str, patient_code:str, department_code:str, icd10_code:str, user_id:str, overrides: dict) -> any:
+        timer_total = LapTimer()
+        timer_total.start("退院時サマリ作成処理全体")
 
         # print("run")
         # print(document_name)
@@ -448,19 +436,30 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         gpt_model_name)
             rows = cursor.fetchall() 
 
+        timer = LapTimer()
+        timer.start("SOAP の読込と必要に応じた要約処理")
         # 医師記録の取得
+        # SOAP に割り当て可能なトークン数を計算する
+        num_tokens_for_soap = self.get_max_tokens_for_soap()
         soap_manager = SOAPManager(self.gptconfigmanager, patient_code, 
-            self.gpt_deployment)
+            self.gpt_deployment, num_tokens_for_soap)
+        timer.stop()
 
         ret = ""
 
         # token の集計
-        sum_of_completion_tokens: int = 0
-        sum_of_prompt_tokens: int = 0
-        sum_of_total_tokens: int = 0
+        sum_of_completion_tokens: int = soap_manager.SummarizedCompletionTokens
+        sum_of_prompt_tokens: int = soap_manager.SummarizedPromptTokens
+        sum_of_total_tokens: int = soap_manager.SummarizedTotalTokens
 
-        # 要約後の SOAP を格納する変数
-        summarized_soap_history = ""
+        # 要約した SOAP を履歴として確保する
+        summarized_soap_history = ''.join([
+            "<SOAP>",
+            str(soap_manager.SOAP('soapb')), "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>",
+            str(soap_manager.SummarizedCompletionTokens), "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>",
+            str(soap_manager.SummarizedPromptTokens), "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>",
+            str(soap_manager.SummarizedTotalTokens), "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>",
+            str(soap_manager.SummarizedLog), "</SUMMARIZE_LOG>"])
 
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
@@ -468,7 +467,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
         allergy = ""
         medicine = ""
 
-        timer = LapTimer()
         timer.start("退院時サマリ作成処理")
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -500,12 +498,11 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 sum_of_prompt_tokens += future_ret[2]
                 sum_of_total_tokens += future_ret[3]
                 prompts = ''.join([prompts, future_ret[4], "\n"])
-                summarized_soap_history = ''.join([summarized_soap_history, future_ret[5]])
-                allergy = ''.join([allergy, future_ret[6]])
-                medicine = ''.join([medicine, future_ret[7]])
+                allergy = ''.join([allergy, future_ret[5]])
+                medicine = ''.join([medicine, future_ret[6]])
 
         # print(ret)
-        records_soap = soap_manager.SOAP("soapb")[0]
+        records_soap = soap_manager.SOAP("soapb", True)
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
         timer.stop()
 
@@ -526,7 +523,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[CreatedDateTime]
            ,[UpdatedDateTime]
            ,[IsDeleted])
-     VALUES
+        VALUES
            ('000001'
            ,?
            ,N'退院時サマリ'
@@ -549,6 +546,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
                        sum_of_total_tokens
                        )
         cursor.commit()
+
+        timer_total.stop()
 
         return {"data_points": "test results", 
                 "answer": ''.join([ret, "\n\n\nカルテデータ：\n", records_soap, allergy, medicine]), 
