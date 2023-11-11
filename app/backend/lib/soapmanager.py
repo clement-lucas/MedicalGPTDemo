@@ -10,23 +10,23 @@ class SOAPManager:
     _soap_prefix = "\n以下は医師の書いた SOAP です。\n\n"
 
     @staticmethod
-    def _get_records_of_the_day(target, soap_record):
+    def _get_records_of_the_day(target, soap_record, add_caption: bool = True):
         record_of_the_day = ""
         if target.find('S') >= 0:
             if soap_record.S != "":
-                record_of_the_day = ''.join([record_of_the_day, "S：", soap_record.S, "\n\n"])
+                record_of_the_day = ''.join([record_of_the_day, "S：" if add_caption else '', soap_record.S, "\n\n"])
         if target.find('O') >= 0:
             if soap_record.O != "":
-                record_of_the_day = ''.join([record_of_the_day, "O：", soap_record.O, "\n\n"])
+                record_of_the_day = ''.join([record_of_the_day, "O：" if add_caption else '', soap_record.O, "\n\n"])
         if target.find('A') >= 0:
             if soap_record.A != "":
-                record_of_the_day = ''.join([record_of_the_day, "A：", soap_record.A, "\n\n"])
+                record_of_the_day = ''.join([record_of_the_day, "A：" if add_caption else '', soap_record.A, "\n\n"])
         if target.find('P') >= 0:
             if soap_record.P != "":
-                record_of_the_day = ''.join([record_of_the_day, "P：", soap_record.P, "\n\n"])
+                record_of_the_day = ''.join([record_of_the_day, "P：" if add_caption else '', soap_record.P, "\n\n"])
         if target.find('B') >= 0:
             if soap_record.B != "":
-                record_of_the_day = ''.join([record_of_the_day, "＃：", soap_record.B, "\n\n"])
+                record_of_the_day = ''.join([record_of_the_day, "＃：" if add_caption else '', soap_record.B, "\n\n"])
         # print(record_of_the_day)
         return record_of_the_day
     
@@ -41,66 +41,35 @@ class SOAPManager:
         records = ""
 
         timer = LapTimer()
-        timer.start("SOAP 連結処理")
-        for soap_by_date in self._soap_by_date_list:
-            record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
-            if record_of_the_day == "":
-                continue
-            records = ''.join([records, "記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
+        if get_original or self._is_summarized == False:
+            timer.start("SOAP 連結処理")
+            for soap_by_date in self._soap_by_date_list:
+                record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
+                if record_of_the_day == "":
+                    continue
+                records = ''.join([records, "記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
+            timer.stop()
+            return ''.join([SOAPManager._soap_prefix, records])
+
+        records = ""
+        timer.start("要約 SOAP 連結処理")
+        if target.find('S') >= 0:
+            records = ''.join([records, self._summarized_s])
+        if target.find('O') >= 0:
+            records = ''.join([records, self._summarized_o])
+        if target.find('A') >= 0:
+            records = ''.join([records, self._summarized_a])
+        if target.find('P') >= 0:
+            records = ''.join([records, self._summarized_p])
+        if target.find('B') >= 0:
+            records = ''.join([records, self._summarized_b])
         timer.stop()
+        print(records)
 
-        if get_original:
-            return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
-
-        timer.start("TokenCount 処理")
-        max_tokens_for_soap_contents = max_tokens_for_soap - self._prefix_tokens
-        # print("max_tokens_for_soap_contents:" + str(max_tokens_for_soap_contents))
-        summarizer = SOAPSummarizer(self._gptconfigmanager, self._engine)
-        contents_token = TokenCounter.count(records, self._model_name_for_tiktoken)
-        print("contents_token:" + str(contents_token))
-        timer.stop()
-
-        # Ptn1: 作成された SOAP が SOAP Token 上限に収まる場合
-        #       そのまま返却する。
-        if contents_token <= max_tokens_for_soap_contents:
-            # print("Ptn1: SOAP Token 上限に収まる場合")
-            return ''.join([SOAPManager._soap_prefix, records]), 0, 0, 0, ""
-        
-        # Ptn2: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約で収まる場合
-        #       要約して返却する。
-        # print("max_tokens_for_soap_contents" + str(max_tokens_for_soap_contents))
-        # print("contents_token" + str(contents_token))
-        # print("summarizer.capacity_for_befor_and_after_summarize_text" + str(summarizer.capacity_for_befor_and_after_summarize_text))
-        # print("max_tokens_for_soap" + str(max_tokens_for_soap))
-
-        timer.start("要約処理")
-
-        if max_tokens_for_soap_contents < contents_token  and \
-            contents_token <= summarizer.capacity_for_befor_and_after_summarize_text - max_tokens_for_soap:
-            # print("Ptn2: SOAP Token 上限を超え、且つ、一回の要約で収まる場合")
-            # 退院時サマリ作成に使用するモデルよりもはるかに大きい Token 上限を持つ要約用モデルを使用するなどしない限り、
-            # ここに入ることはない。
-            # なぜならば、退院時サマリ作成のために GPT に送信する時点で Token 超を over するならば、
-            # 要約用モデルに送信してもやはり Token 超するからである。
-            # 要約時の GPT 応答用の領域は、退院時サマリ作成時よりも大きく確保することが一般的に考えられ、
-            # そうすると、同じトークン上限を持つモデルを使っている場合、
-            # 要約前の文書として渡せるトークン数が、退院時サマリ作成時に渡せる SOAP のトークン数よりも大きくなることは考えられない。
-            summary = summarizer.summarize(records, max_tokens_for_soap_contents)
-            return ''.join([SOAPManager._soap_prefix, summary[0]]), summary[1].completion_tokens, summary[1].prompt_tokens, summary[1].total_tokens, summary[2]
-
-        timer.stop()        
-
-        timer.start("Ptn3")
-        # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
-        #       段階的に要約して返却する。
-        # print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合")
-        summary = self._summarize(summarizer, target, max_tokens_for_soap_contents)
-        timer.stop()
-
-        return summary[0], summary[1], summary[2], summary[3], summary[4]
+        return ''.join([SOAPManager._soap_prefix, records])
 
     # 段階的に要約する。
-    def _summarize(self, summarizer:SOAPSummarizer, target:str, max_tokens_for_soap_contents:int):
+    def _summarize(self, summarizer:SOAPSummarizer, target:str, max_tokens_for_soap_contents:int, add_caption:bool = True):
         
         # 要約前のテキストとして渡せる最大トークン数を計算する。
         capacity_for_befor_text = summarizer.capacity_for_befor_and_after_summarize_text / (1 + self._compressibility_for_summary)
@@ -121,7 +90,7 @@ class SOAPManager:
 
         # 段階的要約の開始
         for soap_by_date in self._soap_by_date_list:
-            record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1])
+            record_of_the_day = SOAPManager._get_records_of_the_day(target, soap_by_date[1], add_caption)
             if record_of_the_day == "":
                 continue
             record_of_the_day = ''.join(["記入日：", soap_by_date[0], "\n\n", record_of_the_day, "\n"])
@@ -173,6 +142,11 @@ class SOAPManager:
                 patient_code: str, 
                 engine: str,
                 max_tokens_for_soap: int):
+        self._summarized_completion_tokens = 0
+        self._summarized_prompt_tokens = 0
+        self._summarized_total_tokens = 0
+        self._summarized_log = ""
+
         timer = LapTimer()
         timer.start("SQL SELECT 処理")
         
@@ -181,6 +155,7 @@ class SOAPManager:
         self._engine = engine
         self._prefix_tokens = TokenCounter.count(SOAPManager._soap_prefix, self._model_name_for_tiktoken)
         self._compressibility_for_summary = float(gptconfigmanager.get_value("COMPRESSIBILITY_FOR_SUMMARY"))
+        self._max_tokens_for_soap = max_tokens_for_soap
 
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
@@ -202,7 +177,7 @@ class SOAPManager:
         
         self._soap_by_date_list = []
         # print("SOAP の取得件数：" + str(len(rows)))
-        for i in range(200):
+        for i in range(200):    # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
             for row in rows:
                 datetime = SOAPManager.get_datetime(row[0])
                 # XML のまま GPT に投げても解釈してくれないこともないが、
@@ -219,7 +194,9 @@ class SOAPManager:
         print("contents_token:" + str(contents_token))
         # 作成された SOAP が SOAP Token 上限に収まる場合、要約を行わない。
         if contents_token <= max_tokens_for_soap_contents:
+            self._is_summarized = False
             return
+        self._is_summarized = True
         
         # 収まらない場合は、要約を行う。
         # まずは、各セクションごとの比率を計算する。
@@ -256,11 +233,66 @@ class SOAPManager:
         max_tokens_for_soap_contents_p = math.floor(max_tokens_for_soap_contents * p_ratio)
         max_tokens_for_soap_contents_b = math.floor(max_tokens_for_soap_contents * b_ratio)
 
+        summarizer = SOAPSummarizer(self._gptconfigmanager, self._engine)
+        temp = self._summarize(summarizer, 's', max_tokens_for_soap_contents_s, False)
+        self._summarized_s = ''.join(["S：\n\n", temp[0], "\n\n\n"])
+        self._summarized_completion_tokens += temp[1]
+        self._summarized_prompt_tokens += temp[2]
+        self._summarized_total_tokens += temp[3]
+        self._summarized_log = ''.join([self._summarized_log, temp[4]])
+
+        temp = self._summarize(summarizer, 'o', max_tokens_for_soap_contents_o, False)
+        self._summarized_o = ''.join(["O：\n\n", temp[0], "\n\n\n"])
+        self._summarized_completion_tokens += temp[1]
+        self._summarized_prompt_tokens += temp[2]
+        self._summarized_total_tokens += temp[3]
+        self._summarized_log = ''.join([self._summarized_log, temp[4]])
+
+        temp = self._summarize(summarizer, 'a', max_tokens_for_soap_contents_a, False)
+        self._summarized_a = ''.join(["A：\n\n", temp[0], "\n\n\n"])
+        self._summarized_completion_tokens += temp[1]
+        self._summarized_prompt_tokens += temp[2]
+        self._summarized_total_tokens += temp[3]
+        self._summarized_log = ''.join([self._summarized_log, temp[4]])
+
+        temp = self._summarize(summarizer, 'p', max_tokens_for_soap_contents_p, False)
+        self._summarized_p = ''.join(["P：\n\n", temp[0], "\n\n\n"])
+        self._summarized_completion_tokens += temp[1]
+        self._summarized_prompt_tokens += temp[2]
+        self._summarized_total_tokens += temp[3]
+        self._summarized_log = ''.join([self._summarized_log, temp[4]])
+
+        temp = self._summarize(summarizer, 'b', max_tokens_for_soap_contents_b, False)
+        self._summarized_b = ''.join(["＃：\n\n", temp[0], "\n\n\n"])
+        self._summarized_completion_tokens += temp[1]
+        self._summarized_prompt_tokens += temp[2]
+        self._summarized_total_tokens += temp[3]
+        self._summarized_log = ''.join([self._summarized_log, temp[4]])
+
+        return
+
         # 要約はキャッシュしておく
         # 最終カルテ記載日を記録しておく
 
-
-
+    @property
+    def IsSumarized(self):
+        return self._is_summarized
+    
+    @property
+    def SummarizedCompletionTokens(self):
+        return self._summarized_completion_tokens
+    
+    @property
+    def SummarizedPromptTokens(self):
+        return self._summarized_prompt_tokens
+    
+    @property
+    def SummarizedTotalTokens(self):
+        return self._summarized_total_tokens
+    
+    @property
+    def SummarizedLog(self):
+        return self._summarized_log
         
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
     # 例）20140224095813 -> 2014/02/24 09:58:13
