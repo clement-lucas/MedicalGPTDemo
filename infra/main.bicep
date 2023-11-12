@@ -44,11 +44,11 @@ param formRecognizerSkuName string = 'S0'
 //2023/07/11 model text-davinci-003 retired to deploy
 //param gptDeploymentName string = 'davinci'
 //param gptModelName string = 'text-davinci-003'
-param chatGptDeploymentName string = 'chat'
+param chatGptDeploymentName string = 'chat16'
 
 @description('gpt-35-turbo or gpt-4')
 param chatGptModelName string
-var chatGptModelNameValue = !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo'
+var chatGptModelNameValue = !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo-16k'
 
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
