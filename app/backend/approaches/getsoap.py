@@ -11,9 +11,8 @@ class GetSoapApproach(Approach):
 
         self.gptconfigmanager = GPTConfigManager()
         # 医師記録の取得
-        soap_manager = SOAPManager(self.gptconfigmanager, patient_code, 
-            None)
-        records_soap = soap_manager.SOAP("soapb")[0]
+        soap_manager = SOAPManager('', self.gptconfigmanager, patient_code, '', 0, True)
+        records_soap = soap_manager.SOAP("soapb", True)
 
         if records_soap == "":
             return {"soap":"SOAP が見つかりませんでした。"}
