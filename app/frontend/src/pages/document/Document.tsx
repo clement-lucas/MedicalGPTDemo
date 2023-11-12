@@ -7,7 +7,7 @@ import { documentApi, Approaches, AskResponse, DocumentRequest } from "../../api
 import { Answer, AnswerError } from "../../components/Answer";
 import { DocumentList } from "../../components/Example";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
-import quill from "../../assets/quill.svg";
+import { Edit48Filled } from "@fluentui/react-icons";
 import { PatientCodeInputOld } from "../../components/PatientCodeInputOld/PatientCodeInputOld";
 
 const Document = () => {
@@ -30,7 +30,7 @@ const Document = () => {
 
     const [activeCitation, setActiveCitation] = useState<string>();
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
-    const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
+    const iconStyle: React.CSSProperties = { padding: 10, marginTop:50, width: 100, height: 90,  color: "#465f8b" };
 
     const makeApiRequest = async (documentName: string) => {
         lastQuestionRef.current = documentName;
@@ -135,19 +135,19 @@ const Document = () => {
         <div className={styles.documentContainer}>
             <div className={styles.documentTopSection}>
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
-                <img src={quill} alt="quill" style={iconStyle}  />
-                             <h1 className={styles.chatEmptyStateTitle}>定型文書作成システム</h1>
-                             <h2 className={styles.chatEmptyStateSubtitle}>どの文書を作成しますか？</h2>
-                             {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
-                             <div className={styles.documentInput}>
-                                 <PatientCodeInputOld
-                                     onPatientCodeChanged={x => (setPatientCode(x))}
-                                     clearOnSend
-                                     placeholder="Type a new question (e.g. how to prevent chronic disease?)"
-                                     disabled={isLoading}
-                             />
-                            </div>
-                            <DocumentList onExampleClicked={onExampleClicked} />
+                <Edit48Filled style={iconStyle} />
+                <h1 className={styles.chatEmptyStateTitle}>定型文書作成システム</h1>
+                <h2 className={styles.chatEmptyStateSubtitle}>どの文書を作成しますか？</h2>
+                {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
+                <div className={styles.documentInput}>
+                    <PatientCodeInputOld
+                        onPatientCodeChanged={x => (setPatientCode(x))}
+                        clearOnSend
+                        placeholder="Type a new question (e.g. how to prevent chronic disease?)"
+                        disabled={isLoading}
+                    />
+                </div>
+                <DocumentList onExampleClicked={onExampleClicked} />
             </div>
             <div className={styles.documentBottomSection}>
                 {isLoading && <Spinner label="Generating answer" />}

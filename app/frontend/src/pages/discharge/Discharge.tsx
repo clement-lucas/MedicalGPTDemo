@@ -13,7 +13,7 @@ import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryInde
 import { Answer, AnswerError } from "../../components/Answer";
 import { DischargeButton } from "../../components/Example/DischargeButton";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
-import bird from "../../assets/bird.svg";
+import heart from "../../assets/heart.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
 import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
 import { DocumentFormatEditButton } from "../../components/DocumentFormatSetting/DocumentFormatEditButton";
@@ -83,7 +83,7 @@ const Discharge = () => {
 
     const [activeCitation, setActiveCitation] = useState<string>();
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
-    const iconStyle: React.CSSProperties = { padding: 10, width: 100, height: 90,  color: "#465f8b" };
+    const iconStyle: React.CSSProperties = { padding: 10, marginTop:50, width: 100, height: 100,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
     const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
     const [systemContents, setSystemContents] = useState<string>("");
@@ -636,7 +636,7 @@ const Discharge = () => {
         <div className={styles.dischargeContainer}>
             <div className={styles.dischargeTopSection}>
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
-                <img src={bird} alt="bird" style={iconStyle}  />
+                <img src={heart} alt="heart" style={iconStyle}  />
                              <h1 className={styles.chatEmptyStateTitle}>退院サマリ作成システム</h1>
                              {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
                              <div className={styles.dischargeInput}>

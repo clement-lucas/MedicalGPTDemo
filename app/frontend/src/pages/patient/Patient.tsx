@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Label, Stack } from "@fluentui/react";
-import patient from "../../assets/patient.svg";
+import { FolderPerson20Regular } from "@fluentui/react-icons";
 
 import styles from "./Patient.module.css";
 
@@ -141,7 +141,7 @@ const Patient = () => {
                 <div className={styles.chatContainer}>
                     {!lastQuestionRef.current ? (
                         <div className={styles.chatEmptyState}>
-                            <img src={patient} alt="stethoscope" style={iconStyle}  />
+                            <FolderPerson20Regular style={iconStyle}  />
                             <h1 className={styles.chatEmptyStateTitle}>電子カルテ情報検索システム</h1>
                             <h2 className={styles.chatEmptyStateSubtitle}>例えば こんなふうに質問してください</h2>
                             <PatientExampleList onExampleClicked={onExampleClicked} />
