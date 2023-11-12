@@ -4,6 +4,7 @@ from lib.soapsummarizer import SOAPSummarizer
 from lib.tokencounter import TokenCounter
 from lib.gptconfigmanager import GPTConfigManager
 from lib.laptimer import LapTimer
+from lib.soapcachemanager import SOAPCacheManager
 import math
 class SOAPManager:
     _soap_by_date_list = []
@@ -53,6 +54,7 @@ class SOAPManager:
             return ''.join([SOAPManager._soap_prefix, records])
 
         records = ""
+
         timer.start("要約 SOAP 連結処理")
         if target.find('S') >= 0 and self._summarized_s != "":
             records = ''.join([records, self._summarized_s])
@@ -65,7 +67,6 @@ class SOAPManager:
         if target.find('B') >= 0 and self._summarized_b != "":
             records = ''.join([records, self._summarized_b])
         timer.stop()
-        # print(records)
 
         return ''.join([SOAPManager._soap_prefix, records])
 
@@ -149,6 +150,7 @@ class SOAPManager:
         return summary[0], completion_tokens, prompt_tokens, total_tokens, summarize_log
 
     def __init__(self, 
+                user_id: str,
                 gptconfigmanager:GPTConfigManager, 
                 patient_code: str, 
                 engine: str,
@@ -177,32 +179,63 @@ class SOAPManager:
         # SQL Server に接続する
         cnxn = SQLConnector.get_conn()
         cursor = cnxn.cursor()
+        cache = SOAPCacheManager(user_id, patient_code)
 
-        # TODO 日付等の各種取得条件は適宜実装のこと
-        select_datax_sql = """SELECT EXTBDH1.DOCDATE, EXTBDC1.DOC_DATAX FROM EXTBDC1 
-            INNER JOIN EXTBDH1 
-            ON EXTBDC1.DOC_NO = EXTBDH1.DOC_NO
-            AND EXTBDH1.DOC_K = ? 
-            AND EXTBDH1.ACTIVE_FLG = 1 
-            AND EXTBDC1.ACTIVE_FLG = 1 
-            AND EXTBDH1.PID = ?
-            ORDER BY EXTBDH1.DOCDATE DESC"""
+        try:
+            # 要約されたキャッシュがあるかチェック
+            cached_doc_date:int = cache.GetLastDocDate(cursor)
 
-        # 医師記録の取得
-        cursor.execute(select_datax_sql,'MD01', patient_code)
-        rows = cursor.fetchall() 
-        
-        self._soap_by_date_list = []
-        # print("SOAP の取得件数：" + str(len(rows)))
-        for row in rows:
-            datetime = SOAPManager.get_datetime(row[0])
-            # XML のまま GPT に投げても解釈してくれないこともないが、
-            # XML のままだとトークン数をとても消費してしまうので、
-            # XML を解釈して、平文に変換する。
-            soap = DNP(row[1])
-            self._soap_by_date_list.append((datetime, soap))
-        
-        timer.stop()
+            # TODO 日付等の各種取得条件は適宜実装のこと
+            select_datax_sql = """SELECT EXTBDH1.DOCDATE, EXTBDC1.DOC_DATAX FROM EXTBDC1 
+                INNER JOIN EXTBDH1 
+                ON EXTBDC1.DOC_NO = EXTBDH1.DOC_NO
+                AND EXTBDH1.DOC_K = ? 
+                AND EXTBDH1.ACTIVE_FLG = 1 
+                AND EXTBDC1.ACTIVE_FLG = 1 
+                AND EXTBDH1.PID = ?
+                ORDER BY EXTBDH1.DOCDATE DESC"""
+
+            # 医師記録の取得
+            cursor.execute(select_datax_sql,'MD01', patient_code)
+            rows = cursor.fetchall() 
+            new_doc_date:int = -1
+            use_cache = False
+            
+            self._soap_by_date_list = []
+            # print("SOAP の取得件数：" + str(len(rows)))
+            for row in rows:
+                if new_doc_date == -1:
+                    new_doc_date = int(row[0]) if row[0] != None else 0
+                    # print("new_doc_date:" + str(new_doc_date))
+                    # print("cached_doc_date:" + str(cached_doc_date))
+                    if cached_doc_date >= new_doc_date:
+                        # キャッシュがあるので、SOAP を要約しない。
+                        print("キャッシュがあるので、キャッシュを使用する。")
+                        use_cache = True
+
+                        # なぜここで break しないかというと、
+                        # self._soap_by_date_list を後で要約前データ返却用に使用するため。
+                        # break
+                datetime = SOAPManager.get_datetime(row[0])
+                # XML のまま GPT に投げても解釈してくれないこともないが、
+                # XML のままだとトークン数をとても消費してしまうので、
+                # XML を解釈して、平文に変換する。
+                soap = DNP(row[1])
+                self._soap_by_date_list.append((datetime, soap))
+
+            if use_cache == True:
+                cache.GetSummarizedSOAP(cursor)
+                self._is_summarized = True
+                self._summarized_s = cache.SummarizedS
+                self._summarized_o = cache.SummarizedO
+                self._summarized_a = cache.SummarizedA
+                self._summarized_p = cache.SummarizedP
+                self._summarized_b = cache.SummarizedB
+                return
+        finally:
+            cursor.close()
+            cnxn.close()
+            timer.stop()
 
         records = self.SOAP("soapb", True)
         # print("records:" + records)
@@ -217,9 +250,9 @@ class SOAPManager:
         # print("max_tokens_for_soap_contents" + str(max_tokens_for_soap_contents))
 
         if force_original or contents_token <= max_tokens_for_soap_contents:
-            print("SOAP Token 上限に収まるので、要約を行わない。")
+            print("SOAP Token 上限に収まるので、要約を行わない。contents_token: " + str(contents_token))
             return
-        print("SOAP Token 上限に収まらないので、要約を行う。")
+        print("SOAP Token 上限に収まらないので、要約を行う。contents_token: " + str(contents_token))
         self._is_summarized = True
 
         s = ""
@@ -274,6 +307,7 @@ class SOAPManager:
             self._summarized_prompt_tokens += temp[2]
             self._summarized_total_tokens += temp[3]
             self._summarized_log = ''.join([self._summarized_log, temp[4]])
+            cache.AddRowToCache('s', new_doc_date, self._summarized_s, temp[1], temp[2], temp[3], temp[4])
 
         if o != "":
             print("max_tokens_for_soap_contents_o: " + str(max_tokens_for_soap_contents_o))
@@ -285,6 +319,7 @@ class SOAPManager:
             self._summarized_prompt_tokens += temp[2]
             self._summarized_total_tokens += temp[3]
             self._summarized_log = ''.join([self._summarized_log, temp[4]])
+            cache.AddRowToCache('o', new_doc_date, self._summarized_o, temp[1], temp[2], temp[3], temp[4])
 
         if a != "":
             print("max_tokens_for_soap_contents_a: " + str(max_tokens_for_soap_contents_a))
@@ -296,6 +331,7 @@ class SOAPManager:
             self._summarized_prompt_tokens += temp[2]
             self._summarized_total_tokens += temp[3]
             self._summarized_log = ''.join([self._summarized_log, temp[4]])
+            cache.AddRowToCache('a', new_doc_date, self._summarized_a, temp[1], temp[2], temp[3], temp[4])
 
         if p != "":
             print("max_tokens_for_soap_contents_p: " + str(max_tokens_for_soap_contents_p))
@@ -307,6 +343,7 @@ class SOAPManager:
             self._summarized_prompt_tokens += temp[2]
             self._summarized_total_tokens += temp[3]
             self._summarized_log = ''.join([self._summarized_log, temp[4]])
+            cache.AddRowToCache('p', new_doc_date, self._summarized_p, temp[1], temp[2], temp[3], temp[4])
 
         if b != "":
             print("max_tokens_for_soap_contents_b: " + str(max_tokens_for_soap_contents_b))
@@ -318,17 +355,26 @@ class SOAPManager:
             self._summarized_prompt_tokens += temp[2]
             self._summarized_total_tokens += temp[3]
             self._summarized_log = ''.join([self._summarized_log, temp[4]])
-
+            cache.AddRowToCache('b', new_doc_date, self._summarized_b, temp[1], temp[2], temp[3], temp[4])
+   
         # print("_summarized_s : " + self._summarized_s)
         # print("_summarized_o : " + self._summarized_o)
         # print("_summarized_a : " + self._summarized_a)
         # print("_summarized_p : " + self._summarized_p)
         # print("_summarized_b : " + self._summarized_b)
 
-        return
+        # SQL Server に接続する
+        cnxn = SQLConnector.get_conn()
+        cnxn.autocommit = False
+        cursor = cnxn.cursor()
 
-        # 要約はキャッシュしておく
-        # 最終カルテ記載日を記録しておく
+        try:
+            cache.SaveCache(cnxn, cursor)
+        finally:
+            cursor.close()
+            cnxn.close()
+
+        return
 
     @property
     def IsSumarized(self):
