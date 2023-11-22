@@ -1,155 +1,29 @@
-import os
-from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
+from lib.documentformatmanager import DocumentFormatManager
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
+DEFAULT_DEPARTMENT_CODE = "0000"
 
 class GetDocumentFormatApproach(Approach):
     def __init__(self, sourcepage_field: str, content_field: str):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-
     def run(self, document_name: str, department_code:str, 
             icd10_code:str, 
             user_id:str,
             force_master:bool   # マスターを強制的に取得するかどうか
             ) -> any:
         
-        # print(user_id)
+        manager = DocumentFormatManager(
+            document_name, department_code,
+            icd10_code, 
+            user_id,
+            force_master)
+        ret_system_contetns = manager.get_system_contents()
+        system_contetns = ret_system_contetns[0]
+        system_contetns_suffix = ret_system_contetns[1]
+        rows = manager.get_document_format()
 
-        # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
-
-        gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
-        # print(gpt_model_name)
-        if gpt_model_name is None:
-            gpt_model_name = "gpt-35-turbo"
-
-        # システムコンテンツの取得
-        select_system_content_master_sql = """SELECT 
-                ISNULL(Question, '') AS Question,
-                ISNULL(QuestionSuffix, '') AS QuestionSuffix
-            FROM DocumentFormat 
-            WHERE IsMaster = 1
-            AND DepartmentCode = ?
-            AND Icd10Code = ?
-            AND DocumentName = ?
-            AND Kind = ?
-            AND GPTModelName = ?
-            AND IsDeleted = 0"""
-        if force_master:
-            cursor.execute(select_system_content_master_sql,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-        else:
-            select_system_contents_sql = """SELECT 
-                    ISNULL(Question, '') AS Question,
-                    ISNULL(QuestionSuffix, '') AS QuestionSuffix
-                FROM DocumentFormat 
-                WHERE IsMaster = 0
-                AND UserId = ?
-                AND DepartmentCode = ?
-                AND Icd10Code = ?
-                AND DocumentName = ?
-                AND Kind = ?
-                AND GPTModelName = ?
-                AND IsDeleted = 0
-                ORDER BY OrderNo"""
-            cursor.execute(select_system_contents_sql,
-                        user_id,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)            
-        rows = cursor.fetchall() 
-
-        # HIT しなかった場合は、マスターを取得する
-        if len(rows) == 0:
-            cursor.execute(select_system_content_master_sql,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-            rows = cursor.fetchall() 
-        
-        system_contetns = ""
-        system_contetns_suffix = ""
-        for row in rows:
-            system_contetns = row[0]
-            system_contetns_suffix = row[1]
-            break
-        
-        # ドキュメントフォーマットの取得
-        select_document_format_master_sql = """SELECT 
-                Id, 
-                Kind, 
-                CategoryName, 
-                OrderNo,
-                Temperature,
-                ISNULL(Question, '') AS Question,
-                ISNULL(QuestionSuffix, '') AS QuestionSuffix,
-                ResponseMaxTokens,
-                TargetSoapRecords, 
-                UseAllergyRecords, 
-                UseDischargeMedicineRecords 
-            FROM DocumentFormat 
-            WHERE IsMaster = 1
-            AND DepartmentCode = ?
-            AND Icd10Code = ?
-            AND DocumentName = ?
-            AND Kind <> ?
-            AND GPTModelName = ?
-            AND IsDeleted = 0
-            ORDER BY OrderNo"""
-        if force_master:
-            cursor.execute(select_document_format_master_sql,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-        else:
-            select_document_format_sql = """SELECT 
-                    Id, 
-                    Kind, 
-                    CategoryName, 
-                    OrderNo,
-                    Temperature,
-                    ISNULL(Question, '') AS Question,
-                    ISNULL(QuestionSuffix, '') AS QuestionSuffix,
-                    ResponseMaxTokens,
-                    TargetSoapRecords, 
-                    UseAllergyRecords, 
-                    UseDischargeMedicineRecords 
-                FROM DocumentFormat 
-                WHERE IsMaster = 0
-                AND UserId = ?
-                AND DepartmentCode = ?
-                AND Icd10Code = ?
-                AND DocumentName = ?
-                AND Kind <> ?
-                AND GPTModelName = ?
-                AND IsDeleted = 0
-                ORDER BY OrderNo"""
-            cursor.execute(select_document_format_sql,
-                        user_id,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)            
-        rows = cursor.fetchall() 
-
-        # HIT しなかった場合は、マスターを取得する
-        if len(rows) == 0:
-            cursor.execute(select_document_format_master_sql,
-                        department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-            rows = cursor.fetchall() 
-        
         ret = []
         for row in rows:
             isS = False

@@ -20,7 +20,9 @@ from approaches.gethistorydetail import GetHistoryDetailApproach
 from approaches.getsoap import GetSoapApproach
 from approaches.getdocumentfotmat import GetDocumentFormatApproach
 from approaches.updatedocumentfotmat import UpdateDocumentFormatApproach
+from approaches.geticd10master import GetIcd10MasterApproach
 from azure.storage.blob import BlobServiceClient
+from lib.sqlconnector import SQLConnector
 
 # Replace these with your own values, either in environment variables or directly here
 AZURE_STORAGE_ACCOUNT = os.environ.get("AZURE_STORAGE_ACCOUNT") or "mystorageaccount"
@@ -61,6 +63,8 @@ else:
     openai.api_type = "azure"
     openai.api_key = AZURE_OPENAI_KEY
 
+sql_connector = SQLConnector()
+
 # Set up clients for Cognitive Search and Storage
 search_client = SearchClient(
     endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
@@ -80,11 +84,11 @@ ask_approaches = {
 }
 
 document_approaches = {
-    "rrr": ReadRetrieveDocumentReadApproach(search_client, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": ReadRetrieveDocumentReadApproach(search_client, sql_connector, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 discharge_approaches = {
-    "rrr": ReadRetrieveDischargeReadApproach(search_client, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": ReadRetrieveDischargeReadApproach(search_client, sql_connector, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 chat_approaches = {
@@ -92,32 +96,36 @@ chat_approaches = {
 }
 
 chat_patient_approaches = {
-    "rrr": ChatPatientReadRetrieveReadApproach(search_client, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": ChatPatientReadRetrieveReadApproach(search_client, sql_connector, AZURE_OPENAI_CHATGPT_DEPLOYMENT, AZURE_OPENAI_GPT_DEPLOYMENT, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_patient_approaches = {
-    "rrr": GetPatientApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": GetPatientApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_patient_old_approaches = {
-    "rrr": GetPatientOldApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": GetPatientOldApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_history_index_approaches = {
-    "rrr": GetHistoryIndexApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": GetHistoryIndexApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_history_detail_approaches = {
-    "rrr": GetHistoryDetailApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "rrr": GetHistoryDetailApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 soap_approaches = {
-    "get": GetSoapApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "get": GetSoapApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 document_format_approaches = {
-    "get": GetDocumentFormatApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
-    "upd": UpdateDocumentFormatApproach(KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "get": GetDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
+    "upd": UpdateDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
+get_icd10_master_approaches = {
+    "get": GetIcd10MasterApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 
@@ -316,5 +324,18 @@ def ensure_openai_token():
         openai_token = azure_credential.get_token("https://cognitiveservices.azure.com/.default")
         openai.api_key = openai_token.token
     
+@app.route("/get_icd10_master", methods=["POST"])
+def get_icd10_master():
+    try:
+        impl = get_icd10_master_approaches.get("get")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["code_level"], request.json["parent_code"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_icd10_master")
+        return jsonify({"error": str(e)}), 500
+    
 if __name__ == "__main__":
     app.run()
+

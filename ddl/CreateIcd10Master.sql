@@ -14,6 +14,11 @@ CREATE TABLE Icd10Master (
     CodeLevel INT,
 
     ------------------
+    -- 上位階層の ICD10 コード
+    ------------------
+    ParentIcd10Code NVARCHAR(16),
+
+    ------------------
     -- Caption
     ------------------
     Caption NVARCHAR(256),

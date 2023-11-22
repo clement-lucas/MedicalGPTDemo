@@ -15,8 +15,10 @@ The assistant will answer questions about the contents of the medical records as
 Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below.
 """ 
 
-    def __init__(self, search_client: SearchClient, chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str):
+    def __init__(self, search_client: SearchClient, sql_connector:SQLConnector, 
+                 chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str):
         self.search_client = search_client
+        self.sql_connector = sql_connector
         self.chatgpt_deployment = chatgpt_deployment
         self.gpt_deployment = gpt_deployment
         self.sourcepage_field = sourcepage_field
@@ -29,15 +31,14 @@ Answer ONLY with the facts listed in the list of sources below. If there isn't e
         # print(patient_code)
 
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
+        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
-        # SQL Server から患者情報を取得する
-        cursor.execute("""SELECT TOP (1000) 
-            CONVERT(VARCHAR,[Date],111) + ':' + [Record] AS Record
-            FROM [dbo].[MedicalRecord] WHERE IsDeleted = 0 AND PatientCode = ?""", patient_code)
-        #cursor.execute('SELECT Name FROM Patient WHERE PatientCode = ?', patient_code)
-        rows = cursor.fetchall() 
+            # SQL Server から患者情報を取得する
+            cursor.execute("""SELECT
+                CONVERT(VARCHAR,[Date],111) + ':' + [Record] AS Record
+                FROM [dbo].[MedicalRecord] WHERE IsDeleted = 0 AND PatientCode = ?""", patient_code)
+            #cursor.execute('SELECT Name FROM Patient WHERE PatientCode = ?', patient_code)
+            rows = cursor.fetchall() 
         records = ""
         for row in rows:
             # print(row[0])

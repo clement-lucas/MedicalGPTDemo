@@ -86,6 +86,7 @@ class SOAPCacheManager:
     def SaveCache(self, cnxn, cursor):
         if len(self._rows_to_insert) == 0:
             return
+        
         try:
             # 既存キャッシュの論理削除
             delete_sql = """
