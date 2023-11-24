@@ -2,7 +2,6 @@ from approaches.approach import Approach
 from lib.sqlconnector import SQLConnector
 from lib.documentformatmanager import DocumentFormatManager
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
-DEFAULT_DEPARTMENT_CODE = "0000"
 
 class GetDocumentFormatApproach(Approach):
     def __init__(self, sql_connector:SQLConnector, sourcepage_field: str, content_field: str):
@@ -10,23 +9,14 @@ class GetDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, document_name: str, department_code:str, 
-            icd10_code:str, 
-            user_id:str,
-            force_master:bool   # マスターを強制的に取得するかどうか
+    def run(self, document_format_file_id:int
             ) -> any:
         print("GetDocumentFormatApproach.run")  
-        print("document_name:" + document_name)
-        print("department_code:" + department_code)
-        print("icd10_code:" + icd10_code)
-        print("user_id:" + user_id)
+        print("document_format_file_id:" + document_format_file_id)
 
         manager = DocumentFormatManager(
             self.sql_connector,
-            document_name, department_code,
-            icd10_code, 
-            user_id,
-            force_master)
+            document_format_file_id)
         ret_system_contetns = manager.get_system_contents()
         system_contetns = ret_system_contetns[0]
         system_contetns_suffix = ret_system_contetns[1]

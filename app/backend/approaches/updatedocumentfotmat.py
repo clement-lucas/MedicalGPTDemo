@@ -9,14 +9,11 @@ class UpdateDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, document_name: str, department_code:str, 
-            icd10_code:str, user_id:str, 
+    def run(self, document_format_file_id, user_id:str, 
             system_contents:str, system_contents_suffix:str, document_formats: []
             ) -> any:
         print("UpdateDocumentFormatApproach.run")  
-        print("document_name:" + document_name)
-        print("department_code:" + department_code)
-        print("icd10_code:" + icd10_code)
+        print("document_format_file_id:" + document_format_file_id)
         print("user_id:" + user_id)
 
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
