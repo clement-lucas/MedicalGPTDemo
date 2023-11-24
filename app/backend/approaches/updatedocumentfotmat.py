@@ -13,6 +13,11 @@ class UpdateDocumentFormatApproach(Approach):
             icd10_code:str, user_id:str, 
             system_contents:str, system_contents_suffix:str, document_formats: []
             ) -> any:
+        print("UpdateDocumentFormatApproach.run")  
+        print("document_name:" + document_name)
+        print("department_code:" + department_code)
+        print("icd10_code:" + icd10_code)
+        print("user_id:" + user_id)
 
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
         # print(gpt_model_name)

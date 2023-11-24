@@ -115,17 +115,30 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         prompt = ""
 
-        kind = row[0]
-        categoryName = row[1]
-        temperature = row[2]
-        question = row[3]
+        # id:row[0],
+        # kind:row[1],
+        # category_name:row[2],
+        # order_no:row[3], 
+        # temperature:row[4],
+        # temperature_str:str(row[4]),
+        # question:row[5],
+        # question_suffix:row[6],
+        # response_max_tokens:row[7],
+        # target_soap:row[8],
+        # use_allergy_records:row[9],
+        # use_discharge_medicine_records:row[10]
 
-        response_max_tokens = row[4]
-        targetSoapRecords = row[5]
+        kind = row[1]
+        categoryName = row[2]
+        temperature = row[4]
+        question = row[5]
+
+        response_max_tokens = row[7]
+        targetSoapRecords = row[8]
 
         # 以下は今は見ていない
-        useAllergyRecords = row[6]
-        useDischargeMedicineRecords = row[7]
+        useAllergyRecords = row[9]
+        useDischargeMedicineRecords = row[10]
         print(categoryName + "の処理開始")
 
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
@@ -222,10 +235,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
         timer_total = LapTimer()
         timer_total.start("退院時サマリ作成処理全体")
 
-        # print("run")
-        # print(document_name)
-        # print(patient_code)
-
+        print("document_name:" + document_name)
+        print("patient_code:" + patient_code)
+        print("department_code:" + department_code)
+        print("icd10_code:" + icd10_code)
+        print("user_id:" + user_id)
+                
         self.gptconfigmanager = GPTConfigManager(self.sql_connector)
 
         # SQL Server に接続する

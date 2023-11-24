@@ -4,7 +4,9 @@ import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest,
     GetSoapRequest, GetSoapResponse, 
     GetDocumentFormatRequest, GetDocumentFormatResponse,
     UpdateDocumentFormatRequest as UpdateDocumentFormatRequest, UpdateDocumentFormatResponse as UpdateDocumentFormatResponse, 
-    GetIcd10MasterRequest, GetIcd10MasterResponse} from "./models";
+    GetIcd10MasterRequest, GetIcd10MasterResponse,
+    GetDepartmentMasterRequest, GetDepartmentMasterResponse,
+} from "./models";
 
 export async function askApi(options: AskRequest): Promise<AskResponse> {
     const response = await fetch("/ask", {
@@ -368,6 +370,23 @@ export async function getIcd10MasterApi( options: GetIcd10MasterRequest): Promis
     });
 
     const parsedResponse: GetIcd10MasterResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
+}
+
+export async function getDepartmentMasterApi( options: GetDepartmentMasterRequest): Promise<GetDepartmentMasterResponse> {
+    const response = await fetch("/get_department_master", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+        })
+    });
+
+    const parsedResponse: GetDepartmentMasterResponse = await response.json();
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }

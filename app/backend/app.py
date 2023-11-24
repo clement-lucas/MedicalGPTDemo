@@ -21,6 +21,7 @@ from approaches.getsoap import GetSoapApproach
 from approaches.getdocumentfotmat import GetDocumentFormatApproach
 from approaches.updatedocumentfotmat import UpdateDocumentFormatApproach
 from approaches.geticd10master import GetIcd10MasterApproach
+from approaches.getdepartmentmaster import GetDepartmentMasterApproach
 from azure.storage.blob import BlobServiceClient
 from lib.sqlconnector import SQLConnector
 
@@ -128,6 +129,10 @@ get_icd10_master_approaches = {
     "get": GetIcd10MasterApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
+get_department_master_approaches = {
+    "get": GetDepartmentMasterApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+}
+
 
 app = Flask(__name__)
 
@@ -185,8 +190,8 @@ def discharge():
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(request.json["document_name"], 
                      request.json["patient_code"], 
-                     request.json["icd10_code"], 
                      request.json["department_code"], 
+                     request.json["icd10_code"], 
                      request.json["user_id"],
                      request.json.get("overrides") or {})
         return jsonify(r)
@@ -334,6 +339,18 @@ def get_icd10_master():
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_icd10_master")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route("/get_department_master", methods=["POST"])
+def get_department_master():
+    try:
+        impl = get_department_master_approaches.get("get")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run()
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_department_master")
         return jsonify({"error": str(e)}), 500
     
 if __name__ == "__main__":

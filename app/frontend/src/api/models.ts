@@ -186,3 +186,16 @@ export type GetIcd10MasterResponse = {
     records: Icd10Master[];
     error?: string;
 };
+
+export type DepartmentMaster = {
+    department_code: string;
+    department_name: string;
+};
+
+export type GetDepartmentMasterRequest = {
+};
+
+export type GetDepartmentMasterResponse = {
+    records: DepartmentMaster[];
+    error?: string;
+};

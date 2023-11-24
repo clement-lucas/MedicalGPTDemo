@@ -10,7 +10,8 @@ import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryInde
     , DocumentFormat
     , getDocumentFormatApi, GetDocumentFormatRequest
     , updateDocumentFormatApi, UpdateDocumentFormatRequest 
-    , getIcd10MasterApi, GetIcd10MasterRequest} from "../../api";
+    , getIcd10MasterApi, GetIcd10MasterRequest
+    , getDepartmentMasterApi, GetDepartmentMasterRequest} from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
 import { DischargeButton } from "../../components/Example/DischargeButton";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
@@ -59,6 +60,7 @@ const momorySlotOptions: IDropdownOption[] = [
 
 const Discharge = () => {
     const DEFAULT_DEPARTMENT_CODE: string = "0000";
+    const DEFAULT_DEPARTMENT_NAME: string = "診療科 指定なし";
     const DEFAULT_ICD10_CODE: string = "0000";
     const DEFAULT_ICD10_NAME: string = "特に指定しない";
     const DEFAULT_USER_ID: string = "00000001";
@@ -96,7 +98,7 @@ const Discharge = () => {
     const [systemContentsSuffix, setSystemContentsSuffix] = useState<string>("");
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
     const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
-    const [slot, setSlot] = useState<string>();
+    const [selectedSlot, setSelectedSlot] = useState<string>("");
     const [icd10Options0, setIcd10Options0] = useState<IDropdownOption[]>([]);
     const [icd10Options1, setIcd10Options1] = useState<IDropdownOption[]>([]);
     const [icd10Options2, setIcd10Options2] = useState<IDropdownOption[]>([]);
@@ -104,19 +106,27 @@ const Discharge = () => {
     const [selectedIcd10Code1, setSelectedIcd10Code1] = useState<string>("");
     const [selectedIcd10Code2, setSelectedIcd10Code2] = useState<string>("");
     const [selectedIcd10CodeMax, setSelectedIcd10CodeMax] = useState<string>("");
-    const [selectedIcd10CaptionMax, setSelectedIcd10CaptionMax] = useState<string>("");
     const [isLoadingIcd10Master0, setIsLoadingIcd10Master0] = useState<boolean>(false);
     const [isLoadingIcd10Master1, setIsLoadingIcd10Master1] = useState<boolean>(false);
     const [isLoadingIcd10Master2, setIsLoadingIcd10Master2] = useState<boolean>(false);
-    const icd10DropDownStyle: React.CSSProperties = { width: 200 };
+    const icd10DropDownStyle: React.CSSProperties = { width: 600 };
+    const [departmentOptions, setDepartmentOptions] = useState<IDropdownOption[]>([]);
+    const [isLoadingDepartmentMaster, setIsLoadingDepartmentMaster] = useState<boolean>(false);
+    const [selectedDepartmentCode, setSelectedDepartmentCode] = useState<string>("");
+    const [selectedDepartmentName, setSelectedDepartmentName] = useState<string>("");
 
     const onLoad = async () => {
         setIsDocumnetFormatSettingVisible(false);
         setIcd10Options0(defaultIcd10Options);
         setIcd10Options1(defaultIcd10Options);
         setIcd10Options2(defaultIcd10Options);
+        setSelectedIcd10Code0(DEFAULT_ICD10_CODE);
+        setSelectedIcd10Code1(DEFAULT_ICD10_CODE);
+        setSelectedIcd10Code2(DEFAULT_ICD10_CODE);
+        setSelectedIcd10CodeMax(DEFAULT_ICD10_CODE);
         getIcd10Master(0, "");
-        setSlot('slot1');
+        getDepartmentMaster();
+        setSelectedSlot('slot1');
         await getHistoryIndex();
     }
 
@@ -159,42 +169,14 @@ const Discharge = () => {
         }
     }
 
-    const getSelectedIcd10Code = () => {
-        if (selectedIcd10Code2 !== "" && selectedIcd10Code2 !== DEFAULT_ICD10_CODE) {
-            // icd10Options2 から selectedIcd10Code2 の text を取得
-            for (let icd10 of icd10Options2) {
-                if (icd10.key === selectedIcd10Code2) {
-                    return [selectedIcd10Code2, icd10.text];
-                }
-            }
-        }
-        if (selectedIcd10Code1 !== "" && selectedIcd10Code1 !== DEFAULT_ICD10_CODE) {
-            // icd10Options1 から selectedIcd10Code1 の text を取得
-            for (let icd10 of icd10Options1) {
-                if (icd10.key === selectedIcd10Code1) {
-                    return [selectedIcd10Code1, icd10.text];
-                }
-            }
-        }
-        if (selectedIcd10Code0 !== "" && selectedIcd10Code0 !== DEFAULT_ICD10_CODE) {
-            // icd10Options0 から selectedIcd10Code0 の text を取得
-            for (let icd10 of icd10Options0) {
-                if (icd10.key === selectedIcd10Code0) {
-                    return [selectedIcd10Code0, icd10.text];
-                }
-            }
-        }
-        return [DEFAULT_ICD10_CODE, DEFAULT_ICD10_NAME];
-    }
-
-    const getDocumentFormat = async (force_master:boolean, slotValue:string) => {
+    const getDocumentFormat = async (force_master:boolean, departmentCode:string, slot:string, icd10Code:string) => {
         setIsLoadingDocumnetFormatSetting(true);
         try {
             const request: GetDocumentFormatRequest = {
                 document_name: DOCUMENT_NAME,
-                department_code: DEFAULT_DEPARTMENT_CODE,
-                icd10_code: selectedIcd10CodeMax ? selectedIcd10CodeMax : DEFAULT_ICD10_CODE,
-                user_id: slotValue ? slotValue : '',
+                department_code: departmentCode ? departmentCode : DEFAULT_DEPARTMENT_CODE,
+                icd10_code: icd10Code ? icd10Code : DEFAULT_ICD10_CODE,
+                user_id: slot ? slot : '',
                 force_master: force_master,
             };
             const result = await getDocumentFormatApi(request);
@@ -213,9 +195,9 @@ const Discharge = () => {
         try {
             const request: UpdateDocumentFormatRequest = {
                 document_name: DOCUMENT_NAME,
-                department_code: DEFAULT_DEPARTMENT_CODE,
-                icd10_code: DEFAULT_ICD10_CODE,
-                user_id: slot ? slot : '',
+                department_code: selectedDepartmentCode ? selectedDepartmentCode : DEFAULT_DEPARTMENT_CODE,
+                icd10_code: selectedIcd10CodeMax ? selectedIcd10CodeMax : DEFAULT_ICD10_CODE,
+                user_id: selectedSlot ? selectedSlot : '',
                 system_contents: systemContents,
                 system_contents_suffix: systemContentsSuffix,
                 document_formats: documentFormats,
@@ -273,13 +255,34 @@ const Discharge = () => {
             }
             setIcd10Options(codeLevel, options);
             setSelectedIcd10(codeLevel, DEFAULT_ICD10_CODE);
-            setSelectedIcd10CodeMax(DEFAULT_ICD10_CODE)
-            setSelectedIcd10CaptionMax(DEFAULT_ICD10_NAME)
         } catch (e) {
             alert(e)
             //setError(e);
         } finally {
             setIsLoadingIcd10Master(codeLevel, false);
+        }
+    }
+
+    const getDepartmentMaster = async () => {
+        setIsLoadingDepartmentMaster(true);
+
+        try {
+            const request: GetDepartmentMasterRequest = {
+            };
+            const result = await getDepartmentMasterApi(request);
+
+            const options: IDropdownOption[] = [{ key: DEFAULT_DEPARTMENT_CODE, text: DEFAULT_DEPARTMENT_NAME}]
+            for (let department of result.records) {
+                options.push({ key: department.department_code, text: department.department_code + " " + department.department_name });
+            }
+            setDepartmentOptions(options);
+            setSelectedDepartmentCode(DEFAULT_DEPARTMENT_CODE);
+            setSelectedDepartmentName(DEFAULT_DEPARTMENT_NAME);
+        } catch (e) {
+            alert(e)
+            //setError(e);
+        } finally {
+            setIsLoadingDepartmentMaster(false);
         }
     }
 
@@ -300,9 +303,9 @@ const Discharge = () => {
             const request: DischargeRequest = {
                 documentName: documentName,
                 patientCode: patientCode,
-                departmentCode: DEFAULT_DEPARTMENT_CODE,
+                departmentCode: selectedDepartmentCode ? selectedDepartmentCode : DEFAULT_DEPARTMENT_CODE,
                 icd10Code: selectedIcd10CodeMax ? selectedIcd10CodeMax : DEFAULT_ICD10_CODE,
-                userId: slot ? slot : '',
+                userId: selectedSlot ? selectedSlot : '',
                 approach: Approaches.ReadRetrieveRead,
                 overrides: {
                     promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
@@ -342,7 +345,7 @@ const Discharge = () => {
         // 入力チェック
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
-            if (slot === undefined || slot === "") {
+            if (selectedSlot === undefined || selectedSlot === "") {
                 errorMessages += "保存先のスロットが選択されていません。\n";
             }
             // newValue が float に変換できるかチェック
@@ -391,7 +394,7 @@ const Discharge = () => {
         if (!result) {
             return;
         }
-        getDocumentFormat(true, slot ? slot : '');
+        getDocumentFormat(true, selectedDepartmentCode, selectedSlot, selectedIcd10CodeMax);
         setIsDocumentFormatSettingEdited(true);
     }
 
@@ -624,16 +627,32 @@ const Discharge = () => {
             if (isDocumentFormatSettingEdited) {
                 const result = window.confirm("スロットを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
                 if (!result) {
-                    setSlot(slot ? slot : '');
+                    setSelectedSlot(selectedSlot ? selectedSlot : '');
                     return;
                 }
             }
-            getDocumentFormat(false, newSlot);
+            getDocumentFormat(false, selectedDepartmentCode, newSlot, selectedIcd10CodeMax);
             setIsDocumentFormatSettingEdited(false);
         }
     }
 
-    const onChangeIcd10Code = (codeLevel:number, newCode: string) => {
+    const onChangeDepartment = (newCode: string, newName:string) => {
+        if (isDocumnetFormatSettingVisible) {
+            if (isDocumentFormatSettingEdited) {
+                const result = window.confirm("診療科を切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
+                if (!result) {
+                    setSelectedSlot(selectedSlot ? selectedSlot : '');
+                    return;
+                }
+            }
+            getDocumentFormat(false, newCode, selectedSlot, selectedIcd10CodeMax);
+            setIsDocumentFormatSettingEdited(false);
+        }
+        setSelectedDepartmentCode(newCode);
+        setSelectedDepartmentName(newName);
+    }
+
+    const onChangeIcd10Code = (codeLevel:number, newCode: string, newText: string) => {
         if (isDocumnetFormatSettingVisible) {
             if (isDocumentFormatSettingEdited) {
                 const result = window.confirm("使用するプロンプトを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
@@ -650,19 +669,33 @@ const Discharge = () => {
             setIcd10Options(i, defaultIcd10Options);
             setSelectedIcd10(i, DEFAULT_ICD10_CODE);
         }
-        if (codeLevel < 2) {
+        if (codeLevel < 2 && newCode != DEFAULT_ICD10_CODE) {
             // 子の階層のマスターを取得
             getIcd10Master(codeLevel + 1, newCode);
         }
-        let selectedIcd10 = getSelectedIcd10Code();
-        setSelectedIcd10CodeMax(selectedIcd10[0]);
-        setSelectedIcd10CaptionMax(selectedIcd10[1]);
+
+        let selectedCode = DEFAULT_ICD10_CODE;
+        if (newCode != DEFAULT_ICD10_CODE) {
+            // 指定なし以外が選択された
+            selectedCode = newCode;
+        } else {
+            // 指定なしが選択された
+            if (codeLevel === 2) {
+                selectedCode = selectedIcd10Code1;
+            } else if (codeLevel === 1) {
+                selectedCode = selectedIcd10Code0;
+            }
+        }
+        setSelectedIcd10CodeMax(selectedCode);
+        if (isDocumnetFormatSettingVisible) {
+            getDocumentFormat(false, selectedDepartmentCode, selectedSlot, selectedCode);
+        }
     }
 
     const onDocumentFormatEditClicked = () => {
         if (!isDocumnetFormatSettingVisible) {
             // 開く
-            getDocumentFormat(false, slot ? slot : '');
+            getDocumentFormat(false, selectedDepartmentCode, selectedSlot, selectedIcd10CodeMax);
             setIsDocumnetFormatSettingVisible(true);
         } else {
             // 閉じる
@@ -801,50 +834,48 @@ const Discharge = () => {
                                 />)}
                             <br></br>
                             <Label>プロンプトとして使用する疾病コードを選ぶ</Label>
-                            <Stack horizontal>
-                                <Label>大項目: </Label>
-                                {isLoadingIcd10Master0 && <Spinner label="Loading icd10 master" />}
-                                {!isLoadingIcd10Master0 && (
-                                    <Dropdown
-                                        style={icd10DropDownStyle}
-                                        placeholder="Select icd10 code"
-                                        options={icd10Options0}
-                                        selectedKey={selectedIcd10Code0}
-                                        onChange={(e, newValue) => {
-                                            setSelectedIcd10Code0(newValue?.key as string || '');
-                                            onChangeIcd10Code(0, newValue?.key as string || '');
-                                        }}
-                                    />            
-                                )}
-                                <Label>　中項目: </Label>
-                                {isLoadingIcd10Master1 && <Spinner label="Loading icd10 master" />}
-                                {!isLoadingIcd10Master1 && (
-                                    <Dropdown 
-                                        style={icd10DropDownStyle}
-                                        placeholder="Select icd10 code"
-                                        options={icd10Options1}
-                                        selectedKey={selectedIcd10Code1}
-                                        onChange={(e, newValue) => {
-                                            setSelectedIcd10Code1(newValue?.key as string || '');
-                                            onChangeIcd10Code(1, newValue?.key as string || '');
-                                        }}
-                                    />            
-                                )}
-                                <Label>　小項目: </Label>
-                                {isLoadingIcd10Master2 && <Spinner label="Loading icd10 master" />}
-                                {!isLoadingIcd10Master2 && (
-                                    <Dropdown 
-                                        style={icd10DropDownStyle}
-                                        placeholder="Select icd10 code"
-                                        options={icd10Options2}
-                                        selectedKey={selectedIcd10Code2}
-                                        onChange={(e, newValue) => {
-                                            setSelectedIcd10Code2(newValue?.key as string || '');
-                                            onChangeIcd10Code(2, newValue?.key as string || '');
-                                        }}
-                                    />            
-                                )}
-                            </Stack>
+                            <Label>大項目</Label>
+                            {isLoadingIcd10Master0 && <Spinner label="Loading icd10 master" />}
+                            {!isLoadingIcd10Master0 && (
+                                <Dropdown
+                                    style={icd10DropDownStyle}
+                                    placeholder="Select icd10 code"
+                                    options={icd10Options0}
+                                    selectedKey={selectedIcd10Code0}
+                                    onChange={(e, newValue) => {
+                                        setSelectedIcd10Code0(newValue?.key as string || '');
+                                        onChangeIcd10Code(0, newValue?.key as string || '', newValue?.text as string || '');
+                                    }}
+                                />            
+                            )}
+                            <Label>中項目</Label>
+                            {isLoadingIcd10Master1 && <Spinner label="Loading icd10 master" />}
+                            {!isLoadingIcd10Master1 && (
+                                <Dropdown 
+                                    style={icd10DropDownStyle}
+                                    placeholder="Select icd10 code"
+                                    options={icd10Options1}
+                                    selectedKey={selectedIcd10Code1}
+                                    onChange={(e, newValue) => {
+                                        setSelectedIcd10Code1(newValue?.key as string || '');
+                                        onChangeIcd10Code(1, newValue?.key as string || '', newValue?.text as string || '');
+                                    }}
+                                />            
+                            )}
+                            <Label>小項目</Label>
+                            {isLoadingIcd10Master2 && <Spinner label="Loading icd10 master" />}
+                            {!isLoadingIcd10Master2 && (
+                                <Dropdown 
+                                    style={icd10DropDownStyle}
+                                    placeholder="Select icd10 code"
+                                    options={icd10Options2}
+                                    selectedKey={selectedIcd10Code2}
+                                    onChange={(e, newValue) => {
+                                        setSelectedIcd10Code2(newValue?.key as string || '');
+                                        onChangeIcd10Code(2, newValue?.key as string || '', newValue?.text as string || '');
+                                    }}
+                                />            
+                            )}
                             <br></br>
                             <DocumentFormatEditButton 
                                 onClick={ onDocumentFormatEditClicked } />
@@ -897,23 +928,36 @@ const Discharge = () => {
             </div>
 
         </div>
-        <Dropdown 
+        <div>
+            {isLoadingDepartmentMaster && <Spinner label="Loading department master" />}
+            {!isLoadingDepartmentMaster && (
+                <Dropdown 
+                    placeholder="Select department"
+                    options={departmentOptions}
+                    selectedKey={selectedDepartmentCode}
+                    onChange={(e, newValue) => {
+                        onChangeDepartment(newValue?.key as string || '', newValue?.text as string || '');
+                    }}
+                />            
+                )}
+                <br></br>
+            <Dropdown 
                 placeholder="Select prompt slot"
                 options={momorySlotOptions}
-                selectedKey={slot}
+                selectedKey={selectedSlot}
                 onChange={(e, newValue) => {
-                    setSlot(newValue?.key as string || '');
+                    setSelectedSlot(newValue?.key as string || '');
                     onChangeSlot(newValue?.key as string || '');
                 }}
             />            
+        </div>
         { isDocumnetFormatSettingVisible && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
                     documentName={DOCUMENT_NAME}
-                    departmentCode={DEFAULT_DEPARTMENT_CODE}
+                    departmentCode={selectedDepartmentCode}
                     icd10Code={selectedIcd10CodeMax}
-                    icd10Name={selectedIcd10CaptionMax}
-                    userId={slot ? slot : ''}
+                    userId={selectedSlot ? selectedSlot : ''}
                     systemContents={systemContents}
                     documentFormats={documentFormats}
                     isLoading={isLoadingDocumnetFormatSetting}

@@ -15,7 +15,7 @@ class GetIcd10MasterApproach(Approach):
         # 接続文字列を取得する
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
-            # SQL Server から履歴情報を取得する
+            # SQL Server から情報を取得する
             if parentCode == "":
                 cursor.execute("""
                     SELECT Icd10Code
