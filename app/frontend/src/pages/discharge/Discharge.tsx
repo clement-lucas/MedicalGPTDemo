@@ -35,6 +35,7 @@ export type DayOfHistoryIndex = {
 
 // TODO ユーザー認証の仕組みができるまでのつなぎとしての SLOT。
 const momorySlotOptions: IDropdownOption[] = [
+    { key: '', text: 'Prompt Slot 指定なし' },
     { key: 'slot1', text: 'Prompt Slot 1' },
     { key: 'slot2', text: 'Prompt Slot 2' },
     { key: 'slot3', text: 'Prompt Slot 3' },
@@ -126,7 +127,7 @@ const Discharge = () => {
         setSelectedIcd10CodeMax(DEFAULT_ICD10_CODE);
         getIcd10Master(0, "");
         getDepartmentMaster();
-        setSelectedSlot('slot1');
+        setSelectedSlot('');
         await getHistoryIndex();
     }
 
@@ -345,9 +346,6 @@ const Discharge = () => {
         // 入力チェック
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
-            if (selectedSlot === undefined || selectedSlot === "") {
-                errorMessages += "保存先のスロットが選択されていません。\n";
-            }
             // newValue が float に変換できるかチェック
             const temperature = Number(documentFormat.temperature_str);
             if (isNaN(temperature) || temperature < 0 || temperature > 1) {

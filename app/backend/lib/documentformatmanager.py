@@ -65,7 +65,7 @@ class DocumentFormatManager:
     def parent_list(self):
         return self._parent_list
 
-    def _get_system_contents_by_user(self, cnxn) -> str:
+    def _get_system_contents_by_department_and_user(self, cnxn, department_code:str, user_id:str) -> str:
         with cnxn.cursor() as cursor:
             # システムコンテンツの取得
             select_system_contents_sql = """SELECT 
@@ -82,8 +82,8 @@ class DocumentFormatManager:
                 AND IsDeleted = 0
                 ORDER BY OrderNo"""
             cursor.execute(select_system_contents_sql,
-                        self._user_id,
-                        self._department_code, self._icd10_code,
+                        user_id,
+                        department_code, self._icd10_code,
                         self._document_name,
                         DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                         self._gpt_model_name)            
@@ -94,8 +94,8 @@ class DocumentFormatManager:
                 for parent_code in self._parent_list:
                     # 上位階層の ICD10 該当レコードを取得する
                     cursor.execute(select_system_contents_sql,
-                                self._user_id,
-                                self._department_code, parent_code,
+                                user_id,
+                                department_code, parent_code,
                                 self._document_name,
                                 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                                 self._gpt_model_name)  
@@ -105,8 +105,8 @@ class DocumentFormatManager:
             if len(rows) == 0:
                 # 最上位階層まで遡ったが、HIT しなかった場合は、ICD10「指定なし」
                 cursor.execute(select_system_contents_sql,
-                            self._user_id,
-                            self._department_code, DEFAULT_ICD10_CODE,
+                            user_id,
+                            department_code, DEFAULT_ICD10_CODE,
                             self._document_name,
                             DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                             self._gpt_model_name)            
@@ -164,17 +164,27 @@ class DocumentFormatManager:
 
             rows = []
             if self._force_master == False:
-                rows = self._get_system_contents_by_user(cnxn)
+                rows = self._get_system_contents_by_department_and_user(cnxn, self._department_code, self._user_id)
 
-            # HIT しなかった場合、または force_master の場合は、科を指定してマスターを取得する
+                if len(rows) == 0:
+                    print("DocumentFormat.SystemContents が存在しないため、科を指定して、ユーザー指定なしのレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_system_contents_by_department_and_user(cnxn, self._department_code, '')
+
+                if len(rows) == 0:
+                    print("DocumentFormat.SystemContents が存在しないため、科を指定せず、ユーザーを指定してレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_system_contents_by_department_and_user(cnxn, DEFAULT_DEPARTMENT_CODE, self._user_id)
+
+                if len(rows) == 0:
+                    print("DocumentFormat.SystemContents が存在しないため、科とユーザーを指定せずレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_system_contents_by_department_and_user(cnxn, DEFAULT_DEPARTMENT_CODE, '')
+
             if len(rows) == 0:
                 if self._force_master == False:
-                    print("ユーザーに紐づく DocumentFormat.SystemContents が存在しないため、科を指定してマスターを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    print("DocumentFormat.SystemContents が存在しないため、科を指定してマスターを取得します。department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
                 rows = self._get_system_contents_master_and_department(cnxn, self._department_code)
 
-            # HIT しなかった場合、または force_master の場合は、科を指定せずマスターを取得する
             if len(rows) == 0:
-                print("ユーザーに紐づく DocumentFormat.SystemContents が存在しないため、科を指定せずマスターを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                print("DocumentFormat.SystemContents が存在しないため、科を指定せずマスターを取得します。department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
                 rows = self._get_system_contents_master_and_department(cnxn, DEFAULT_DEPARTMENT_CODE)
 
             system_contetns = ""
@@ -185,9 +195,8 @@ class DocumentFormatManager:
                 break
             return system_contetns, system_contetns_suffix
 
-    def _get_contents_by_user(self, cnxn) -> str:
+    def _get_contents_by_department_and_user(self, cnxn, department_code, user_id:str) -> str:
         with cnxn.cursor() as cursor:
-            # システムコンテンツの取得
             select_document_format_sql = """SELECT 
                     Id, 
                     Kind, 
@@ -211,8 +220,8 @@ class DocumentFormatManager:
                 AND IsDeleted = 0
                 ORDER BY OrderNo"""
             cursor.execute(select_document_format_sql,
-                        self._user_id,
-                        self._department_code, self._icd10_code,
+                        user_id,
+                        department_code, self._icd10_code,
                         self._document_name,
                         DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                         self._gpt_model_name)            
@@ -223,8 +232,8 @@ class DocumentFormatManager:
                 for parent_code in self._parent_list:
                     # 上位階層の ICD10 該当レコードを取得する
                     cursor.execute(select_document_format_sql,
-                                self._user_id,
-                                self._department_code, parent_code,
+                                user_id,
+                                department_code, parent_code,
                                 self._document_name,
                                 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                                 self._gpt_model_name)            
@@ -234,8 +243,8 @@ class DocumentFormatManager:
             if len(rows) == 0:
                 # 最上位階層まで遡ったが、HIT しなかった場合は、ICD10「指定なし」
                 cursor.execute(select_document_format_sql,
-                            self._user_id,
-                            self._department_code, DEFAULT_ICD10_CODE,
+                            user_id,
+                            department_code, DEFAULT_ICD10_CODE,
                             self._document_name,
                             DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
                             self._gpt_model_name)            
@@ -315,17 +324,27 @@ class DocumentFormatManager:
         with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             rows = []
             if self._force_master == False:
-                rows = self._get_contents_by_user(cnxn)
+                rows = self._get_contents_by_department_and_user(cnxn, self._department_code, self._user_id)
 
-            # HIT しなかった場合、または force_master の場合は、科を指定してマスターを取得する
+                if len(rows) == 0:
+                    print("DocumentFormat が存在しないため、科を指定して、ユーザー指定なしのレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_contents_by_department_and_user(cnxn, self._department_code, '')
+
+                if len(rows) == 0:
+                    print("DocumentFormat が存在しないため、科を指定せず、ユーザーを指定してレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_contents_by_department_and_user(cnxn, DEFAULT_DEPARTMENT_CODE, self._user_id)
+
+                if len(rows) == 0:
+                    print("DocumentFormat が存在しないため、科とユーザーを指定せずレコードを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    rows = self._get_contents_by_department_and_user(cnxn, DEFAULT_DEPARTMENT_CODE, '')
+
             if len(rows) == 0:
                 if self._force_master == False:
-                    print("ユーザーに紐づく DocumentFormat が存在しないため、科を指定してマスターを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                    print("DocumentFormat が存在しないため、科を指定してマスターを取得します。department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
                 rows = self._get_contents_master_and_department(cnxn, self._department_code)
 
-            # HIT しなかった場合、または force_master の場合は、科を指定せずマスターを取得する
             if len(rows) == 0:
-                print("ユーザーに紐づく DocumentFormat が存在しないため、科を指定せずマスターを取得します。user_id:" + self._user_id + ", department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
+                print("DocumentFormat が存在しないため、科を指定せずマスターを取得します。department_code:" + self._department_code + ", icd10_code:" + self._icd10_code + ", document_name:" + self._document_name + ", gpt_model_name:" + self._gpt_model_name)
                 rows = self._get_contents_master_and_department(cnxn, DEFAULT_DEPARTMENT_CODE)
 
         return rows

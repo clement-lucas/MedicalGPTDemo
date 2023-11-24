@@ -547,6 +547,88 @@ try:
     if rows[1][6] != "sq27":
         raise Exception("constents is wrong.")
 
+    # ユーザーに該当なしのとき、科に該当する非マスタデータがあれば取得できることを確認する
+    add_document_format(0, "test_slot2", "0000", "A00-A09", 0, 1, "q28", "sq28")
+    add_document_format(0, "test_slot2", "0000", "A00-A09", 1, 0, "q29", "sq29")
+    add_document_format(0, "test_slot2", "0000", "A00-A09", 1, 1, "q30", "sq30")
+    add_document_format(0, "", "0001", "A00-A09", 0, 1, "q31", "sq31")
+    add_document_format(0, "", "0001", "A00-A09", 1, 0, "q32", "sq32")
+    add_document_format(0, "", "0001", "A00-A09", 1, 1, "q33", "sq33")
+    add_document_format(0, "", "0000", "A00-A09", 0, 1, "q34", "sq34")
+    add_document_format(0, "", "0000", "A00-A09", 1, 0, "q35", "sq35")
+    add_document_format(0, "", "0000", "A00-A09", 1, 1, "q36", "sq36")
+    document_format_manager = DocumentFormatManager(
+        sql_connector,
+        "退院時サマリ", "0001", 
+            "A01.1", 
+            "NO_USER",
+            False)
+    system_constents = document_format_manager.get_system_contents()
+    if system_constents[0] != "q31":
+        raise Exception("system_constents is wrong.")
+    if system_constents[1] != "sq31":
+        raise Exception("system_constents is wrong.")
+    rows = document_format_manager.get_document_format()
+    if len(rows) != 2:
+        raise Exception("wrong rows count")
+    if rows[0][5] != "q32":
+        raise Exception("constents is wrong.")
+    if rows[0][6] != "sq32":
+        raise Exception("constents is wrong.")
+    if rows[1][5] != "q33":
+        raise Exception("constents is wrong.")
+    if rows[1][6] != "sq33":
+        raise Exception("constents is wrong.")
+
+    # 科に該当なしのとき、ユーザーに該当する非マスタデータがあれば取得できることを確認する
+    document_format_manager = DocumentFormatManager(
+        sql_connector,
+        "退院時サマリ", "WRONG_DPTMT", 
+            "A01.1", 
+            "test_slot2",
+            False)
+    system_constents = document_format_manager.get_system_contents()
+    if system_constents[0] != "q28":
+        raise Exception("system_constents is wrong.")
+    if system_constents[1] != "sq28":
+        raise Exception("system_constents is wrong.")
+    rows = document_format_manager.get_document_format()
+    if len(rows) != 2:
+        raise Exception("wrong rows count")
+    if rows[0][5] != "q29":
+        raise Exception("constents is wrong.")
+    if rows[0][6] != "sq29":
+        raise Exception("constents is wrong.")
+    if rows[1][5] != "q30":
+        raise Exception("constents is wrong.")
+    if rows[1][6] != "sq30":
+        raise Exception("constents is wrong.")
+
+    # 科とユーザーに該当なしのとき、非マスタデータがあれば取得できることを確認する
+    document_format_manager = DocumentFormatManager(
+        sql_connector,
+        "退院時サマリ", "WRONG_DPTMT", 
+            "A01.1", 
+            "NO_USER",
+            False)
+    system_constents = document_format_manager.get_system_contents()
+    if system_constents[0] != "q34":
+        raise Exception("system_constents is wrong.")
+    if system_constents[1] != "sq34":
+        raise Exception("system_constents is wrong.")
+    rows = document_format_manager.get_document_format()
+    if len(rows) != 2:
+        raise Exception("wrong rows count")
+    if rows[0][5] != "q35":
+        raise Exception("constents is wrong.")
+    if rows[0][6] != "sq35":
+        raise Exception("constents is wrong.")
+    if rows[1][5] != "q36":
+        raise Exception("constents is wrong.")
+    if rows[1][6] != "sq36":
+        raise Exception("constents is wrong.")
+
+
         # id:row[0],
         # kind:row[1],
         # category_name:row[2],
