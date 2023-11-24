@@ -10,6 +10,7 @@ from approaches.approach import Approach
 from azure.search.documents import SearchClient
 from lib.soapmanager import SOAPManager as SOAPManager
 from lib.gptconfigmanager import GPTConfigManager
+from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
@@ -24,8 +25,10 @@ DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE = 3
 # [1] E. Karpas, et al. arXiv:2205.00445
 class ReadRetrieveDischargeReadApproach(Approach):
 
-    def __init__(self, search_client: SearchClient, chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str):
+    def __init__(self, search_client: SearchClient, sql_connector:SQLConnector, 
+                 chatgpt_deployment: str, gpt_deployment: str, sourcepage_field: str, content_field: str):
         self.search_client = search_client
+        self.sql_connector = sql_connector
         self.chatgpt_deployment = chatgpt_deployment
         self.gpt_deployment = gpt_deployment
         self.sourcepage_field = sourcepage_field
@@ -110,21 +113,32 @@ class ReadRetrieveDischargeReadApproach(Approach):
         prompt_tokens: int = 0
         total_tokens: int = 0
 
-        # 要約後の SOAP を格納する変数
-        summarized_soap_history = ""
         prompt = ""
 
-        kind = row[0]
-        categoryName = row[1]
-        temperature = row[2]
-        question = row[3]
+        # id:row[0],
+        # kind:row[1],
+        # category_name:row[2],
+        # order_no:row[3], 
+        # temperature:row[4],
+        # temperature_str:str(row[4]),
+        # question:row[5],
+        # question_suffix:row[6],
+        # response_max_tokens:row[7],
+        # target_soap:row[8],
+        # use_allergy_records:row[9],
+        # use_discharge_medicine_records:row[10]
 
-        response_max_tokens = row[4]
-        targetSoapRecords = row[5]
+        kind = row[1]
+        categoryName = row[2]
+        temperature = row[4]
+        question = row[5]
+
+        response_max_tokens = row[7]
+        targetSoapRecords = row[8]
 
         # 以下は今は見ていない
-        useAllergyRecords = row[6]
-        useDischargeMedicineRecords = row[7]
+        useAllergyRecords = row[9]
+        useDischargeMedicineRecords = row[10]
         print(categoryName + "の処理開始")
 
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
@@ -158,21 +172,19 @@ class ReadRetrieveDischargeReadApproach(Approach):
             # ARGN10（その他アレルギー）
 
             # SQL Server に接続する
-            cnxn = SQLConnector.get_conn()
-            cursor = cnxn.cursor()
+            with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+                allergy = ''.join([
+                    # 薬剤アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARG001', '薬剤', patient_code),
+                    
+                    # 食物アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARG010', '食物', patient_code),
 
-            allergy = ''.join([
-                # 薬剤アレルギー情報の取得
-                self.get_allergy(cursor, 'ARG001', '薬剤', patient_code),
-                
-                # 食物アレルギー情報の取得
-                self.get_allergy(cursor, 'ARG010', '食物', patient_code),
+                    # 注意すべき食物情報の取得
+                    self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code),
 
-                # 注意すべき食物情報の取得
-                self.get_allergy(cursor, 'ARG040', '注意すべき食物', patient_code),
-
-                # その他アレルギー情報の取得
-                self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
+                    # その他アレルギー情報の取得
+                    self.get_allergy(cursor, 'ARGN10', 'その他原因物質', patient_code)])
             if allergy != "":
                 allergy = ''.join(["【", categoryName, "】\n", allergy, "\n"])
             else :
@@ -191,10 +203,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 AND EXTBDH1.PID = ?
                 ORDER BY EXTBOD1.SEQ"""
             # SQL Server に接続する
-            cnxn = SQLConnector.get_conn()
-            cursor = cnxn.cursor()
-            cursor.execute(select_taiinji_shoho_sql, patient_code)
-            rows = cursor.fetchall() 
+            with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+                cursor.execute(select_taiinji_shoho_sql, patient_code)
+                rows = cursor.fetchall() 
             medicine = ""
             for row in rows:
                 if row[0] == "HY1":
@@ -224,17 +235,16 @@ class ReadRetrieveDischargeReadApproach(Approach):
         timer_total = LapTimer()
         timer_total.start("退院時サマリ作成処理全体")
 
-        # print("run")
-        # print(document_name)
-        # print(patient_code)
-
-        self.gptconfigmanager = GPTConfigManager()
+        print("document_name:" + document_name)
+        print("patient_code:" + patient_code)
+        print("department_code:" + department_code)
+        print("icd10_code:" + icd10_code)
+        print("user_id:" + user_id)
+                
+        self.gptconfigmanager = GPTConfigManager(self.sql_connector)
 
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
-
-        try:
+        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
             # SQL Server から患者情報を取得する
             cursor.execute("""SELECT PID_NAME
@@ -244,206 +254,116 @@ class ReadRetrieveDischargeReadApproach(Approach):
             if len(rows) == 0:
                 return {"data_points": "test results", "answer": "患者情報が見つかりませんでした。", "thoughts": ""}
 
-            # QA No.11 対応により、看護記録は一旦削除する
-            # # 看護記録の取得
+            # # QA No.11 対応により、看護記録は一旦削除する
+            # # # 看護記録の取得
 
-            # TODO SV08, SV09 への対応
+            # # TODO SV08, SV09 への対応
 
-            # 紹介元履歴の取得
-            # TODO 本項目は単純な転記であり、
-            # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
-            # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
-            select_shokaimoto_sql = """SELECT 
-                PI_ITEM_17 AS SHOKAI_BI,
-                PI_ITEM_02 AS TOIN_KA,
-                PI_ITEM_04 AS BYOIN_MEI,
-                '' AS FROM_KA,
-                PI_ITEM_06 AS ISHI_MEI,
-                PI_ITEM_13 AS ZIP_CODE,
-                PI_ITEM_14 AS ADRESS
-                FROM EATBPI
-                WHERE PI_ACT_FLG = 1
-                AND PI_ITEM_ID = 'BAS001'
-                AND PID = ?
-                ORDER BY PI_ITEM_17 DESC"""
+            # # 紹介元履歴の取得
+            # # TODO 本項目は単純な転記であり、
+            # # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
+            # # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
+            # select_shokaimoto_sql = """SELECT 
+            #     PI_ITEM_17 AS SHOKAI_BI,
+            #     PI_ITEM_02 AS TOIN_KA,
+            #     PI_ITEM_04 AS BYOIN_MEI,
+            #     '' AS FROM_KA,
+            #     PI_ITEM_06 AS ISHI_MEI,
+            #     PI_ITEM_13 AS ZIP_CODE,
+            #     PI_ITEM_14 AS ADRESS
+            #     FROM EATBPI
+            #     WHERE PI_ACT_FLG = 1
+            #     AND PI_ITEM_ID = 'BAS001'
+            #     AND PID = ?
+            #     ORDER BY PI_ITEM_17 DESC"""
             
-            # cursor.execute(select_shokaimoto_sql, patient_code)
-            # rows = cursor.fetchall() 
-            # is_first = True
-            # for row in rows:
-            #     if is_first:
-            #         records += "\n以下は患者の紹介元履歴に関する情報 です。\n\n"
-            #     is_first = False
-            #     print(row[0])
-            #     print(row[1])
-            #     records += "紹介日：" + row[0] + "\n"
-            #     records += "当院診療科：" + row[1] + "\n"
-            #     records += "照会元病院：" + row[2] + "\n"
-            #     records += "照会元診療科：" + row[3] + "\n"
-            #     records += "照会元医師：" + row[4] + "\n"
-            #     records += "照会元郵便番号：" + row[5] + "\n"
-            #     records += "照会元住所：" + row[6] + "\n\n"
+            # # cursor.execute(select_shokaimoto_sql, patient_code)
+            # # rows = cursor.fetchall() 
+            # # is_first = True
+            # # for row in rows:
+            # #     if is_first:
+            # #         records += "\n以下は患者の紹介元履歴に関する情報 です。\n\n"
+            # #     is_first = False
+            # #     print(row[0])
+            # #     print(row[1])
+            # #     records += "紹介日：" + row[0] + "\n"
+            # #     records += "当院診療科：" + row[1] + "\n"
+            # #     records += "照会元病院：" + row[2] + "\n"
+            # #     records += "照会元診療科：" + row[3] + "\n"
+            # #     records += "照会元医師：" + row[4] + "\n"
+            # #     records += "照会元郵便番号：" + row[5] + "\n"
+            # #     records += "照会元住所：" + row[6] + "\n\n"
 
-            # 紹介先履歴の取得
-            # TODO 本項目は単純な転記であり、
-            # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
-            # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
-            select_shokaisaki_sql = """SELECT 
-                PI_ITEM_17 AS SHOKAI_BI,
-                PI_ITEM_02 AS TOIN_KA,
-                PI_ITEM_10 AS BYOIN_MEI,
-                PI_ITEM_14 AS TO_KA,
-                PI_ITEM_12 AS ISHI_MEI,
-                PI_ITEM_15 AS ZIP_CODE,
-                PI_ITEM_16 AS ADRESS
-                FROM EATBPI
-                WHERE PI_ACT_FLG = 1
-                AND PI_ITEM_ID = 'BAS002'
-                AND PID = ?
-                ORDER BY PI_ITEM_17 DESC"""
+            # # 紹介先履歴の取得
+            # # TODO 本項目は単純な転記であり、
+            # # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
+            # # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
+            # select_shokaisaki_sql = """SELECT 
+            #     PI_ITEM_17 AS SHOKAI_BI,
+            #     PI_ITEM_02 AS TOIN_KA,
+            #     PI_ITEM_10 AS BYOIN_MEI,
+            #     PI_ITEM_14 AS TO_KA,
+            #     PI_ITEM_12 AS ISHI_MEI,
+            #     PI_ITEM_15 AS ZIP_CODE,
+            #     PI_ITEM_16 AS ADRESS
+            #     FROM EATBPI
+            #     WHERE PI_ACT_FLG = 1
+            #     AND PI_ITEM_ID = 'BAS002'
+            #     AND PID = ?
+            #     ORDER BY PI_ITEM_17 DESC"""
             
-            # cursor.execute(select_shokaisaki_sql, patient_code)
-            # rows = cursor.fetchall() 
-            # is_first = True
-            # for row in rows:
-            #     if is_first:
-            #         records += "\n以下は患者の紹介先履歴に関する情報 です。\n\n"
-            #     is_first = False
-            #     print(row[0])
-            #     print(row[1])
-            #     records += "紹介日：" + row[0] + "\n"
-            #     records += "当院診療科：" + row[1] + "\n"
-            #     records += "照会先病院：" + row[2] + "\n"
-            #     records += "照会先診療科：" + row[3] + "\n"
-            #     records += "照会先医師：" + row[4] + "\n"
-            #     records += "照会先郵便番号：" + row[5] + "\n"
-            #     records += "照会先住所：" + row[6] + "\n\n"
+            # # cursor.execute(select_shokaisaki_sql, patient_code)
+            # # rows = cursor.fetchall() 
+            # # is_first = True
+            # # for row in rows:
+            # #     if is_first:
+            # #         records += "\n以下は患者の紹介先履歴に関する情報 です。\n\n"
+            # #     is_first = False
+            # #     print(row[0])
+            # #     print(row[1])
+            # #     records += "紹介日：" + row[0] + "\n"
+            # #     records += "当院診療科：" + row[1] + "\n"
+            # #     records += "照会先病院：" + row[2] + "\n"
+            # #     records += "照会先診療科：" + row[3] + "\n"
+            # #     records += "照会先医師：" + row[4] + "\n"
+            # #     records += "照会先郵便番号：" + row[5] + "\n"
+            # #     records += "照会先住所：" + row[6] + "\n\n"
 
 
-            # 退院後予約情報の取得
-            # TODO 本項目は単純な転記であり、
-            # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
-            # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
-            select_taiinji_yoyakujoho_sql = """
-            SELECT EXTBOD1.IATTR, EXTBOD1.INAME FROM EXTBDH1 
-                INNER JOIN EXTBOD1 
-                ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
-                AND EXTBDH1.DOC_K = 'W000'
-                AND EXTBDH1.ACTIVE_FLG = 1 
-                AND EXTBOD1.ACTIVE_FLG = 1 
-                AND EXTBDH1.PID = ?
-                ORDER BY EXTBOD1.SEQ
-                """
-            # system content 部分の文言取得
-            select_system_content_sql = """SELECT 
-                    ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question
-                FROM DocumentFormat 
-                WHERE IsMaster = 0
-                AND UserId = ?
-                AND DocumentName = ?
-                AND Kind = ?
-                AND GPTModelName = ?
-                AND IsDeleted = 0"""
-            select_system_content_master_sql = """SELECT 
-                    ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question
-                FROM DocumentFormat 
-                WHERE IsMaster = 1
-                AND DocumentName = ?
-                AND Kind = ?
-                AND GPTModelName = ?
-                AND IsDeleted = 0"""
-            gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
-            # print(gpt_model_name)
-            if gpt_model_name is None:
-                gpt_model_name = "gpt-35-turbo"
-            cursor.execute(select_system_content_sql,
-                        user_id,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-            rows = cursor.fetchall() 
-            system_content = ""
-            for row in rows:
-                # print(row)
-                system_content = row[0]
-            if system_content == "":
-                print("ユーザー " + user_id + " のシステムコンテンツが取得できませんでした。マスターデータを使用します。")
-                cursor.execute(select_system_content_master_sql,
-                            document_name,
-                            DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                            gpt_model_name)
-                rows = cursor.fetchall() 
-                for row in rows:
-                    system_content = row[0]
-                if system_content == "":
-                    raise Exception("システムコンテンツが取得できませんでした。")
-            else :
-                print("ユーザー " + user_id + " のシステムコンテンツが取得できました。")
+            # # 退院後予約情報の取得
+            # # TODO 本項目は単純な転記であり、
+            # # GPT の介在を必要としないプログラムにより実現が可能な処理であるため、
+            # # ここでは SQL サンプルの記載のみにとどめ、取得しないこととする。
+            # select_taiinji_yoyakujoho_sql = """
+            # SELECT EXTBOD1.IATTR, EXTBOD1.INAME FROM EXTBDH1 
+            #     INNER JOIN EXTBOD1 
+            #     ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
+            #     AND EXTBDH1.DOC_K = 'W000'
+            #     AND EXTBDH1.ACTIVE_FLG = 1 
+            #     AND EXTBOD1.ACTIVE_FLG = 1 
+            #     AND EXTBDH1.PID = ?
+            #     ORDER BY EXTBOD1.SEQ
+            #     """
 
-            # ドキュメントフォーマットの取得
-            # print(user_id)
-            select_document_format_sql = """SELECT 
-                    Kind, 
-                    CategoryName, 
-                    Temperature,
-                    ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question,
-                    ResponseMaxTokens,
-                    TargetSoapRecords, 
-                    UseAllergyRecords, 
-                    UseDischargeMedicineRecords 
-                FROM DocumentFormat 
-                WHERE IsMaster = 0
-                AND UserId = ?
-                AND DepartmentCode = ?
-                AND Icd10Code = ?
-                AND DocumentName = ?
-                AND Kind <> ?
-                AND GPTModelName = ?
-                AND IsDeleted = 0
-                ORDER BY OrderNo"""
-            cursor.execute(select_document_format_sql,
-                        user_id, department_code, icd10_code,
-                        document_name,
-                        DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                        gpt_model_name)
-            rows = cursor.fetchall() 
 
-            # マスター以外が HIT しなかった場合は、マスターを取得する
-            if len(rows) == 0:
-                select_document_format_master_sql = """SELECT 
-                        Kind, 
-                        CategoryName, 
-                        Temperature,
-                        ISNULL(Question, '') + ISNULL(QuestionSuffix, '') AS Question,
-                        ResponseMaxTokens,
-                        TargetSoapRecords, 
-                        UseAllergyRecords, 
-                        UseDischargeMedicineRecords 
-                    FROM DocumentFormat 
-                    WHERE IsMaster = 1
-                    AND DepartmentCode = ?
-                    AND Icd10Code = ?
-                    AND DocumentName = ?
-                    AND Kind <> ?
-                    AND GPTModelName = ?
-                    AND IsDeleted = 0
-                    ORDER BY OrderNo"""
-                cursor.execute(select_document_format_master_sql,
-                            department_code, icd10_code,
-                            document_name,
-                            DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT,
-                            gpt_model_name)
-                rows = cursor.fetchall() 
-        finally:
-            cursor.close()
-            cnxn.close()
+        # system content 部分の文言取得
+        document_manager = DocumentFormatManager(
+            self.sql_connector,
+            document_name, department_code, icd10_code, user_id, False)
+        ret_system_contetns = document_manager.get_system_contents()
+        system_content = ret_system_contetns[0] + ret_system_contetns[1]
+        if system_content == "":
+            raise Exception("システムコンテンツが取得できませんでした。")
+
+        # ドキュメントフォーマットの取得
+        rows = document_manager.get_document_format()
 
         timer = LapTimer()
         timer.start("SOAP の読込と必要に応じた要約処理")
         # 医師記録の取得
         # SOAP に割り当て可能なトークン数を計算する
         num_tokens_for_soap = self.get_max_tokens_for_soap()
-        soap_manager = SOAPManager(user_id, self.gptconfigmanager, patient_code, 
+        soap_manager = SOAPManager(self.sql_connector, user_id, self.gptconfigmanager, patient_code, 
             self.gpt_deployment, num_tokens_for_soap)
         timer.stop()
 
@@ -541,10 +461,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,0)"""
         
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
-
-        try:
+        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             cursor.execute(insert_history_sql, patient_code, 
                         prompts, ''.join([records_soap, allergy, medicine]),
                         summarized_soap_history,
@@ -554,12 +471,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         sum_of_total_tokens
                         )
             cursor.commit()
-        except:
-            cursor.rollback()
-            raise
-        finally:
-            cursor.close()
-            cnxn.close()
 
         timer_total.stop()
 

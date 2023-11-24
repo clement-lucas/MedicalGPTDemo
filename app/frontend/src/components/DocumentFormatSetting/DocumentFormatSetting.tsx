@@ -15,9 +15,6 @@ interface Props {
     // ICD10コード
     icd10Code: string;
 
-    // 疾病分類名
-    icd10Name: string;
-
     // user id
     userId: string; 
 
@@ -48,7 +45,7 @@ interface Props {
 }
 
 export const DocumentFormatSetting = ({
-    documentName, departmentCode, icd10Code, icd10Name, userId, 
+    documentName, departmentCode, icd10Code, userId, 
     systemContents, 
     documentFormats, isLoading, isEdited,
     onSaveClicked, onCancelClicked, onReloadFromMasterClicked,
@@ -58,20 +55,30 @@ export const DocumentFormatSetting = ({
     onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
 }: Props) => {
     
-    //icd10Name === undefined && setIcd10Name("hoge" + icd10Code);
+    const icd10NameStyle: React.CSSProperties = { border: "0px" };
 
     return (
         <div>
-            <Stack horizontal>
-                <Label>　疾病分類: </Label>
-                <Label>{icd10Name}</Label>
-            </Stack> 
             {isLoading && (
                 <div className={styles.loadingDocumentFormatSpinner}>
                     <Spinner label="Loading document settings" />
                 </div>
                 )}
             {!isLoading && <div>
+                <table className={styles.documentFormatSettingIndexTable}>
+                    {/* <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>文書名</td>
+                        <td>{documentName}</td>
+                    </tr> */}
+                    <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>診療科コード</td>
+                        <td>{departmentCode}</td>
+                    </tr>
+                    <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>疾病コード</td>
+                        <td>{icd10Code}</td>
+                    </tr>
+                </table>
                 <Stack horizontal>
                     <div className={styles.subDocumentFormatSettingButton} onClick={onReloadFromMasterClicked}>
                         <p className={styles.subDocumentFormatSettingButtonText}>マスター再取得</p>
@@ -87,20 +94,6 @@ export const DocumentFormatSetting = ({
                 <Label>疾病分類: </Label>
                 <Label>{icd10Name}</Label><br></br> */}
                 <Stack>
-                    {/* <table>
-                        <tr>
-                            <td className={styles.documentFormatSettingIndexTd}>文書名</td>
-                            <td>{documentName}</td>
-                        </tr>
-                        <tr>
-                            <td className={styles.documentFormatSettingIndexTd}>診療科コード</td>
-                            <td>{departmentCode}</td>
-                        </tr>
-                        <tr>
-                            <td className={styles.documentFormatSettingIndexTd}>疾病分類</td>
-                            <td>{icd10Name}</td>
-                        </tr>
-                    </table> */}
                     <p className={styles.systemContens} >System Contents Prompt : <br></br>
                         <TextField
                             readOnly={false}

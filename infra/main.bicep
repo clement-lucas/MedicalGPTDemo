@@ -46,7 +46,7 @@ param formRecognizerSkuName string = 'S0'
 //param gptModelName string = 'text-davinci-003'
 param chatGptDeploymentName string = 'chat16'
 
-@description('gpt-35-turbo or gpt-4')
+@description('gpt-35-turbo or gpt-35-turbo-16k or gpt-4')
 param chatGptModelName string
 var chatGptModelNameValue = !empty(chatGptModelName) ? chatGptModelName : 'gpt-35-turbo-16k'
 

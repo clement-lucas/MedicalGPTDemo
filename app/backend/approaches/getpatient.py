@@ -7,7 +7,8 @@ from approaches.approach import Approach
 # This is inspired by the MKRL paper[1] and applied here using the implementation in Langchain.
 # [1] E. Karpas, et al. arXiv:2205.00445
 class GetPatientApproach(Approach):
-    def __init__(self, sourcepage_field: str, content_field: str):
+    def __init__(self, sql_connector:SQLConnector, sourcepage_field: str, content_field: str):
+        self.sql_connector = sql_connector
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
@@ -17,13 +18,12 @@ class GetPatientApproach(Approach):
         # print(patient_code)
 
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
+        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
-        # SQL Server から患者情報を取得する
-        cursor.execute("""SELECT PID_NAME
-            FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", patient_code)
-        rows = cursor.fetchall() 
+            # SQL Server から患者情報を取得する
+            cursor.execute("""SELECT PID_NAME
+                FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", patient_code)
+            rows = cursor.fetchall() 
         for row in rows:
             return {"name":row[0]}
         return {"name":"患者情報が見つかりませんでした。"}

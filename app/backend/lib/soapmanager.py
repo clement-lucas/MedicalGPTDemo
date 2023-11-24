@@ -150,11 +150,13 @@ class SOAPManager:
         return summary[0], completion_tokens, prompt_tokens, total_tokens, summarize_log
 
     def __init__(self, 
+                sql_connector:SQLConnector,
                 user_id: str,
                 gptconfigmanager:GPTConfigManager, 
                 patient_code: str, 
                 engine: str,
                 max_tokens_for_soap: int, force_original: bool = False):
+        self._sql_connector = sql_connector
         self._is_summarized = False
         self._summarized_completion_tokens = 0
         self._summarized_prompt_tokens = 0
@@ -177,11 +179,9 @@ class SOAPManager:
         self._max_tokens_for_soap = max_tokens_for_soap
 
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cursor = cnxn.cursor()
         cache = SOAPCacheManager(user_id, patient_code)
 
-        try:
+        with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             # 要約されたキャッシュがあるかチェック
             cached_doc_date:int = cache.GetLastDocDate(cursor)
 
@@ -232,10 +232,7 @@ class SOAPManager:
                 self._summarized_p = cache.SummarizedP
                 self._summarized_b = cache.SummarizedB
                 return
-        finally:
-            cursor.close()
-            cnxn.close()
-            timer.stop()
+        timer.stop()
 
         records = self.SOAP("soapb", True)
         # print("records:" + records)
@@ -364,15 +361,10 @@ class SOAPManager:
         # print("_summarized_b : " + self._summarized_b)
 
         # SQL Server に接続する
-        cnxn = SQLConnector.get_conn()
-        cnxn.autocommit = False
-        cursor = cnxn.cursor()
-
-        try:
-            cache.SaveCache(cnxn, cursor)
-        finally:
-            cursor.close()
-            cnxn.close()
+        with self._sql_connector.get_conn() as cnxn:
+            cnxn.autocommit = False
+            with cnxn.cursor() as cursor:
+                cache.SaveCache(cnxn, cursor)
 
         return
 

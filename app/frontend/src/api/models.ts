@@ -171,3 +171,31 @@ export type UpdateDocumentFormatRequest = {
 export type UpdateDocumentFormatResponse = {
     error?: string;
 };
+
+export type Icd10Master = {
+    icd10_code: string;
+    caption: string;
+};
+
+export type GetIcd10MasterRequest = {
+    code_level: number;
+    parent_code: string;
+};
+
+export type GetIcd10MasterResponse = {
+    records: Icd10Master[];
+    error?: string;
+};
+
+export type DepartmentMaster = {
+    department_code: string;
+    department_name: string;
+};
+
+export type GetDepartmentMasterRequest = {
+};
+
+export type GetDepartmentMasterResponse = {
+    records: DepartmentMaster[];
+    error?: string;
+};
