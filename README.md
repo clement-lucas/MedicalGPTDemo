@@ -139,8 +139,8 @@ gpt-4 の location を強制された等の理由により、 Azure Open AI リ�
 AZURE_LOCATION_OPENAI="<target_location>"  
 
 
-# Azure SQL Server の認証に AAD 認証を使用する場合の手順
-1. Azure Portal にアクセスし、Azure SQL Server の認証方式に AAD があることを確認する。  
+# Azure SQL Server の認証に Entra ID 認証（旧 AAD 認証）を使用する場合の手順
+1. Azure Portal にアクセスし、Azure SQL Server の認証方式に Entra ID 認証（旧 AAD 認証）があることを確認する。  
   
 2. Azure Portal にアクセスし、Azure SQL Server の ID メニューにてシステム割り当てマネージドIDを オンにする。  
 
