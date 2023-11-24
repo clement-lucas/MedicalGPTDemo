@@ -18,7 +18,10 @@ class SQLConnector:
             self._is_sql_authentication_is_aad = False
         
         if self._is_sql_authentication_is_aad:
+            print('SQL Authentication is Entra ID (Active Directory).')
             self._connect_by_add()
+        else:
+            print('SQL Authentication is SQL Authentication.')
 
     def _connect_by_add(self):
             if self._azure_credential is None:
