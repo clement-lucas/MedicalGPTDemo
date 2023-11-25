@@ -625,13 +625,13 @@ const Discharge = () => {
             if (isDocumentFormatSettingEdited) {
                 const result = window.confirm("スロットを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
                 if (!result) {
-                    setSelectedSlot(selectedSlot ? selectedSlot : '');
                     return;
                 }
             }
             getDocumentFormat(false, selectedDepartmentCode, newSlot, selectedIcd10CodeMax);
             setIsDocumentFormatSettingEdited(false);
         }
+        setSelectedSlot(newSlot ? newSlot : '');
     }
 
     const onChangeDepartment = (newCode: string, newName:string) => {
@@ -639,7 +639,6 @@ const Discharge = () => {
             if (isDocumentFormatSettingEdited) {
                 const result = window.confirm("診療科を切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
                 if (!result) {
-                    setSelectedSlot(selectedSlot ? selectedSlot : '');
                     return;
                 }
             }
@@ -655,14 +654,16 @@ const Discharge = () => {
             if (isDocumentFormatSettingEdited) {
                 const result = window.confirm("使用するプロンプトを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
                 if (!result) {
-                    if (codeLevel === 0) setSelectedIcd10Code0(selectedIcd10Code0 ? selectedIcd10Code0 : '');
-                    if (codeLevel === 1) setSelectedIcd10Code1(selectedIcd10Code1 ? selectedIcd10Code1 : '');
-                    if (codeLevel === 2) setSelectedIcd10Code2(selectedIcd10Code2 ? selectedIcd10Code2 : '');
                     return;
                 }
                 setIsDocumentFormatSettingEdited(false);
             }
         }
+
+        if (codeLevel === 0) setSelectedIcd10Code0(newCode ? newCode : '');
+        if (codeLevel === 1) setSelectedIcd10Code1(newCode ? newCode : '');
+        if (codeLevel === 2) setSelectedIcd10Code2(newCode ? newCode : '');
+
         for (let i = codeLevel + 1; i < 3; i++) {
             setIcd10Options(i, defaultIcd10Options);
             setSelectedIcd10(i, DEFAULT_ICD10_CODE);
@@ -841,7 +842,6 @@ const Discharge = () => {
                                     options={icd10Options0}
                                     selectedKey={selectedIcd10Code0}
                                     onChange={(e, newValue) => {
-                                        setSelectedIcd10Code0(newValue?.key as string || '');
                                         onChangeIcd10Code(0, newValue?.key as string || '', newValue?.text as string || '');
                                     }}
                                 />            
@@ -855,7 +855,6 @@ const Discharge = () => {
                                     options={icd10Options1}
                                     selectedKey={selectedIcd10Code1}
                                     onChange={(e, newValue) => {
-                                        setSelectedIcd10Code1(newValue?.key as string || '');
                                         onChangeIcd10Code(1, newValue?.key as string || '', newValue?.text as string || '');
                                     }}
                                 />            
@@ -869,7 +868,6 @@ const Discharge = () => {
                                     options={icd10Options2}
                                     selectedKey={selectedIcd10Code2}
                                     onChange={(e, newValue) => {
-                                        setSelectedIcd10Code2(newValue?.key as string || '');
                                         onChangeIcd10Code(2, newValue?.key as string || '', newValue?.text as string || '');
                                     }}
                                 />            
@@ -944,7 +942,6 @@ const Discharge = () => {
                 options={momorySlotOptions}
                 selectedKey={selectedSlot}
                 onChange={(e, newValue) => {
-                    setSelectedSlot(newValue?.key as string || '');
                     onChangeSlot(newValue?.key as string || '');
                 }}
             />            
