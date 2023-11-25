@@ -5,6 +5,7 @@ import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest,
     GetDocumentFormatIndexRequest, GetDocumentFormatIndexResponse,
     GetDocumentFormatRequest, GetDocumentFormatResponse,
     UpdateDocumentFormatRequest, UpdateDocumentFormatResponse,
+    DeleteDocumentFormatRequest, DeleteDocumentFormatResponse,
     GetIcd10MasterRequest, GetIcd10MasterResponse,
     GetDepartmentMasterRequest, GetDepartmentMasterResponse,
 } from "./models";
@@ -368,6 +369,25 @@ export async function updateDocumentFormatApi( options: UpdateDocumentFormatRequ
     });
 
     const parsedResponse: UpdateDocumentFormatResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
+}
+
+export async function deleteDocumentFormatApi( options: DeleteDocumentFormatRequest): Promise<DeleteDocumentFormatResponse> {
+    const response = await fetch("/delete_document_format", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            document_format_index_id: options.document_format_index_id,
+            user_id: options.user_id,
+        })
+    });
+
+    const parsedResponse: DeleteDocumentFormatResponse = await response.json();
     if (response.status > 299 || !response.ok) {
         throw Error(parsedResponse.error || "Unknown error");
     }

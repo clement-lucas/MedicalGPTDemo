@@ -11,6 +11,7 @@ import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryInde
     , getDocumentFormatApi, GetDocumentFormatRequest
     , updateDocumentFormatApi, UpdateDocumentFormatRequest 
     , getDocumentFormatIndexApi, GetDocumentFormatIndexRequest, DocumentFormatIndex
+    , deleteDocumentFormatApi, DeleteDocumentFormatRequest
 } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
 import { DischargeButton } from "../../components/Example/DischargeButton";
@@ -18,9 +19,8 @@ import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel
 import heart from "../../assets/heart.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
 import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
-import { DocumentFormatEditButton } from "../../components/DocumentFormatSetting/DocumentFormatEditButton";
 import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
-import { Search12Filled } from "@fluentui/react-icons";
+import { Search24Filled } from "@fluentui/react-icons";
 import { a } from "@react-spring/web";
 
 export type HistoryIndex = {
@@ -66,7 +66,6 @@ const Discharge = () => {
     const [activeAnalysisPanelTab, setActiveAnalysisPanelTab] = useState<AnalysisPanelTabs | undefined>(undefined);
     const iconStyle: React.CSSProperties = { padding: 10, marginTop:50, width: 100, height: 100,  color: "#465f8b" };
     const [historyItems, setHistoryItems] = useState<HistoryDate[]>([]);
-    const [isDocumnetFormatSettingVisible, setIsDocumnetFormatSettingVisible] = useState<boolean>(false);
     const [systemContents, setSystemContents] = useState<string>("");
     const [systemContentsSuffix, setSystemContentsSuffix] = useState<string>("");
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
@@ -80,7 +79,6 @@ const Discharge = () => {
     const [tags, setTags] = useState<string>("");
 
     const onLoad = async () => {
-        setIsDocumnetFormatSettingVisible(false);
         setIsDocumentFormatSettingEdited(false);
         getDocumentFormatIndexList();
         await getHistoryIndex();
@@ -125,13 +123,18 @@ const Discharge = () => {
         }
     }
 
-    const getDocumentFormatIndexList = async (newSelectedIndexId:number = -1) => {
+    const getDocumentFormatIndexList = async (newSelectedIndexId:number = -1, 
+        newSearchText:string = "") => {
+        
         setIsLoadingDocumentFormatIndexList(true);
+        if(newSelectedIndexId == -1) {
+            newSearchText = searchText;
+        }
         try {
             const request: GetDocumentFormatIndexRequest = {
                 document_name: DOCUMENT_NAME,
                 is_only_myself: isOnlyMyself,
-                search_text: searchText,
+                search_text: newSearchText,
                 user_id: DEFAULT_USER_ID
             };
             const result = await getDocumentFormatIndexApi(request);
@@ -147,6 +150,7 @@ const Discharge = () => {
                     setSaveAsName("");
                     setTags(documentFormatIndex.tags);
                     foundSelectedDocumentFormatIndex = true;
+                    getDocumentFormat(documentFormatIndex!);
                     break;
                 }
             }
@@ -154,15 +158,13 @@ const Discharge = () => {
                 setSelectedDocumentFormatIndex(masterIndex);
                 setSaveAsName("");
                 setTags("");
+                getDocumentFormat(masterIndex!);
             }
         } catch (e) {
             alert(e)
             //setError(e);
         } finally {
             setIsLoadingDocumentFormatIndexList(false);
-        }
-        if (isDocumnetFormatSettingVisible) {
-            getDocumentFormat(selectedDocumentFormatIndex!);
         }
     }
 
@@ -199,7 +201,21 @@ const Discharge = () => {
             const result = await updateDocumentFormatApi(request);
 
             alert("保存しました。");
-            getDocumentFormatIndexList(result.document_format_index_id);
+            setSearchText("");
+            getDocumentFormatIndexList(result.document_format_index_id, "");
+        } catch (e) {
+            alert(e)
+        }
+    }
+
+    const deleteDocumentFormat = async (document_format_index_id:number) => {
+        try {
+            const request: DeleteDocumentFormatRequest = {
+                document_format_index_id: document_format_index_id,
+                user_id: DEFAULT_USER_ID
+            };
+            await deleteDocumentFormatApi(request);
+            getDocumentFormatIndexList();
         } catch (e) {
             alert(e)
         }
@@ -295,7 +311,6 @@ const Discharge = () => {
             }
         }
         setDocumentFormats([]);
-        setIsDocumnetFormatSettingVisible(false);
         setIsDocumentFormatSettingEdited(false);
     }
 
@@ -495,7 +510,16 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(true);
     }
 
-    const onDocumentSettingDeleteClicked = (documentFormatId : number) => {
+    const onDocumentSettingIndexDeleteClicked = (targetDocumentFormatIndex:DocumentFormatIndex) => {
+        // 実行確認
+        const result = window.confirm("プロンプトを削除してよろしいですか？");
+        if (!result) {
+            return;
+        }
+        deleteDocumentFormat(targetDocumentFormatIndex.index_id);
+    }
+
+    const onDocumentSettingCategoryDeleteClicked = (documentFormatId : number) => {
         // 実行確認
         const result = window.confirm("カテゴリーを削除してよろしいですか？");
         if (!result) {
@@ -543,30 +567,17 @@ const Discharge = () => {
             return;
         }
 
-        if (isDocumnetFormatSettingVisible) {
-            if (isDocumentFormatSettingEdited) {
-                const result = window.confirm("使用するプロンプトを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
-                if (!result) {
-                    return;
-                }
+        if (isDocumentFormatSettingEdited) {
+            const result = window.confirm("使用するプロンプトを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
+            if (!result) {
+                return;
             }
-            getDocumentFormat(newItem);
-            setIsDocumentFormatSettingEdited(false);
         }
+        getDocumentFormat(newItem);
+        setIsDocumentFormatSettingEdited(false);
         setSelectedDocumentFormatIndex(newItem);
         setSaveAsName("");
         setTags(newItem.tags);
-    }
-
-    const onDocumentFormatEditClicked = () => {
-        if (!isDocumnetFormatSettingVisible) {
-            // 開く
-            getDocumentFormat(selectedDocumentFormatIndex!);
-            setIsDocumnetFormatSettingVisible(true);
-        } else {
-            // 閉じる
-            cancelDocumentSetting();
-        }
     }
 
     const onShowCitation = (citation: string) => {
@@ -700,32 +711,41 @@ const Discharge = () => {
                                 />)}
                             <br></br>
                             <Label>使用するプロンプトを選ぶ</Label>
-                            <Stack horizontal>
-                                <Checkbox label="自分が作成したプロンプトとマスターファイルのみ"
-                                    checked={isOnlyMyself}
-                                    onChange={(e, checked) => setIsOnlyMyself(checked!)}/>
-                                <TextField
-                                    placeholder="タグ検索ワード"
-                                    readOnly={false}
-                                    multiline={false}
-                                    resizable={false}
-                                    defaultValue={searchText}
-                                    value={searchText}
-                                    onChange={(e, newValue) => setSearchText(newValue || "")}
-                                    onBlur={(e) => setSearchText(e.target.value || "")}
-                                />
-                                <div className={
-                                    styles.searchDocumentFormatButton} 
-                                    onClick={() => getDocumentFormatIndexList()}>
-                                    <Search12Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Search logo" />
-                                </div>
-                            </Stack>
+                            <table className={styles.documentFormatSettingIndexSearchTable}>
+                                <tr>
+                                    <td>
+                                        <Checkbox label="自分が作成したプロンプトとマスターファイルのみ表示　"
+                                            checked={isOnlyMyself}
+                                            onChange={(e, checked) => setIsOnlyMyself(checked!)}/>
+                                    </td>
+                                    <td>
+                                        <TextField
+                                            placeholder="タグ検索ワードを指定"
+                                            readOnly={false}
+                                            multiline={false}
+                                            resizable={false}
+                                            defaultValue={searchText}
+                                            value={searchText}
+                                            onChange={(e, newValue) => setSearchText(newValue || "")}
+                                            onBlur={(e) => setSearchText(e.target.value || "")}
+                                        />
+                                    </td>
+                                    <td>　</td>
+                                    <td>
+                                        <div className={
+                                            styles.searchDocumentFormatButton} 
+                                            onClick={() => getDocumentFormatIndexList()}>
+                                            <Search24Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Search logo" />
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
                             {isLoadingDocumentFormatIndexList && <Spinner label="Loading prompt list" />}
                             <Stack.Item>
                                 <Stack horizontal wrap tokens={{ childrenGap: 5 }}>
                                     {documentFormatIndexList.map((item) => {
                                         return (
-                                            <a key={item.index_id} className={styles.citation} title={item.index_name} onClick={() => onDocumentFormatIndexClicked(item)}>
+                                            <a key={item.index_id} className={selectedDocumentFormatIndex?.index_id == item.index_id ? styles.selectedPromptName : styles.promptName} title={item.index_name} onClick={() => onDocumentFormatIndexClicked(item)}>
                                                 {`${item.index_name}`}
                                             </a>
                                         );
@@ -734,8 +754,6 @@ const Discharge = () => {
                             </Stack.Item>
 
                             <br></br>
-                            <DocumentFormatEditButton 
-                                onClick={ onDocumentFormatEditClicked } />
                             <DischargeButton
                                 text="退院時サマリを作成する"
                                 value="退院時サマリ"
@@ -785,7 +803,7 @@ const Discharge = () => {
             </div>
 
         </div>
-        { isDocumnetFormatSettingVisible && (
+        {selectedDocumentFormatIndex && documentFormats && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
                     documentName={DOCUMENT_NAME}
@@ -798,7 +816,7 @@ const Discharge = () => {
                     isLoading={isLoadingDocumnetFormatSetting}
                     isEdited={isDocumentFormatSettingEdited}
                     onSaveClicked={onSaveDocumentFormatClicked}
-                    onCancelClicked={onCancelDocumentFormatClicked}
+                    onDeleteIndexClicked={onDocumentSettingIndexDeleteClicked}
                     onSystemContentsChanged={onSystemContentsChanged}
                     onCategoryNameChanged={onCategoryNameChanged}
                     onTagsChanged={onTagsChanged}
@@ -809,12 +827,12 @@ const Discharge = () => {
                     onTemperatureChanged={onTemperatureChanged}
                     onUpClicked={onDocumentFormatUpClicked}
                     onDownClicked={onDocumentFormatDownClicked}
-                    onDeleteClicked={onDocumentSettingDeleteClicked}
+                    onDeleteCategoryClicked={onDocumentSettingCategoryDeleteClicked}
                     onAddClicked={onAddDocumentFormatClicked}
                 ></DocumentFormatSetting>
             </div>
-        )}
-    </Stack>  
+            )}
+        </Stack>  
     );
 };
 

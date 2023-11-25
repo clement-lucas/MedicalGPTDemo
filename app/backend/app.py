@@ -19,6 +19,7 @@ from approaches.gethistoryinex import GetHistoryIndexApproach
 from approaches.gethistorydetail import GetHistoryDetailApproach
 from approaches.getsoap import GetSoapApproach
 from approaches.getdocumentfotmatindex import GetDocumentFormatIndexApproach
+from approaches.deletedocumentfotmat import DeleteDocumentFormatApproach
 from approaches.getdocumentfotmat import GetDocumentFormatApproach
 from approaches.updatedocumentfotmat import UpdateDocumentFormatApproach
 from approaches.geticd10master import GetIcd10MasterApproach
@@ -127,7 +128,8 @@ document_format_index_approaches = {
 
 document_format_approaches = {
     "get": GetDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
-    "upd": UpdateDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "upd": UpdateDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
+    "del": DeleteDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_icd10_master_approaches = {
@@ -193,7 +195,7 @@ def discharge():
         impl = discharge_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["document_name"], 
+        r = impl.run(
                      request.json["patient_code"], 
                      request.json["document_format_index_id"], 
                      request.json["user_id"],
@@ -303,7 +305,7 @@ def get_document_format_index():
                      request.json["search_text"])
         return jsonify(r)
     except Exception as e:
-        logging.exception("Exception in /get_document_format")
+        logging.exception("Exception in /get_document_format_index")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_document_format", methods=["POST"])
@@ -335,6 +337,19 @@ def update_document_format():
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /update_document_format")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/delete_document_format", methods=["POST"])
+def delete_document_format():
+    try:
+        impl = document_format_approaches.get("del")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_format_index_id"],
+                     request.json["user_id"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /delete_document_format")
         return jsonify({"error": str(e)}), 500
 
 def ensure_openai_token():

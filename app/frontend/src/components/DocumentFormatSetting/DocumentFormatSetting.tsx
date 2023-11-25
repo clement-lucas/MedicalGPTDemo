@@ -29,7 +29,7 @@ interface Props {
     tags: string;
 
     onSaveClicked: (index_id:number, index_name:string) => void;
-    onCancelClicked: () => void;
+    onDeleteIndexClicked: (targetDocumentFormatIndex:DocumentFormatIndex) => void;
 
     onSystemContentsChanged: (newValue:string) => void;
     onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
@@ -42,7 +42,7 @@ interface Props {
 
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
-    onDeleteClicked: (documentFormatId : number) => void;
+    onDeleteCategoryClicked: (documentFormatId : number) => void;
     onAddClicked: () => void;
 }
 
@@ -50,11 +50,11 @@ export const DocumentFormatSetting = ({
     documentName, documentFormatIndex, userId, 
     systemContents, 
     documentFormats, isLoading, isEdited, saveAsName, tags,
-    onSaveClicked, onCancelClicked,
+    onSaveClicked, onDeleteIndexClicked,
     onSystemContentsChanged,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
     onTemperatureChanged, onTagsChanged, onSaveAsNameChanged,
-    onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
+    onUpClicked, onDownClicked, onDeleteCategoryClicked: onDeleteClicked, onAddClicked
 }: Props) => {
     
     const promptNameLabelStyles = {
@@ -92,11 +92,12 @@ export const DocumentFormatSetting = ({
                         <td>{documentFormatIndex.updated_by}</td>
                     </tr>
                 </table>
-                <Stack horizontal>
-                    <div className={styles.subDocumentFormatSettingButton} onClick={onCancelClicked}>
-                        <p className={styles.subDocumentFormatSettingButtonText}>閉じる</p>
+                {documentFormatIndex.updated_by === userId &&
+                    <div className={styles.subDocumentFormatSettingButton} 
+                        onClick={()=>onDeleteIndexClicked(documentFormatIndex)}>
+                        <p className={styles.subDocumentFormatSettingButtonText}>削除</p>
                     </div>
-                </Stack>
+                }
                 {/* <Label>文書名: </Label>
                 <Label>{documentName}</Label><br></br>
                 <Label>診療科コード: </Label>
@@ -145,7 +146,7 @@ export const DocumentFormatSetting = ({
                 <div className={styles.footer}>
                     <p>検索用タグ：<br></br>
                         <TextField
-                            placeholder="e.g. 内科, インフルエンザ, 肺炎"
+                            placeholder="例）内科, インフルエンザ, 肺炎"
                             readOnly={false}
                             multiline={true}
                             resizable={true}
@@ -187,7 +188,7 @@ export const DocumentFormatSetting = ({
                         </Stack>
                     </div>
                     <TextField
-                        placeholder="新しいプロンプト名"
+                        placeholder="新しいプロンプト名を入力して下さい"
                         readOnly={false}
                         multiline={false}
                         resizable={false}

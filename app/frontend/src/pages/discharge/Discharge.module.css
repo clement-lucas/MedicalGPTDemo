@@ -101,7 +101,7 @@
     margin: 30px;
 }
 
-.citation {
+.promptName {
     font-weight: 500;
     line-height: 24px;
     text-align: center;
@@ -113,6 +113,19 @@
     cursor: pointer;
 }
 
+.selectedPromptName {
+    font-weight: 500;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 4px;
+    padding: 0px 8px;
+    background: #f6d1fa;
+    color: #9512b6;
+    border: #9512b6 2px solid;
+    text-decoration: none;
+    cursor: not-allowed;
+}
+
 .citation:hover {
     text-decoration: underline;
 }
@@ -120,12 +133,27 @@
 .searchDocumentFormatButton {
     background: #dbdbdb;
     border-radius: 8px;
-    padding: 5px;
-    margin: 5px;
+    padding: 5px, 10px, 5px, 10px;
+    margin: 0px, 20px, 0px, 10px;
     cursor: pointer;
+    height: 30px;
+    width: 30px;
+    text-align: center;
+    vertical-align: middle;
+    align-items: center;
 }
 
 .searchDocumentFormatButton:hover {
     box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.14), 0px 0px 2px rgba(0, 0, 0, 0.12);
     outline: 2px solid rgba(115, 118, 225, 1);
+}
+
+.documentFormatSettingIndexSearchTable {
+    margin: 0px 10px 10px 10px;
+}
+
+.documentFormatSettingIndexSearchTable th {
+    text-align: left;
+    align-items: center;
+
 }

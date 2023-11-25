@@ -189,6 +189,15 @@ export type UpdateDocumentFormatResponse = {
     error?: string;
 };
 
+export type DeleteDocumentFormatRequest = {
+    document_format_index_id: number;
+    user_id: string;
+};
+
+export type DeleteDocumentFormatResponse = {
+    error?: string;
+};
+
 export type Icd10Master = {
     icd10_code: string;
     caption: string;

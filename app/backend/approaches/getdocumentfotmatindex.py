@@ -3,6 +3,9 @@ from approaches.approach import Approach
 from lib.sqlconnector import SQLConnector
 from lib.documentformatmanager import DocumentFormatManager
 
+# TODO 設定化
+TIME_DEFFERENCE = 9
+
 class GetDocumentFormatIndexApproach(Approach):
     def __init__(self, sql_connector:SQLConnector, sourcepage_field: str, content_field: str):
         self.sql_connector = sql_connector
@@ -41,7 +44,7 @@ class GetDocumentFormatIndexApproach(Approach):
                     ,[IndexName]
                     ,[Tags]
                     ,[UpdatedBy]
-                    ,[UpdatedDateTime]
+                    ,Format(DATEADD(hour, ?, [UpdatedDateTime]),'yyyy/MM/dd HH:mm:ss') AS [UpdatedDateTime]
                 FROM [DocumentFormatIndex]
                 WHERE DocumentName = ?
                 AND GPTModelName = ?
@@ -49,6 +52,7 @@ class GetDocumentFormatIndexApproach(Approach):
                 AND IsDeleted = 0
                 ORDER BY IndexId"""
             cursor.execute(select_master_document_format_sql,
+                        TIME_DEFFERENCE,
                         document_name,
                         self._gpt_model_name)
             temp_rows = cursor.fetchall()
@@ -62,7 +66,7 @@ class GetDocumentFormatIndexApproach(Approach):
                             ,[IndexName]
                             ,[Tags]
                             ,[UpdatedBy]
-                            ,[UpdatedDateTime]
+                            ,Format(DATEADD(hour, ?, [UpdatedDateTime]),'yyyy/MM/dd HH:mm:ss') AS [UpdatedDateTime]
                         FROM [DocumentFormatIndex]
                         WHERE DocumentName = ?
                         AND GPTModelName = ?
@@ -73,6 +77,7 @@ class GetDocumentFormatIndexApproach(Approach):
                         OR Tags LIKE ?)
                         ORDER BY IndexId"""
                     cursor.execute(select_document_format_sql,
+                                TIME_DEFFERENCE,
                                 document_name,
                                 self._gpt_model_name,
                                 user_id, 
@@ -89,7 +94,7 @@ class GetDocumentFormatIndexApproach(Approach):
                             ,[IndexName]
                             ,[Tags]
                             ,[UpdatedBy]
-                            ,[UpdatedDateTime]
+                            ,Format(DATEADD(hour, ?, [UpdatedDateTime]),'yyyy/MM/dd HH:mm:ss') AS [UpdatedDateTime]
                         FROM [DocumentFormatIndex]
                         WHERE DocumentName = ?
                         AND GPTModelName = ?
@@ -99,6 +104,7 @@ class GetDocumentFormatIndexApproach(Approach):
                         OR Tags LIKE ?)
                         ORDER BY IndexId"""
                     cursor.execute(select_document_format_sql,
+                                TIME_DEFFERENCE,
                                 document_name,
                                 self._gpt_model_name,
                                 "%" + search_text_item + "%", 
@@ -114,7 +120,7 @@ class GetDocumentFormatIndexApproach(Approach):
                         ,[Tags]
                         ,[IndexName]
                         ,[UpdatedBy]
-                        ,[UpdatedDateTime]
+                        ,Format(DATEADD(hour, ?, [UpdatedDateTime]),'yyyy/MM/dd HH:mm:ss') AS [UpdatedDateTime]
                     FROM [DocumentFormatIndex]
                     WHERE DocumentName = ?
                     AND GPTModelName = ?
@@ -123,6 +129,7 @@ class GetDocumentFormatIndexApproach(Approach):
                     AND IsDeleted = 0
                     ORDER BY IndexId"""
                 cursor.execute(select_document_format_sql,
+                            TIME_DEFFERENCE,
                             document_name,
                             self._gpt_model_name,
                             user_id)            
@@ -136,7 +143,7 @@ class GetDocumentFormatIndexApproach(Approach):
                         ,[IndexName]
                         ,[Tags]
                         ,[UpdatedBy]
-                        ,[UpdatedDateTime]
+                        ,Format(DATEADD(hour, ?, [UpdatedDateTime]),'yyyy/MM/dd HH:mm:ss') AS [UpdatedDateTime]
                     FROM [DocumentFormatIndex]
                     WHERE DocumentName = ?
                     AND GPTModelName = ?
@@ -144,6 +151,7 @@ class GetDocumentFormatIndexApproach(Approach):
                     AND IsDeleted = 0
                     ORDER BY IndexId"""
                 cursor.execute(select_document_format_sql,
+                            TIME_DEFFERENCE,
                             document_name,
                             self._gpt_model_name)
                 temp_rows = cursor.fetchall()
@@ -152,15 +160,19 @@ class GetDocumentFormatIndexApproach(Approach):
 
         if len(rows) < 1:
             raise Exception("ドキュメントフォーマットが存在しません。DocumentName:" + document_name + ", GPTModelName:" + self._gpt_model_name)
-        ret = []        
+        ret = []       
+        index_id_list = [] 
         for row in rows:
+            if row[0] in index_id_list:
+                continue
+            index_id_list.append(row[0])
             ret.append({
                 "index_id":row[0],
                 "is_master":row[1],
                 "index_name":row[2],
                 "tags":row[3],
                 "updated_by":row[4],
-                "updated_datetime":row[5]
+                "updated_date_time":row[5]
             })
         return {
             "document_format_index_list":ret}
