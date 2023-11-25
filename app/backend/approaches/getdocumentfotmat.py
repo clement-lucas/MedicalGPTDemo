@@ -9,14 +9,14 @@ class GetDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, document_format_file_id:int
+    def run(self, document_format_index_id:int
             ) -> any:
         print("GetDocumentFormatApproach.run")  
-        print("document_format_file_id:" + document_format_file_id)
-
+        print("document_format_index_id:" + str(document_format_index_id))
+        
         manager = DocumentFormatManager(
             self.sql_connector,
-            document_format_file_id)
+            document_format_index_id)
         ret_system_contetns = manager.get_system_contents()
         system_contetns = ret_system_contetns[0]
         system_contetns_suffix = ret_system_contetns[1]

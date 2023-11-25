@@ -1,8 +1,8 @@
-CREATE TABLE DocumentFormatFile ( 
+CREATE TABLE DocumentFormatIndex ( 
     ------------------
     -- ID
     ------------------
-    FileId INT NOT NULL IDENTITY,
+    IndexId INT NOT NULL IDENTITY,
 
     ------------------
     -- マスターフラグ
@@ -10,9 +10,9 @@ CREATE TABLE DocumentFormatFile (
     IsMaster bit,
 
     ------------------
-    -- FileName
+    -- インデックス名
     ------------------
-    [FileName] NVARCHAR(128),
+    IndexName NVARCHAR(128),
 
     ------------------
     -- ドキュメント名
@@ -28,10 +28,15 @@ CREATE TABLE DocumentFormatFile (
     ------------------
     GPTModelName VARCHAR(32),
     
+    ------------------
+    -- 検索用タグ
+    ------------------
+    Tags NVARCHAR(1024),
+
     CreatedBy VARCHAR(50),
     UpdatedBy VARCHAR(50),
     CreatedDateTime datetime,
     UpdatedDateTime datetime,
     IsDeleted bit,
-    PRIMARY KEY (FileId)
+    PRIMARY KEY (IndexId)
 ) 

@@ -2,8 +2,9 @@ import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest,
     GetPatientResponse, GetHistoryDetailRequest, AskResponse, ChatRequest, ChatPatientRequest,
     GetHistoryIndexRequest, GetHistoryIndexResponse,
     GetSoapRequest, GetSoapResponse, 
+    GetDocumentFormatIndexRequest, GetDocumentFormatIndexResponse,
     GetDocumentFormatRequest, GetDocumentFormatResponse,
-    UpdateDocumentFormatRequest as UpdateDocumentFormatRequest, UpdateDocumentFormatResponse as UpdateDocumentFormatResponse, 
+    UpdateDocumentFormatRequest, UpdateDocumentFormatResponse,
     GetIcd10MasterRequest, GetIcd10MasterResponse,
     GetDepartmentMasterRequest, GetDepartmentMasterResponse,
 } from "./models";
@@ -76,10 +77,8 @@ export async function dischargeApi(options: DischargeRequest): Promise<AskRespon
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            document_name: options.documentName,
             patient_code: options.patientCode,
-            department_code: options.departmentCode,
-            icd10_code: options.icd10Code,
+            document_format_index_id: options.documentFormatIndexId,
             approach: options.approach,
             user_id: options.userId,
             overrides: {
@@ -311,6 +310,27 @@ export async function getSoapApi( options: GetSoapRequest): Promise<GetSoapRespo
     return parsedResponse;
 }
 
+export async function getDocumentFormatIndexApi( options: GetDocumentFormatIndexRequest): Promise<GetDocumentFormatIndexResponse> {
+    const response = await fetch("/get_document_format_index", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            document_name: options.document_name,
+            user_id: options.user_id,
+            is_only_myself: options.is_only_myself,
+            search_text: options.search_text
+        })
+    });
+
+    const parsedResponse: GetDocumentFormatIndexResponse = await response.json();
+    if (response.status > 299 || !response.ok) {
+        throw Error(parsedResponse.error || "Unknown error");
+    }
+    return parsedResponse;
+}
+
 export async function getDocumentFormatApi( options: GetDocumentFormatRequest): Promise<GetDocumentFormatResponse> {
     const response = await fetch("/get_document_format", {
         method: "POST",
@@ -318,11 +338,7 @@ export async function getDocumentFormatApi( options: GetDocumentFormatRequest): 
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            document_name: options.document_name,
-            department_code: options.department_code,
-            icd10_code: options.icd10_code,
-            user_id: options.user_id,
-            force_master: options.force_master,
+            document_format_index_id: options.documnet_format_index_id
         })
     });
 
@@ -340,9 +356,10 @@ export async function updateDocumentFormatApi( options: UpdateDocumentFormatRequ
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
+            document_format_index_id: options.document_format_index_id,
+            document_format_index_name: options.document_format_index_name,
             document_name: options.document_name,
-            department_code: options.department_code,
-            icd10_code: options.icd10_code,
+            tags: options.tags,
             user_id: options.user_id,
             system_contents: options.system_contents,
             system_contents_suffix: options.system_contents_suffix,

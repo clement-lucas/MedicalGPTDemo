@@ -1,8 +1,8 @@
 DECLARE @inserted_id INT;
-INSERT INTO DocumentFormatFile
+INSERT INTO DocumentFormatIndex
 ( 
     IsMaster,
-    [FileName],
+    IndexName,
     DocumentName,
     GPTModelName,
     CreatedBy,
@@ -18,7 +18,7 @@ SET @inserted_id = SCOPE_IDENTITY();
 INSERT INTO DocumentFormat
 ( 
     IsMaster,
-    FileId,
+    IndexId,
     Kind, 
     OrderNo, 
     CategoryName, 
@@ -92,10 +92,10 @@ Answer ONLY with the facts listed in the list of sources below. If there isn''t 
 '作成される文章は 900 Token以内とします。', 
 1000, 'p', 0, 0, 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0);
 
-INSERT INTO DocumentFormatFile
+INSERT INTO DocumentFormatIndex
 ( 
     IsMaster,
-    [FileName],
+    IndexName,
     DocumentName,
     GPTModelName,
     CreatedBy,
@@ -111,7 +111,7 @@ SET @inserted_id = SCOPE_IDENTITY();
 INSERT INTO DocumentFormat
 ( 
     IsMaster,
-    FileId,
+    IndexId,
     Kind, 
     OrderNo, 
     CategoryName, 
@@ -185,10 +185,10 @@ Answer ONLY with the facts listed in the list of sources below. If there isn''t 
 '作成される文章は 900 Token以内とします。', 
 1000, 'p', 0, 0, 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0);
 
-INSERT INTO DocumentFormatFile
+INSERT INTO DocumentFormatIndex
 ( 
     IsMaster,
-    [FileName],
+    IndexName,
     DocumentName,
     GPTModelName,
     CreatedBy,
@@ -204,7 +204,7 @@ SET @inserted_id = SCOPE_IDENTITY();
 INSERT INTO DocumentFormat
 ( 
     IsMaster,
-    FileId,
+    IndexId,
     Kind, 
     OrderNo, 
     CategoryName, 

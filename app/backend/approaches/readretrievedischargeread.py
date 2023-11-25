@@ -231,14 +231,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 allergy, \
                 medicine
 
-    def run(self, document_name: str, patient_code:str, department_code:str, icd10_code:str, user_id:str, overrides: dict) -> any:
+    def run(self, patient_code:str, document_format_index_id:int, user_id:str, overrides: dict) -> any:
         timer_total = LapTimer()
         timer_total.start("退院時サマリ作成処理全体")
 
-        print("document_name:" + document_name)
         print("patient_code:" + patient_code)
-        print("department_code:" + department_code)
-        print("icd10_code:" + icd10_code)
+        print("document_format_index_id:" + str(document_format_index_id))
         print("user_id:" + user_id)
                 
         self.gptconfigmanager = GPTConfigManager(self.sql_connector)
@@ -349,7 +347,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # system content 部分の文言取得
         document_manager = DocumentFormatManager(
             self.sql_connector,
-            document_name, department_code, icd10_code, user_id, False)
+            document_format_index_id)
         ret_system_contetns = document_manager.get_system_contents()
         system_content = ret_system_contetns[0] + ret_system_contetns[1]
         if system_content == "":

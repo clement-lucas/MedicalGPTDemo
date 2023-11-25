@@ -101,3 +101,31 @@
     margin: 30px;
 }
 
+.citation {
+    font-weight: 500;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 4px;
+    padding: 0px 8px;
+    background: #d1dbfa;
+    color: #123bb6;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.citation:hover {
+    text-decoration: underline;
+}
+
+.searchDocumentFormatButton {
+    background: #dbdbdb;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.searchDocumentFormatButton:hover {
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.14), 0px 0px 2px rgba(0, 0, 0, 0.12);
+    outline: 2px solid rgba(115, 118, 225, 1);
+}

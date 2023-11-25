@@ -13,9 +13,9 @@ CREATE TABLE DocumentFormat (
     IsMaster bit,
 
     ------------------
-    -- ファイル ID
+    -- DocumentFormatIndex テーブルの ID
     ------------------
-    FileId INT,
+    IndexId INT,
 
     ------------------
     -- UserId

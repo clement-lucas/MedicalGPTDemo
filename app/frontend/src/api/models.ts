@@ -31,9 +31,7 @@ export type DocumentRequest = {
 
 export type DischargeRequest = {
     patientCode: string;
-    documentName: string;
-    departmentCode: string;
-    icd10Code: string;
+    documentFormatIndexId: number;
     approach: Approaches;
     userId: string;
     overrides?: AskRequestOverrides;
@@ -143,12 +141,29 @@ export type DocumentFormat = {
     use_discharge_medicine_records: boolean;
 };
 
-export type GetDocumentFormatRequest = {
+export type DocumentFormatIndex = {
+    index_id: number;
+    is_master: boolean;
+    index_name: string;
+    tags: string;
+    updated_by: string;
+    updated_date_time: string;
+};
+
+export type GetDocumentFormatIndexRequest = {
     document_name: string;
-    department_code: string;
-    icd10_code: string;
     user_id: string;
-    force_master: boolean;
+    is_only_myself: boolean;
+    search_text: string;
+};
+
+export type GetDocumentFormatIndexResponse = {
+    document_format_index_list: DocumentFormatIndex[];
+    error?: string;
+};
+
+export type GetDocumentFormatRequest = {
+    documnet_format_index_id: number;
 };
 
 export type GetDocumentFormatResponse = {
@@ -159,9 +174,10 @@ export type GetDocumentFormatResponse = {
 };
 
 export type UpdateDocumentFormatRequest = {
+    document_format_index_id: number;
+    document_format_index_name: string;
     document_name: string;
-    department_code: string;
-    icd10_code: string;
+    tags: string;
     user_id: string;
     system_contents: string;
     system_contents_suffix: string;
@@ -169,6 +185,7 @@ export type UpdateDocumentFormatRequest = {
 };
 
 export type UpdateDocumentFormatResponse = {
+    document_format_index_id: number;
     error?: string;
 };
 
