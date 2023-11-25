@@ -10,8 +10,6 @@ import { dischargeApi, Approaches, AskResponse, DischargeRequest, GetHistoryInde
     , DocumentFormat
     , getDocumentFormatApi, GetDocumentFormatRequest
     , updateDocumentFormatApi, UpdateDocumentFormatRequest 
-    , getIcd10MasterApi, GetIcd10MasterRequest
-    , getDepartmentMasterApi, GetDepartmentMasterRequest
     , getDocumentFormatIndexApi, GetDocumentFormatIndexRequest, DocumentFormatIndex
 } from "../../api";
 import { Answer, AnswerError } from "../../components/Answer";
@@ -23,6 +21,7 @@ import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/Do
 import { DocumentFormatEditButton } from "../../components/DocumentFormatSetting/DocumentFormatEditButton";
 import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
 import { Search12Filled } from "@fluentui/react-icons";
+import { a } from "@react-spring/web";
 
 export type HistoryIndex = {
     id: number;
@@ -78,6 +77,7 @@ const Discharge = () => {
     const [isOnlyMyself, setIsOnlyMyself] = useState<boolean>(false);
     const [searchText, setSearchText] = useState<string>("");
     const [saveAsName, setSaveAsName] = useState<string>("");
+    const [tags, setTags] = useState<string>("");
 
     const onLoad = async () => {
         setIsDocumnetFormatSettingVisible(false);
@@ -125,7 +125,7 @@ const Discharge = () => {
         }
     }
 
-    const getDocumentFormatIndexList = async () => {
+    const getDocumentFormatIndexList = async (newSelectedIndexId:number = -1) => {
         setIsLoadingDocumentFormatIndexList(true);
         try {
             const request: GetDocumentFormatIndexRequest = {
@@ -141,11 +141,11 @@ const Discharge = () => {
             for (let documentFormatIndex of result.document_format_index_list) {
                 if (documentFormatIndex.is_master) {
                     masterIndex = documentFormatIndex;
-                    break;
                 }
-                if (selectedDocumentFormatIndex && selectedDocumentFormatIndex.index_id === documentFormatIndex.index_id) {
+                if (newSelectedIndexId == documentFormatIndex.index_id) {
                     setSelectedDocumentFormatIndex(documentFormatIndex);
                     setSaveAsName("");
+                    setTags(documentFormatIndex.tags);
                     foundSelectedDocumentFormatIndex = true;
                     break;
                 }
@@ -153,6 +153,7 @@ const Discharge = () => {
             if (!foundSelectedDocumentFormatIndex) {
                 setSelectedDocumentFormatIndex(masterIndex);
                 setSaveAsName("");
+                setTags("");
             }
         } catch (e) {
             alert(e)
@@ -189,14 +190,16 @@ const Discharge = () => {
                 document_format_index_id: index_id,
                 document_format_index_name: index_name,
                 document_name: DOCUMENT_NAME,
-                tags: selectedDocumentFormatIndex!.tags,
+                tags: tags,
                 user_id: DEFAULT_USER_ID,
                 system_contents: systemContents,
                 system_contents_suffix: systemContentsSuffix,
                 document_formats: documentFormats,
             };
-            await updateDocumentFormatApi(request);
+            const result = await updateDocumentFormatApi(request);
+
             alert("保存しました。");
+            getDocumentFormatIndexList(result.document_format_index_id);
         } catch (e) {
             alert(e)
         }
@@ -255,7 +258,7 @@ const Discharge = () => {
         }
         makeApiRequest(documentName);
     };
-    const onSaveDocumentFormatClicked = (index_id:number, index_name:string) => {
+    const onSaveDocumentFormatClicked = async (index_id:number, index_name:string) => {
         // 入力チェック
         let errorMessages:string = "";
         for (let documentFormat of documentFormats) {
@@ -279,6 +282,7 @@ const Discharge = () => {
             return;
         }
         updateDocumentFormat(index_id, index_name);
+
         setIsDocumentFormatSettingEdited(false);
     }
 
@@ -391,21 +395,14 @@ const Discharge = () => {
     };
 
     const onTagsChanged = (targetDocumentFormatIndex:DocumentFormatIndex, newValue:string) => {
-        // 値が変わっているかチェック
-        // 改行コード 統一
-        const targetTags = targetDocumentFormatIndex.tags.replace(/\r?\n/g, "\n");
-        const newTags = newValue.replace(/\r?\n/g, "\n");
-        if (targetTags !== newTags) {
+        if (tags !== newValue) {
             setIsDocumentFormatSettingEdited(true);
         }
+        setTags(newValue);
+    };
 
-        const newDocumentFormatIndexList = documentFormatIndexList.map((documentFormatIndex) => {
-            if (documentFormatIndex.index_id === targetDocumentFormatIndex.index_id) {
-                documentFormatIndex.tags = newValue;
-            }
-            return documentFormatIndex;
-        });
-        setDocumentFormatIndexList(newDocumentFormatIndexList);
+    const onSaveAsNameChanged = (newValue:string) => {
+        setSaveAsName(newValue);
     };
 
     const onDocumentFormatUpClicked = (documentFormat : DocumentFormat) => {
@@ -558,6 +555,7 @@ const Discharge = () => {
         }
         setSelectedDocumentFormatIndex(newItem);
         setSaveAsName("");
+        setTags(newItem.tags);
     }
 
     const onDocumentFormatEditClicked = () => {
@@ -703,7 +701,7 @@ const Discharge = () => {
                             <br></br>
                             <Label>使用するプロンプトを選ぶ</Label>
                             <Stack horizontal>
-                                <Checkbox label="自分が作成したプロンプトのみ"
+                                <Checkbox label="自分が作成したプロンプトとマスターファイルのみ"
                                     checked={isOnlyMyself}
                                     onChange={(e, checked) => setIsOnlyMyself(checked!)}/>
                                 <TextField
@@ -793,6 +791,7 @@ const Discharge = () => {
                     documentName={DOCUMENT_NAME}
                     documentFormatIndex={selectedDocumentFormatIndex!}
                     saveAsName={saveAsName}
+                    tags={tags}
                     userId={DEFAULT_USER_ID}
                     systemContents={systemContents}
                     documentFormats={documentFormats}
@@ -803,7 +802,7 @@ const Discharge = () => {
                     onSystemContentsChanged={onSystemContentsChanged}
                     onCategoryNameChanged={onCategoryNameChanged}
                     onTagsChanged={onTagsChanged}
-                    onSaveAsNameChanged={setSaveAsName}
+                    onSaveAsNameChanged={onSaveAsNameChanged}
                     onKindChanged={onKindChanged}
                     onTargetSoapChanged={onTargetSoapChanged}
                     onQuestionChanged={onQuestionChanged}

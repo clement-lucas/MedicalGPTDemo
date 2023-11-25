@@ -16,7 +16,7 @@ class DocumentFormatManager:
             ) -> any:
         
         # SQL Server に接続する
-        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+        with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
             rows = []
             # システムコンテンツの取得
@@ -59,7 +59,7 @@ class DocumentFormatManager:
                     UseDischargeMedicineRecords
                 FROM DocumentFormat 
                 WHERE IndexId = ?
-                AND Kind = ?
+                AND Kind <> ?
                 AND IsDeleted = 0
                 ORDER BY OrderNo"""
             cursor.execute(select_document_format_sql,

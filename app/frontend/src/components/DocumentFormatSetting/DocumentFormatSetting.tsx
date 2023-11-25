@@ -26,6 +26,8 @@ interface Props {
 
     saveAsName: string;
 
+    tags: string;
+
     onSaveClicked: (index_id:number, index_name:string) => void;
     onCancelClicked: () => void;
 
@@ -47,7 +49,7 @@ interface Props {
 export const DocumentFormatSetting = ({
     documentName, documentFormatIndex, userId, 
     systemContents, 
-    documentFormats, isLoading, isEdited, saveAsName,
+    documentFormats, isLoading, isEdited, saveAsName, tags,
     onSaveClicked, onCancelClicked,
     onSystemContentsChanged,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
@@ -55,6 +57,18 @@ export const DocumentFormatSetting = ({
     onUpClicked, onDownClicked, onDeleteClicked, onAddClicked
 }: Props) => {
     
+    const promptNameLabelStyles = {
+        root: {
+          color: '#ffffff',
+          font: '16px',
+          fontWeight: 'bold',
+          textAliegn: 'left',
+          paddingLeft: '5px',
+          width: '100%',
+          backgroundColor: 'rgb(95, 95, 95)',
+        }
+    };
+
     return (
         <div>
             {isLoading && (
@@ -63,8 +77,21 @@ export const DocumentFormatSetting = ({
                 </div>
                 )}
             {!isLoading && <div>
-                <Label>プロンプト名</Label>
-                <Label>{documentFormatIndex.index_name}</Label><br></br>
+                <Label styles={promptNameLabelStyles}>{documentFormatIndex.index_name}</Label>
+                <table className={styles.documentFormatSettingIndexTable}>
+                    {/* <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>プロンプト名：</td>
+                        <td>{documentFormatIndex.index_name}</td>
+                    </tr> */}
+                    <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>最終更新日時：</td>
+                        <td>{documentFormatIndex.updated_date_time}</td>
+                    </tr>
+                    <tr>
+                        <td className={styles.documentFormatSettingIndexTd}>最終更新ユーザー：</td>
+                        <td>{documentFormatIndex.updated_by}</td>
+                    </tr>
+                </table>
                 <Stack horizontal>
                     <div className={styles.subDocumentFormatSettingButton} onClick={onCancelClicked}>
                         <p className={styles.subDocumentFormatSettingButtonText}>閉じる</p>
@@ -116,10 +143,6 @@ export const DocumentFormatSetting = ({
                 </div>
                 </Stack>
                 <div className={styles.footer}>
-                    <p>最終更新日時: </p>
-                    <p>{documentFormatIndex.updated_date_time}</p><br></br>
-                    <p>最終更新ユーザー: </p>
-                    <p>{documentFormatIndex.updated_by}</p><br></br>
                     <p>検索用タグ：<br></br>
                         <TextField
                             placeholder="e.g. 内科, インフルエンザ, 肺炎"
@@ -127,37 +150,38 @@ export const DocumentFormatSetting = ({
                             multiline={true}
                             resizable={true}
                             scrolling="true"
-                            defaultValue={documentFormatIndex.tags}
-                            value={documentFormatIndex.tags}
+                            defaultValue={tags}
+                            value={tags}
                             onChange={(e, newValue) => onTagsChanged(documentFormatIndex, newValue || "")}
                             onBlur={(e) => onTagsChanged(documentFormatIndex, e.target.value || "")}
                         />
                     </p>
-                    
-                    <div className={isEdited && userId === documentFormatIndex.updated_by ? 
+                    {documentFormatIndex.updated_by === userId &&
+                        <div className={isEdited ? 
+                            styles.saveDocumentFormatSettingButton : 
+                            styles.saveDocumentFormatSettingButtonDisabled} 
+                            onClick={isEdited ? 
+                                () =>
+                                onSaveClicked(documentFormatIndex.index_id, documentFormatIndex.index_name) :
+                            undefined}>
+                            <Stack horizontal>
+                                <Save24Filled primaryFill={isEdited && userId === documentFormatIndex.updated_by ? "rgba(115, 118, 225, 1)" : "rgba(85, 85, 85, 1)"} aria-hidden="true" aria-label="Edit logo" />
+                                <p className={isEdited ? 
+                                    styles.saveDocumentFormatSettingButtonText : 
+                                    styles.saveDocumentFormatSettingButtonTextDisabled}>上書き保存する</p>
+                            </Stack>
+                        </div>
+                    }
+                    <div className={saveAsName != "" ? 
                         styles.saveDocumentFormatSettingButton : 
                         styles.saveDocumentFormatSettingButtonDisabled} 
-                        onClick={isEdited && userId === documentFormatIndex.updated_by ? 
-                            () =>
-                            onSaveClicked(documentFormatIndex.index_id, documentFormatIndex.index_name) :
-                        undefined}>
-                        <Stack horizontal>
-                            <Save24Filled primaryFill={isEdited ? "rgba(115, 118, 225, 1)" : "rgba(85, 85, 85, 1)"} aria-hidden="true" aria-label="Edit logo" />
-                            <p className={isEdited && userId === documentFormatIndex.updated_by ? 
-                                styles.saveDocumentFormatSettingButtonText : 
-                                styles.saveDocumentFormatSettingButtonTextDisabled}>上書き保存する</p>
-                        </Stack>
-                    </div>
-                    <div className={isEdited ? 
-                        styles.saveDocumentFormatSettingButton : 
-                        styles.saveDocumentFormatSettingButtonDisabled} 
-                        onClick={isEdited ? 
+                        onClick={saveAsName != "" ?
                             () =>
                             onSaveClicked(-1, saveAsName) :
                         undefined}>
                         <Stack horizontal>
-                            <Save24Filled primaryFill={isEdited ? "rgba(115, 118, 225, 1)" : "rgba(85, 85, 85, 1)"} aria-hidden="true" aria-label="Edit logo" />
-                            <p className={isEdited ? 
+                            <Save24Filled primaryFill={saveAsName != "" ? "rgba(115, 118, 225, 1)" : "rgba(85, 85, 85, 1)"} aria-hidden="true" aria-label="Save As logo" />
+                            <p className={saveAsName != "" ? 
                                 styles.saveDocumentFormatSettingButtonText : 
                                 styles.saveDocumentFormatSettingButtonTextDisabled}>名前を付けて保存する</p>
                         </Stack>

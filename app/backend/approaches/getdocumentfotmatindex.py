@@ -2,7 +2,6 @@ import os
 from approaches.approach import Approach
 from lib.sqlconnector import SQLConnector
 from lib.documentformatmanager import DocumentFormatManager
-DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 
 class GetDocumentFormatIndexApproach(Approach):
     def __init__(self, sql_connector:SQLConnector, sourcepage_field: str, content_field: str):
@@ -27,13 +26,34 @@ class GetDocumentFormatIndexApproach(Approach):
 
         # search_text のカンマを半角スペースに変換する
         search_text = search_text.replace(",", " ")
+        search_text = search_text.replace("、", " ")
 
         # search_text を半角スペースで分割する
         search_text_list = search_text.split(" ")
 
         # SQL Server に接続する
-        with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+        with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             rows = []
+            # マスターファイルは必ず表示する
+            select_master_document_format_sql = """SELECT
+                    [IndexId]
+                    ,[IsMaster]
+                    ,[IndexName]
+                    ,[Tags]
+                    ,[UpdatedBy]
+                    ,[UpdatedDateTime]
+                FROM [DocumentFormatIndex]
+                WHERE DocumentName = ?
+                AND GPTModelName = ?
+                AND IsMaster = 1
+                AND IsDeleted = 0
+                ORDER BY IndexId"""
+            cursor.execute(select_master_document_format_sql,
+                        document_name,
+                        self._gpt_model_name)
+            temp_rows = cursor.fetchall()
+            for temp_row in temp_rows:
+                rows.append(temp_row)            
             if is_only_myself and search_text != "":
                 for search_text_item in search_text_list:
                     select_document_format_sql = """SELECT 
@@ -43,10 +63,11 @@ class GetDocumentFormatIndexApproach(Approach):
                             ,[Tags]
                             ,[UpdatedBy]
                             ,[UpdatedDateTime]
-                        FROM [DocumentFormatFile]
+                        FROM [DocumentFormatIndex]
                         WHERE DocumentName = ?
                         AND GPTModelName = ?
                         AND UpdatedBy = ?
+                        AND IsMaster = 0
                         AND IsDeleted = 0
                         AND (IndexName LIKE ?
                         OR Tags LIKE ?)
@@ -56,8 +77,10 @@ class GetDocumentFormatIndexApproach(Approach):
                                 self._gpt_model_name,
                                 user_id, 
                                 "%" + search_text_item + "%", 
-                                "%" + search_text_item + "%")            
-                    rows.append(cursor.fetchall() )
+                                "%" + search_text_item + "%")
+                    temp_rows = cursor.fetchall()
+                    for temp_row in temp_rows:
+                        rows.append(temp_row)            
             elif is_only_myself == False and search_text != "":
                 for search_text_item in search_text_list:
                     select_document_format_sql = """SELECT 
@@ -67,9 +90,10 @@ class GetDocumentFormatIndexApproach(Approach):
                             ,[Tags]
                             ,[UpdatedBy]
                             ,[UpdatedDateTime]
-                        FROM [DocumentFormatFile]
+                        FROM [DocumentFormatIndex]
                         WHERE DocumentName = ?
                         AND GPTModelName = ?
+                        AND IsMaster = 0
                         AND IsDeleted = 0
                         AND (IndexName LIKE ?
                         OR Tags LIKE ?)
@@ -79,7 +103,9 @@ class GetDocumentFormatIndexApproach(Approach):
                                 self._gpt_model_name,
                                 "%" + search_text_item + "%", 
                                 "%" + search_text_item + "%")            
-                    rows.append(cursor.fetchall() )
+                    temp_rows = cursor.fetchall()
+                    for temp_row in temp_rows:
+                        rows.append(temp_row)            
             elif is_only_myself and search_text == "":
                 select_document_format_sql = """SELECT 
                         [IndexId]
@@ -89,17 +115,20 @@ class GetDocumentFormatIndexApproach(Approach):
                         ,[IndexName]
                         ,[UpdatedBy]
                         ,[UpdatedDateTime]
-                    FROM [DocumentFormatFile]
+                    FROM [DocumentFormatIndex]
                     WHERE DocumentName = ?
                     AND GPTModelName = ?
                     AND UpdatedBy = ?
+                    AND IsMaster = 0
                     AND IsDeleted = 0
                     ORDER BY IndexId"""
                 cursor.execute(select_document_format_sql,
                             document_name,
                             self._gpt_model_name,
                             user_id)            
-                rows = cursor.fetchall() 
+                temp_rows = cursor.fetchall()
+                for temp_row in temp_rows:
+                    rows.append(temp_row)            
             else:
                 select_document_format_sql = """SELECT 
                         [IndexId]
@@ -108,17 +137,21 @@ class GetDocumentFormatIndexApproach(Approach):
                         ,[Tags]
                         ,[UpdatedBy]
                         ,[UpdatedDateTime]
-                    FROM [DocumentFormatFile]
+                    FROM [DocumentFormatIndex]
                     WHERE DocumentName = ?
                     AND GPTModelName = ?
+                    AND IsMaster = 0
                     AND IsDeleted = 0
                     ORDER BY IndexId"""
                 cursor.execute(select_document_format_sql,
                             document_name,
-                            self._gpt_model_name,
-                            DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT)            
-                rows = cursor.fetchall() 
+                            self._gpt_model_name)
+                temp_rows = cursor.fetchall()
+                for temp_row in temp_rows:
+                    rows.append(temp_row)            
 
+        if len(rows) < 1:
+            raise Exception("ドキュメントフォーマットが存在しません。DocumentName:" + document_name + ", GPTModelName:" + self._gpt_model_name)
         ret = []        
         for row in rows:
             ret.append({
@@ -127,7 +160,7 @@ class GetDocumentFormatIndexApproach(Approach):
                 "index_name":row[2],
                 "tags":row[3],
                 "updated_by":row[4],
-                "updated_datetime":row[5].strftime('%Y-%m-%d %H:%M:%S')
+                "updated_datetime":row[5]
             })
         return {
             "document_format_index_list":ret}
