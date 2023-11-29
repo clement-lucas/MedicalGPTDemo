@@ -1,5 +1,5 @@
 import { useRef, useState} from "react";
-import { Checkbox, Spinner, TextField} from "@fluentui/react";
+import { Dropdown, Checkbox, IDropdownOption, Spinner, TextField, selectProperties} from "@fluentui/react";
 import { Label, Stack } from "@fluentui/react";
 import { PrimaryButton } from '@fluentui/react/lib/Button';
 
@@ -35,8 +35,29 @@ export type DayOfHistoryIndex = {
     historylist: HistoryIndex[];
 };
 
+// TODO ユーザー認証の仕組みができるまでのつなぎとしての SLOT。
+const momorySlotOptions: IDropdownOption[] = [
+    { key: '', text: '指定なし' },
+    { key: 'slot1', text: 'User 1' },
+    { key: 'slot2', text: 'User 2' },
+    { key: 'slot3', text: 'User 3' },
+    { key: 'slot4', text: 'User 4' },
+    { key: 'slot5', text: 'User 5' },
+    { key: 'slot6', text: 'User 6' },
+    { key: 'slot7', text: 'User 7' },
+    { key: 'slot8', text: 'User 8' },
+    { key: 'slot9', text: 'User 9' },
+    { key: 'slot10', text: 'User 10' },
+    { key: 'slot11', text: 'User 11' },
+    { key: 'slot12', text: 'User 12' },
+    { key: 'slot13', text: 'User 13' },
+    { key: 'slot14', text: 'User 14' },
+    { key: 'slot15', text: 'User 15' },
+    { key: 'slot16', text: 'User 16' },
+
+  ];
+
 const Discharge = () => {
-    const DEFAULT_USER_ID: string = "00000001";
     const DOCUMENT_NAME: string = "退院時サマリ";
     const DEFAULT_TEMPERATURE = 0.01
     const DEFAULT_RESPONSE_MAX_TOKENS = 1000
@@ -70,6 +91,7 @@ const Discharge = () => {
     const [systemContentsSuffix, setSystemContentsSuffix] = useState<string>("");
     const [documentFormats, setDocumentFormats] = useState<DocumentFormat[]>([]);
     const [isDocumentFormatSettingEdited, setIsDocumentFormatSettingEdited] = useState<boolean>(false);
+    const [selectedSlot, setSelectedSlot] = useState<string>("");
     const [documentFormatIndexList, setDocumentFormatIndexList] = useState<DocumentFormatIndex[]>([]);
     const [isLoadingDocumentFormatIndexList, setIsLoadingDocumentFormatIndexList] = useState<boolean>(false);
     const [selectedDocumentFormatIndex, setSelectedDocumentFormatIndex] = useState<DocumentFormatIndex>();
@@ -81,6 +103,7 @@ const Discharge = () => {
     const onLoad = async () => {
         setIsDocumentFormatSettingEdited(false);
         getDocumentFormatIndexList();
+        setSelectedSlot('');
         await getHistoryIndex();
     }
 
@@ -135,7 +158,7 @@ const Discharge = () => {
                 document_name: DOCUMENT_NAME,
                 is_only_myself: isOnlyMyself,
                 search_text: newSearchText,
-                user_id: DEFAULT_USER_ID
+                user_id: selectedSlot ? selectedSlot : '',
             };
             const result = await getDocumentFormatIndexApi(request);
             setDocumentFormatIndexList(result.document_format_index_list);
@@ -193,7 +216,7 @@ const Discharge = () => {
                 document_format_index_name: index_name,
                 document_name: DOCUMENT_NAME,
                 tags: tags,
-                user_id: DEFAULT_USER_ID,
+                user_id: selectedSlot ? selectedSlot : '',
                 system_contents: systemContents,
                 system_contents_suffix: systemContentsSuffix,
                 document_formats: documentFormats,
@@ -212,7 +235,7 @@ const Discharge = () => {
         try {
             const request: DeleteDocumentFormatRequest = {
                 document_format_index_id: document_format_index_id,
-                user_id: DEFAULT_USER_ID
+                user_id: selectedSlot ? selectedSlot : '',
             };
             await deleteDocumentFormatApi(request);
             getDocumentFormatIndexList();
@@ -238,7 +261,7 @@ const Discharge = () => {
             const request: DischargeRequest = {
                 patientCode: patientCode,
                 documentFormatIndexId: selectedDocumentFormatIndex ? selectedDocumentFormatIndex.index_id : 0,
-                userId: DEFAULT_USER_ID,
+                userId: selectedSlot ? selectedSlot : '',
                 approach: Approaches.ReadRetrieveRead,
                 overrides: {
                     promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
@@ -562,6 +585,10 @@ const Discharge = () => {
         getSoap();
     };
 
+    const onChangeSlot = (newSlot: string) => {
+        setSelectedSlot(newSlot ? newSlot : '');
+    }
+
     const onDocumentFormatIndexClicked = (newItem:DocumentFormatIndex) => {
         if (selectedDocumentFormatIndex && selectedDocumentFormatIndex.index_id === newItem.index_id) {
             return;
@@ -801,8 +828,15 @@ const Discharge = () => {
                     />
                 )}
             </div>
-
         </div>
+        <Dropdown 
+                placeholder="Select user"
+                options={momorySlotOptions}
+                selectedKey={selectedSlot}
+                onChange={(e, newValue) => {
+                    onChangeSlot(newValue?.key as string || '');
+                }}
+            />            
         {selectedDocumentFormatIndex && documentFormats && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
@@ -810,7 +844,7 @@ const Discharge = () => {
                     documentFormatIndex={selectedDocumentFormatIndex!}
                     saveAsName={saveAsName}
                     tags={tags}
-                    userId={DEFAULT_USER_ID}
+                    userId={selectedSlot ? selectedSlot : ''}
                     systemContents={systemContents}
                     documentFormats={documentFormats}
                     isLoading={isLoadingDocumnetFormatSetting}
