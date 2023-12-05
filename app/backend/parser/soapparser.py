@@ -30,6 +30,21 @@ class SOAPParser:
     @property
     def B(self):
         return self._soap[self._index_B]
+    
+    # 文字指定取得
+    def get(self, kind:str) -> str:
+        # 小文字に揃える
+        kind = kind.lower()
+        if kind == "s":
+            return self.S
+        elif kind == "o":
+            return self.O
+        elif kind == "a":
+            return self.A
+        elif kind == "p":
+            return self.P
+        elif kind == "b":
+            return self.B
 
     # SOAP タグではなかった
     IS_NOT_SOAP = -2

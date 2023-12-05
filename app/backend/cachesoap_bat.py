@@ -70,6 +70,7 @@ with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
 for row in rows:
     print("PID:" + str(row[0]))
+    # TODO 必要に応じて　SLEEP を入れる
     soap_manager = SOAPManager(sql_connector, 'SYSTEM', gptconfigmanager, row[0], 
         gpt_deployment, num_tokens_for_soap)
 
