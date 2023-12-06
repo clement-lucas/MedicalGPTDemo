@@ -1,3 +1,5 @@
+# 削除予定
+
 from approaches.approach import Approach
 from lib.soapmanager import SOAPManager as SOAPManager
 from lib.gptconfigmanager import GPTConfigManager
@@ -9,11 +11,11 @@ class GetSoapApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, patient_code:str) -> any:
+    def run(self, pid:str) -> any:
 
         self.gptconfigmanager = GPTConfigManager(self.sql_connector)
         # 医師記録の取得
-        soap_manager = SOAPManager(self.sql_connector, '', self.gptconfigmanager, patient_code, '', 0, True)
+        soap_manager = SOAPManager(self.sql_connector, '', self.gptconfigmanager, pid, '', 0, True)
         records_soap = soap_manager.SOAP("soapb", True)
 
         if records_soap == "":

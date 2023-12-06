@@ -1,26 +1,26 @@
 import { Stack, TextField, Label } from "@fluentui/react";
 import { Search24Filled } from "@fluentui/react-icons";
-import { getPatientApi, GetPatientResponse, GetPatientRequest } from "../../api";
+import { getPatientApi, GetPatientRequest } from "../../api";
 
 import styles from "./PatientCodeInput.module.css";
 
 interface Props {
-    onPatientCodeChanged: (patientCode: string) => void;
+    onPatientCodeChanged: (pid: string) => void;
     onPatientNameChanged: (patientName: string) => void;
     disabled: boolean;
     placeholder?: string;
     clearOnSend?: boolean;
-    patientCode: string;
+    pid: string;
     patientName: string;
 }
 
-export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, disabled, patientCode, patientName}: Props) => {
+export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, disabled, pid, patientName}: Props) => {
 
-    const makeApiRequest = async (patientCode: string) => {
+    const makeApiRequest = async (pid: string) => {
         onPatientNameChanged("");
         try {
             const request: GetPatientRequest = {
-                patient_code: patientCode,
+                pid: pid,
             };
             const result = await getPatientApi(request);
             onPatientNameChanged(result.name)
@@ -31,12 +31,12 @@ export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, d
     };
     
     const enterPatientCode = () => {
-        if (disabled || !patientCode.trim()) {
+        if (disabled || !pid.trim()) {
             return;
         }
         // 患者名検索
-        makeApiRequest(patientCode);
-        onPatientCodeChanged(patientCode);
+        makeApiRequest(pid);
+        onPatientCodeChanged(pid);
     };
 
     const onPatientCodeEnterPress = (ev: React.KeyboardEvent<Element>) => {
@@ -56,11 +56,11 @@ export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, d
 
     const onBlur = () => {
         // 患者名検索
-        makeApiRequest(patientCode);
-        onPatientCodeChanged(patientCode);
+        makeApiRequest(pid);
+        onPatientCodeChanged(pid);
     };
 
-    const enterPatientCodeDisabled = disabled || !patientCode.trim();
+    const enterPatientCodeDisabled = disabled || !pid.trim();
 
     return (
         <Stack horizontal>
@@ -71,7 +71,7 @@ export const PatientCodeInput = ({ onPatientCodeChanged, onPatientNameChanged, d
                     multiline={false}
                     resizable={false}
                     borderless
-                    value={patientCode}
+                    value={pid}
                     onChange={onPatientCodeChange}
                     onKeyDown={onPatientCodeEnterPress}
                     onBlur={onBlur}

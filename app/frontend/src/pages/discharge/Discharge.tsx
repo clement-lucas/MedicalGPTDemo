@@ -62,12 +62,17 @@ const Discharge = () => {
     const DEFAULT_TEMPERATURE = 0.01
     const DEFAULT_RESPONSE_MAX_TOKENS = 1000
     const DEFAULT_QUESTION_SUFFIX = "作成される文章は 900 Token以内とします。"
+    const DEFAULT_START_DAY_TO_USE_SOAP_RANGE_AFTER_HOSPITALIZATION = 0
+    const DEFAULT_USE_SOAP_RANGE_DAYS_AFTER_HOSPITALIZATION = 3
+    const DEFAULT_START_DAY_TO_USE_SOAP_RANGE_BEFORE_DISCHARGE = 0
+    const DEFAULT_USE_SOAP_RANGE_DAYS_BEFORE_DISCHARGE = 3
+
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
     const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
     const [excludeCategory, setExcludeCategory] = useState<string>("");
-    const [patientCode, setPatientCode] = useState<string>("");
+    const [pid, setPid] = useState<string>("");
     const [patientName, setPatientName] = useState<string>("");
     const [previewSoap, setPreviewSoap] = useState<string>("");
 
@@ -137,7 +142,7 @@ const Discharge = () => {
             setCompletionTokens(result.completion_tokens);
             setPromptTokens(result.prompt_tokens);
             setTotalTokens(result.total_tokens);
-            setPatientCode(result.pid!);
+            setPid(result.pid!);
             setPatientName(result.patient_name!);
         } catch (e) {
             setError(e);
@@ -245,7 +250,7 @@ const Discharge = () => {
     }
 
     const makeApiRequest = async (documentName: string) => {
-        if (patientCode === "") {
+        if (pid === "") {
             alert("患者番号を入力してください。");
             return;
         }
@@ -259,7 +264,7 @@ const Discharge = () => {
 
         try {
             const request: DischargeRequest = {
-                patientCode: patientCode,
+                pid: pid,
                 documentFormatIndexId: selectedDocumentFormatIndex ? selectedDocumentFormatIndex.index_id : 0,
                 userId: selectedSlot ? selectedSlot : '',
                 approach: Approaches.ReadRetrieveRead,
@@ -521,6 +526,10 @@ const Discharge = () => {
             question_suffix: DEFAULT_QUESTION_SUFFIX,
             use_allergy_records: false,
             use_discharge_medicine_records: false,
+            start_day_to_use_soap_range_after_hospitalization: DEFAULT_START_DAY_TO_USE_SOAP_RANGE_AFTER_HOSPITALIZATION,
+            use_soap_range_days_after_hospitalization: DEFAULT_USE_SOAP_RANGE_DAYS_AFTER_HOSPITALIZATION,
+            start_day_to_use_soap_range_before_discharge: DEFAULT_START_DAY_TO_USE_SOAP_RANGE_BEFORE_DISCHARGE,
+            use_soap_range_days_before_discharge: DEFAULT_USE_SOAP_RANGE_DAYS_BEFORE_DISCHARGE,
         };
 
         const newDocumentFormats: DocumentFormat[] = [];
@@ -565,10 +574,10 @@ const Discharge = () => {
         setIsLoadingSoap(true);
         try {
             const request: GetSoapRequest = {
-                patient_code: patientCode,
+                pid: pid,
             };
             const result = await getSoapApi(request);
-            setPreviewSoap("患者番号: " + patientCode + "\n" + result.soap);
+            setPreviewSoap("患者番号: " + pid + "\n" + result.soap);
         } catch (e) {
             setError(e);
         } finally {
@@ -576,8 +585,8 @@ const Discharge = () => {
         }
     }
 
-    const onSoapPreviewClicked = (patient_code: string) => {
-        if (patient_code === "") {
+    const onSoapPreviewClicked = (pid: string) => {
+        if (pid === "") {
             setPreviewSoap("患者番号を入力してください。");
             return;
         }
@@ -707,13 +716,13 @@ const Discharge = () => {
                 {/* <SettingsButton className={styles.settingsButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} /> */}
                 <img src={heart} alt="heart" style={iconStyle}  />
                              <h1 className={styles.chatEmptyStateTitle}>退院サマリ作成システム</h1>
-                             {/* <h2 className={styles.chatEmptyStateSubtitle}>{patientCode}</h2> */}
+                             {/* <h2 className={styles.chatEmptyStateSubtitle}>{pid}</h2> */}
                              <div className={styles.dischargeInput}>
                                  <PatientCodeInput
-                                     onPatientCodeChanged={x => (setPatientCode(x))}
+                                     onPatientCodeChanged={x => (setPid(x))}
                                      onPatientNameChanged={x => (setPatientName(x))}
                                      clearOnSend
-                                     patientCode={patientCode}
+                                     pid={pid}
                                      patientName={patientName}
                                      placeholder="Type a new question (e.g. how to prevent chronic disease?)"
                                      disabled={isLoading}
@@ -722,7 +731,7 @@ const Discharge = () => {
                             {/* <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3> */}
                             {/* <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3> */}
                             <SoapPreviewButton 
-                                patientCode={patientCode}
+                                pid={pid}
                                 onClick={onSoapPreviewClicked} />
                             {isLoadingSoap && <Spinner label="Loading soap" />}
                             { previewSoap != "" && (

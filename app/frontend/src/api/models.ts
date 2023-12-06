@@ -30,7 +30,7 @@ export type DocumentRequest = {
 };
 
 export type DischargeRequest = {
-    patientCode: string;
+    pid: string;
     documentFormatIndexId: number;
     approach: Approaches;
     userId: string;
@@ -80,6 +80,10 @@ export type ChatPatientRequest = {
 };
 
 export type GetPatientRequest = {
+    pid: string;
+};
+
+export type GetPatientOldRequest = {
     patient_code: string;
 };
 
@@ -114,7 +118,7 @@ export type GetHistoryDetailRequest = {
 };
 
 export type GetSoapRequest = {
-    patient_code: string;
+    pid: string;
 };
 
 export type GetSoapResponse = {
@@ -139,6 +143,10 @@ export type DocumentFormat = {
     is_b: boolean;
     use_allergy_records: boolean;
     use_discharge_medicine_records: boolean;
+    start_day_to_use_soap_range_after_hospitalization: number;
+    use_soap_range_days_after_hospitalization: number;
+    start_day_to_use_soap_range_before_discharge: number;
+    use_soap_range_days_before_discharge: number;
 };
 
 export type DocumentFormatIndex = {

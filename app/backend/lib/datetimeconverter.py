@@ -34,6 +34,42 @@ class DateTimeConverter:
         return datetime.datetime(yyyy, MM, dd, HH, MI, SS)
     
     @staticmethod
+    # その日の00:00:00を表す14桁の数値を返す
+    def get_start_of_the_day(org: int) -> int:
+        strdate = str(org)
+        if len(strdate) != 14:
+            raise Exception("日時表現が14桁ではありません。")
+        
+        # 14桁の数値 yyyyMMddHHMISS からyyyyを取得する
+        yyyy = org // 10000000000
+        # 14桁の数値 yyyyMMddHHMISS からMMを取得する
+        MM = (org - yyyy * 10000000000) // 100000000
+        # 14桁の数値 yyyyMMddHHMISS からddを取得する
+        dd = (org - yyyy * 10000000000 - MM * 100000000) // 1000000
+        return yyyy * 10000000000 + MM * 100000000 + dd * 1000000
+    
+    @staticmethod
+    # その日の23:59:59を表す14桁の数値を返す
+    def get_end_of_the_day(org: int) -> int:
+        strdate = str(org)
+        if len(strdate) != 14:
+            raise Exception("日時表現が14桁ではありません。")
+        
+        # 14桁の数値 yyyyMMddHHMISS からyyyyを取得する
+        yyyy = org // 10000000000
+        # 14桁の数値 yyyyMMddHHMISS からMMを取得する
+        MM = (org - yyyy * 10000000000) // 100000000
+        # 14桁の数値 yyyyMMddHHMISS からddを取得する
+        dd = (org - yyyy * 10000000000 - MM * 100000000) // 1000000
+        return yyyy * 10000000000 + MM * 100000000 + dd * 1000000 + 235959
+
+    @staticmethod   
+    def add_days(org: int, days: int) -> int:
+        dt = DateTimeConverter.get_datetime(org)
+        dt += timedelta(days=days)
+        return int(dt.strftime("%Y%m%d%H%M%S"))
+    
+    @staticmethod
     def convert_relative_datetime(text, base_datetime):
         # 日時の表現パターンを正規表現で定義
         patterns = {
@@ -61,3 +97,18 @@ class DateTimeConverter:
                 text = text.replace(match, converted_match.strftime('%Y/%m/%d %H:%M:%S'))
 
         return text
+
+    # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
+    # 例）20140224095813 -> 2014/02/24 09:58:13
+    @staticmethod
+    def int_2_str(org: int):
+        strdate = str(org)
+        if len(strdate) != 14:
+            return strdate
+        year = strdate[0:4]
+        month = strdate[4:6]
+        day = strdate[6:8]
+        hour = strdate[8:10]
+        minute = strdate[10:12]
+        second = strdate[12:14]
+        return ''.join([year, "/", month, "/", day, " ", hour, ":", minute, ":", second])

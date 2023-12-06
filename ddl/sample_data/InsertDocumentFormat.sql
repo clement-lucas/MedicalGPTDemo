@@ -15,7 +15,7 @@ VALUES
 (1, 'マスターファイル', N'退院時サマリ',  'gpt-35-turbo', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0);
 SET @inserted_id = SCOPE_IDENTITY();
 
-INSERT INTO DocumentFormat
+INSERT INTO DocumentFormatData
 ( 
     IsMaster,
     IndexId,
@@ -108,7 +108,7 @@ VALUES
 (1, 'マスターファイル', N'退院時サマリ',  'gpt-35-turbo-16k', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0);
 SET @inserted_id = SCOPE_IDENTITY();
 
-INSERT INTO DocumentFormat
+INSERT INTO DocumentFormatData
 ( 
     IsMaster,
     IndexId,
@@ -201,7 +201,7 @@ VALUES
 (1, 'マスターファイル', N'退院時サマリ',  'gpt-4', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0);
 SET @inserted_id = SCOPE_IDENTITY();
 
-INSERT INTO DocumentFormat
+INSERT INTO DocumentFormatData
 ( 
     IsMaster,
     IndexId,

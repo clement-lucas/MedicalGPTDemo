@@ -58,7 +58,11 @@ class GetDocumentFormatApproach(Approach):
                 "is_p":isP,
                 "is_b":isB,
                 "use_allergy_records":row[9],
-                "use_discharge_medicine_records":row[10]
+                "use_discharge_medicine_records":row[10],
+                "start_day_to_use_soap_range_after_hospitalization":row[11],
+                "use_soap_range_days_after_hospitalization":row[12],
+                "start_day_to_use_soap_range_before_discharge":row[13],
+                "use_soap_range_days_before_discharge":row[14]
             })
         return {
             "system_contents":system_contetns,

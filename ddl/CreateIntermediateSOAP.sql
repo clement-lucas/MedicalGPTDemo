@@ -6,7 +6,7 @@ CREATE TABLE IntermediateSOAP (
 
     ------------------
     -- 元データNO
-    -- EXSCDH1.EXTBDH1.DOC_NO と対応する。
+    -- EXTBDH1.DOC_NO と対応する。
     ------------------
     OriginalDocNo CHAR(30),  
 
@@ -33,9 +33,9 @@ CREATE TABLE IntermediateSOAP (
     SoapKind CHAR(1),
 
     ------------------
-    -- SOAP。
+    -- 中間データとしてのSOAP。
     ------------------
-    DocData NVARCHAR(max),
+    IntermediateData NVARCHAR(max),
 
     CreatedBy VARCHAR(50),
     UpdatedBy VARCHAR(50),

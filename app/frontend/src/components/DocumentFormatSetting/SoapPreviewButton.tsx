@@ -6,12 +6,12 @@ interface Props {
     onClick: (icd10Code: string) => void;
 
     // 患者番号
-    patientCode: string;
+    pid: string;
 }
 
-export const SoapPreviewButton = ({ onClick, patientCode }: Props) => {
+export const SoapPreviewButton = ({ onClick, pid }: Props) => {
     return (
-        <div className={styles.soapPreviewButton} onClick={() => onClick(patientCode)}>
+        <div className={styles.soapPreviewButton} onClick={() => onClick(pid)}>
             <Stack horizontal>
                 <Eye24Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Preview logo" />
                 <p className={styles.soapPreviewButtonText}>カルテデータ プレビュー</p>

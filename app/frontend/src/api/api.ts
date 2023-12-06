@@ -1,4 +1,5 @@
 import { AskRequest, DocumentRequest, DischargeRequest, GetPatientRequest, 
+    GetPatientOldRequest, 
     GetPatientResponse, GetHistoryDetailRequest, AskResponse, ChatRequest, ChatPatientRequest,
     GetHistoryIndexRequest, GetHistoryIndexResponse,
     GetSoapRequest, GetSoapResponse, 
@@ -78,7 +79,7 @@ export async function dischargeApi(options: DischargeRequest): Promise<AskRespon
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            patient_code: options.patientCode,
+            pid: options.pid,
             document_format_index_id: options.documentFormatIndexId,
             approach: options.approach,
             user_id: options.userId,
@@ -203,7 +204,7 @@ export async function getPatientApi(options: GetPatientRequest): Promise<GetPati
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            patient_code: options.patient_code,
+            pid: options.pid,
         })
     });
 
@@ -215,7 +216,7 @@ export async function getPatientApi(options: GetPatientRequest): Promise<GetPati
     return parsedResponse;
 }
 
-export async function getPatientOldApi(options: GetPatientRequest): Promise<GetPatientResponse> {
+export async function getPatientOldApi(options: GetPatientOldRequest): Promise<GetPatientResponse> {
     const response = await fetch("/get_patient_old", {
         method: "POST",
         headers: {
@@ -299,7 +300,7 @@ export async function getSoapApi( options: GetSoapRequest): Promise<GetSoapRespo
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            patient_code: options.patient_code,
+            pid: options.pid,
         })
     });
 

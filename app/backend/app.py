@@ -196,7 +196,7 @@ def discharge():
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(
-                     request.json["patient_code"], 
+                     request.json["pid"], 
                      request.json["document_format_index_id"], 
                      request.json["user_id"],
                      request.json.get("overrides") or {})
@@ -239,7 +239,7 @@ def get_patient():
         impl = get_patient_approaches.get("rrr")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["patient_code"])
+        r = impl.run(request.json["pid"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_patient")
@@ -287,7 +287,7 @@ def soap():
         impl = soap_approaches.get("get")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["patient_code"])
+        r = impl.run(request.json["pid"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /soap")

@@ -12,17 +12,17 @@ class GetPatientApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, patient_code:str) -> any:
+    def run(self, pid:str) -> any:
 
         # print("run")
-        # print(patient_code)
+        # print(pid)
 
         # SQL Server に接続する
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
 
             # SQL Server から患者情報を取得する
             cursor.execute("""SELECT PID_NAME
-                FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", patient_code)
+                FROM [dbo].[EXTBDH1] WHERE ACTIVE_FLG = 1 AND PID = ?""", pid)
             rows = cursor.fetchall() 
         for row in rows:
             return {"name":row[0]}

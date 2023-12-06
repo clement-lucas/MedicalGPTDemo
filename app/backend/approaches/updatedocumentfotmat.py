@@ -63,7 +63,7 @@ class UpdateDocumentFormatApproach(Approach):
                         document_format_index_id = cursor.fetchone()[0]
                     else:
                         # ドキュメントフォーマットの論理削除
-                        update_document_format_sql = """UPDATE DocumentFormat SET
+                        update_document_format_sql = """UPDATE DocumentFormatData SET
                                 IsDeleted = 1,
                                 UpdatedBy = ?,
                                 UpdatedDateTime = GETDATE()
@@ -87,7 +87,7 @@ class UpdateDocumentFormatApproach(Approach):
                                     user_id,
                                     document_format_index_id)
                     
-                    insert_document_format_sql = """INSERT INTO DocumentFormat
+                    insert_document_format_sql = """INSERT INTO DocumentFormatData
                         ( 
                             IsMaster,
                             IndexId,
@@ -101,6 +101,10 @@ class UpdateDocumentFormatApproach(Approach):
                             TargetSoapRecords, 
                             UseAllergyRecords, 
                             UseDischargeMedicineRecords,
+                            StartDayToUseSoapRangeAfterHospitalization,
+                            UseSoapRangeDaysAfterHospitalization,
+                            StartDayToUseSoapRangeBeforeDischarge,
+                            UseSoapRangeDaysBeforeDischarge,
                             CreatedBy,
                             UpdatedBy,
                             CreatedDateTime,
@@ -108,7 +112,7 @@ class UpdateDocumentFormatApproach(Approach):
                             IsDeleted
                         )
                         VALUES
-                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, GETDATE(), GETDATE(), 0)"""
+                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), 0)"""
 
                     rows_to_insert = []
                     for document_format in document_formats:
@@ -133,6 +137,10 @@ class UpdateDocumentFormatApproach(Approach):
                             document_format['question_suffix'],
                             document_format['response_max_tokens'],
                             target_soap,
+                            document_format['start_day_to_use_soap_range_after_hospitalization'],
+                            document_format['use_soap_range_days_after_hospitalization'],
+                            document_format['start_day_to_use_soap_range_before_discharge'],
+                            document_format['use_soap_range_days_before_discharge'],
                             user_id,
                             user_id
                         ))
@@ -148,6 +156,10 @@ class UpdateDocumentFormatApproach(Approach):
                         system_contents_suffix,
                         0,
                         '',
+                        0,
+                        0,
+                        0,
+                        0,
                         user_id,
                         user_id
                     ))

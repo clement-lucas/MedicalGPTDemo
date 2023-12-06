@@ -1,3 +1,4 @@
+-- このテーブルは廃止されました。 2023/12/07
 CREATE TABLE SummarizedSOAPCache ( 
     ------------------
     -- PID

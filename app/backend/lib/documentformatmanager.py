@@ -2,7 +2,7 @@ import os
 from lib.sqlconnector import SQLConnector
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 
-# DocumentFormat テーブルの内容を取得するクラス
+# DocumentFormatData テーブルの内容を取得するクラス
 
 class DocumentFormatManager:
 
@@ -23,7 +23,7 @@ class DocumentFormatManager:
             select_system_contents_sql = """SELECT 
                     ISNULL(Question, '') AS Question,
                     ISNULL(QuestionSuffix, '') AS QuestionSuffix
-                FROM DocumentFormat 
+                FROM DocumentFormatData 
                 WHERE IndexId = ?
                 AND Kind = ?
                 AND IsDeleted = 0
@@ -57,7 +57,11 @@ class DocumentFormatManager:
                     TargetSoapRecords, 
                     UseAllergyRecords, 
                     UseDischargeMedicineRecords
-                FROM DocumentFormat 
+                    StartDayToUseSoapRangeAfterHospitalization,
+                    UseSoapRangeDaysAfterHospitalization,
+                    StartDayToUseSoapRangeBeforeDischarge,
+                    UseSoapRangeDaysBeforeDischarge,
+                FROM DocumentFormatData 
                 WHERE IndexId = ?
                 AND Kind <> ?
                 AND IsDeleted = 0

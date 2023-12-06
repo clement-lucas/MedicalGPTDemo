@@ -66,62 +66,56 @@ else:
 gpt_deployment = os.getenv("AZURE_OPENAI_GPT_DEPLOYMENT")
 num_tokens_for_soap = int(gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - int(gptconfigmanager.get_value("TOKEN_NUM_FOR_QUESTION"))
 
-# 中間データから、指定した条件のレコードのId を取得する
-def get_intermediate_soap_id(sql_connector:SQLConnector, kind:str, original_doc_no:str) -> int:
+def insert_intermediate_soap(cnxn, data_list:[]) -> None:
     # SQL Server に接続する
-    with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-        # レコードを取得する
-        select_sql = """SELECT Id FROM IntermediateSOAP
-            WHERE IsDeleted = 0
-            AND SoapKind = ?
-            AND OriginalDocNo = ?"""
-        cursor.execute(select_sql, kind, original_doc_no)
-        rows = cursor.fetchall() 
-        if len(rows) < 1:
-            return -1
-        return rows[0][0]
-
-def insert_intermediate_soap(sql_connector:SQLConnector, data_list:[]) -> None:
-    # SQL Server に接続する
-    with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+    with cnxn.cursor() as cursor:
         # レコードを挿入する
-        insert_sql = """
-            INSERT INTO IntermediateSOAP (
-                OriginalDocNo, DuplicateSourceDataId, Pid, DocDate, SoapKind, DocData, 
+
+        insert_sql = """INSERT INTO IntermediateSOAP (
+                OriginalDocNo, DuplicateSourceDataId, Pid, DocDate, SoapKind, IntermediateData, 
                 CreatedBy, UpdatedBy, CreatedDateTime, UpdatedDateTime, IsDeleted)  
-                VALUES (?, ?, ?, ?, ?, ?, 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)"""
+            VALUES (
+                ?, 
+                COALESCE((SELECT TOP 1 Id FROM IntermediateSOAP
+                    WHERE IsDeleted = 0
+                    AND SoapKind = ?
+                    AND OriginalDocNo = ?
+                    ORDER BY Id DESC), -1), 
+                ?, ?, ?, ?, 
+                'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)
+            """
         cursor.executemany(insert_sql, data_list)
         cnxn.commit()
 
-# 中間データ作成
+# 3. 中間データを作成する。
 def create_intermediate_soap_row(pid:str,
                                  kind:str, 
-                                 pre_soap:DoctorsNoteParser, 
+                                 current_doc_no:str, 
                                  current_soap:DoctorsNoteParser, 
-                                 doc_date:int, last_doc_date:int, 
-                                 original_doc_no:str, 
-                                 pre_doc_no:str):
+                                 current_doc_date:int,
+                                 last_doc_no:str, 
+                                 last_soap:DoctorsNoteParser):
+    last = last_soap.get(kind)
+    current = current_soap.get(kind)
+    if current is None or current == "":
+        return None
     # 相対→絶対日時変換
-    #pre = DateTimeConverter.relative_datetime_2_absolute_datetime(pre_soap.get(kind), last_doc_date)
-    #current = DateTimeConverter.relative_datetime_2_absolute_datetime(current_soap.get(kind), doc_date)
+    # last = DateTimeConverter.relative_datetime_2_absolute_datetime(last, last_doc_date)
+    # current = DateTimeConverter.relative_datetime_2_absolute_datetime(current, doc_date)
     # 重複記述削除
-    current = Deduplicator.deduplicate(pre, current)
-    duplicate_source_data_id = get_intermediate_soap_id(sql_connector, kind, pre_doc_no)
+    current = Deduplicator.deduplicate(current, last)
     if duplicate_source_data_id < 0:
         duplicate_source_data_id = None
-    data = (original_doc_no, duplicate_source_data_id, pid, doc_date, kind, current)
+    data = (current_doc_no, kind, last_doc_no, pid, current_doc_date, kind, current)
     return data
-    # OriginalDocNo, DuplicateSourceDataId, Pid, DocDate, SoapKind, DocData
 
 # 中間データ作成
-def create_intermediate_soap(sql_connector:SQLConnector, 
+def create_intermediate_soap(cnxn,
                              pid:str,
                              last_doc_no:str,
-                             last_doc_date:int,
                              last_original_doc_datax:str) -> None:
-    # SQL Server に接続する
-    with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-        # まだ中間データが作成されていないレコードを取得する
+    # 2. 患者ごとの未作成の中間データのリストを取得する。
+    with cnxn.cursor() as cursor:
         select_datax_sql = """SELECT EXTBDH1.DOCDATE, EXTBDH1.DOC_NO, EXTBDC1.DOC_DATAX FROM EXTBDC1 
             INNER JOIN EXTBDH1 
             ON EXTBDC1.DOC_NO = EXTBDH1.DOC_NO
@@ -139,67 +133,53 @@ def create_intermediate_soap(sql_connector:SQLConnector,
         print("中間データを作成する対象のレコードがありません。")
         return
 
-    pre_soap = DoctorsNoteParser(last_original_doc_datax)
+    last_soap = DoctorsNoteParser(last_original_doc_datax)
     rows_to_insert = []
     for row in rows:
-        doc_date = row[0]
-        doc_no = row[1]
-        doc_datax = row[2]
-        print("中間データを作成します。doc_no:" + doc_no)
-        current_soap = DoctorsNoteParser(doc_datax)
-        data = create_intermediate_soap_row(pid,
-                                     "s", 
-                                     pre_soap, 
-                                     current_soap, 
-                                     doc_date, 
-                                     last_doc_date, 
-                                     doc_no, 
-                                     last_doc_no)
-        rows_to_insert.append(data)
-        data = create_intermediate_soap_row(pid,
-                                     "o", 
-                                     pre_soap, 
-                                     current_soap, 
-                                     doc_date, 
-                                     last_doc_date, 
-                                     doc_no, 
-                                     last_doc_no)
-        rows_to_insert.append(data)
-        data = create_intermediate_soap_row(pid,
-                                     "a", 
-                                     pre_soap, 
-                                     current_soap, 
-                                     doc_date, 
-                                     last_doc_date, 
-                                     doc_no, 
-                                     last_doc_no)
-        rows_to_insert.append(data)
-        data = create_intermediate_soap_row(pid,
-                                     "p", 
-                                     pre_soap, 
-                                     current_soap, 
-                                     doc_date, 
-                                     last_doc_date, 
-                                     doc_no, 
-                                     last_doc_no)
-        rows_to_insert.append(data)
-        data = create_intermediate_soap_row(pid,
-                                     "b", 
-                                     pre_soap, 
-                                     current_soap, 
-                                     doc_date, 
-                                     last_doc_date, 
-                                     doc_no, 
-                                     last_doc_no)
-        rows_to_insert.append(data)
+        current_doc_date = row[0]
+        current_doc_no = row[1]
+        current_doc_datax = row[2]
+        # 3. 中間データを作成する。
+        print("中間データを作成します。doc_no:" + current_doc_no)
+        current_soap = DoctorsNoteParser(current_doc_datax)
+        data = create_intermediate_soap_row(pid, "s", 
+            current_doc_no, current_soap, current_doc_date,
+            last_doc_no, last_soap)
+        if data is not None:
+            rows_to_insert.append(data)
+        data = create_intermediate_soap_row(pid, "o",
+            current_doc_no, current_soap, current_doc_date,
+            last_doc_no, last_soap)
+        if data is not None:
+            rows_to_insert.append(data)
+        data = create_intermediate_soap_row(pid, "a",
+            current_doc_no, current_soap, current_doc_date,
+            last_doc_no, last_soap)
+        if data is not None:
+            rows_to_insert.append(data)
+        data = create_intermediate_soap_row(pid, "p",
+            current_doc_no, current_soap, current_doc_date,
+            last_doc_no, last_soap)
+        if data is not None:
+            rows_to_insert.append(data)
+        data = create_intermediate_soap_row(pid, "b",
+            current_doc_no, current_soap, current_doc_date,
+            last_doc_no, last_soap)
+        if data is not None:
+            rows_to_insert.append(data)
 
-        insert_intermediate_soap(sql_connector, rows_to_insert)
+        if len(rows_to_insert) > 0:
+            # 4.中間データファイルから、重複比較元の DOC_NOと対応するIDを取得し、新しいレコード追加する。
+            insert_intermediate_soap(cnxn, rows_to_insert)
+
+        last_soap = current_soap
+        last_doc_no = current_doc_no
         
-# 最新の中間データを取得する
+# 1. 患者ごとの最新の中間データを取得する
 def get_last_intermediate_soap(sql_connector:SQLConnector) -> None:
 
     with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-        # 患者に該当する最新の中間データ日付を取得する
+        # 最新の中間データを取得する
         cursor.execute("""SELECT DISTINCT e.PID, COALESCE(s.LastDocDate, 0) AS LastDocDate, COALESCE(s.LastOriginalDocNo, '') AS LastOriginalDocNo, COALESCE(c.DOC_DATAX, '') AS LastOriginalDocDataX
             FROM [dbo].[EXTBDH1] e
             LEFT JOIN (
@@ -226,12 +206,12 @@ def get_last_intermediate_soap(sql_connector:SQLConnector) -> None:
             print("PID:" + str(pid))
             if last_doc_date > 0:
                 print("中間データあり。最新の DocDate：" + str(last_doc_date))
-                continue
             else:
                 print("中間データを作成します。")
-                create_intermediate_soap(sql_connector, pid, last_original_doc_no, last_doc_date, last_original_doc_datax)
+            
+            create_intermediate_soap(cnxn, pid, last_original_doc_no, last_doc_date, last_original_doc_datax)
 
-# 最新の中間データを取得する
+# 1. 患者ごとの最新の中間データを取得する
 get_last_intermediate_soap(sql_connector)
 
 

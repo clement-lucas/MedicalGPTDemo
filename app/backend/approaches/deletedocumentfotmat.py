@@ -28,7 +28,7 @@ class DeleteDocumentFormatApproach(Approach):
 
                 try:
                     # ドキュメントフォーマットの論理削除
-                    update_document_format_sql = """UPDATE DocumentFormat SET
+                    update_document_format_sql = """UPDATE DocumentFormatData SET
                             IsDeleted = 1,
                             UpdatedBy = ?,
                             UpdatedDateTime = GETDATE()

@@ -1,4 +1,4 @@
-CREATE TABLE DocumentFormat ( 
+CREATE TABLE DocumentFormatData ( 
     ------------------
     -- ID
     -- DocumentFormat 編集機能にてレコードを一意に識別するための ID
@@ -16,44 +16,6 @@ CREATE TABLE DocumentFormat (
     -- DocumentFormatIndex テーブルの ID
     ------------------
     IndexId INT,
-
-    ------------------
-    -- UserId
-    -- ユーザーID もしくは 保存スロット番号
-    -- マスターフラグが 1 の場合、無視される。
-    -- 廃盤。
-    ------------------
-    UserId NVARCHAR(50),
-
-    ------------------
-    -- 診療科コード
-    -- 処理種別がシステムコンテンツの場合、無視される。
-    -- 廃盤。
-    ------------------
-    DepartmentCode NVARCHAR(16),
-
-    ------------------
-    -- ICD10 コード
-    -- 処理種別がシステムコンテンツの場合、無視される。
-    -- 廃盤。
-    ------------------
-    Icd10Code NVARCHAR(16),
-
-    ------------------
-    -- ドキュメント名
-    -- Ex) 退院時サマリ
-    -- 廃盤。
-    ------------------
-    DocumentName NVARCHAR(32),
-
-    ------------------
-    -- GPT Model 名
-    -- Ex) gpt-35-turbo, gpt-4
-    -- .env ファイルの AZURE_GPT_MODEL_NAME および、
-    -- アプリケーション設定の同設定値に設定されているものと同じものを設定する
-    -- 廃盤。
-    ------------------
-    GPTModelName VARCHAR(32),
 
     ------------------
     -- 処理種別
@@ -146,6 +108,21 @@ CREATE TABLE DocumentFormat (
     -- 2023/10/02 現在使用していない。
     ------------------
     UseDischargeMedicineRecords BIT, 
+
+    ------------------
+    -- 使用するカルテデータの範囲。
+    -- 入院後何日目から何日間のカルテデータを使用するかを指定する。
+    ------------------
+    StartDayToUseSoapRangeAfterHospitalization INT,
+    UseSoapRangeDaysAfterHospitalization INT,
+
+    ------------------
+    -- 使用するカルテデータの範囲。
+    -- 退院前何日目から何日間のカルテデータを使用するかを指定する。
+    ------------------
+    StartDayToUseSoapRangeBeforeDischarge INT,
+    UseSoapRangeDaysBeforeDischarge INT,
+
     CreatedBy VARCHAR(50),
     UpdatedBy VARCHAR(50),
     CreatedDateTime datetime,
