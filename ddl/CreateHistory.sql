@@ -1,36 +1,29 @@
 CREATE TABLE History (
     Id INT NOT NULL IDENTITY,
-    UserId VARCHAR(50) NOT NULL,
     PID VARCHAR(10),  
-    DocumentName NVARCHAR(50) NOT NULL,
-    Prompt NVARCHAR(max) NOT NULL,
+    DocumentName NVARCHAR(50),
+    Prompt NVARCHAR(max),
+
+    ----------------------------
+    -- 使用した DocumentFormatIndex の ID
+    ----------------------------
+    DocumentFormatIndexId INT,
 
     ----------------------------
     -- 使用した中間データの ID のリスト
     ----------------------------
-    IntermediateDataIds NVARCHAR(max) NOT NULL,
+    IntermediateDataIds NVARCHAR(max),
 
-    -- 廃盤予定
-    MedicalRecord NVARCHAR(max) NOT NULL,
-
-    ----------------------------
-    -- 廃盤予定。
-    -- 要約された診療記録
-    -- <CATEGORY>カテゴリー名</CATEGORY>
-    -- <SOAP>要約された診療記録</SOAP>
-    -- <COMPLETION_TOKENS_FOR_SUMMARIZE>要約処理に使った総応答 Token 数</COMPLETION_TOKENS_FOR_SUMMARIZE>
-    -- <PROMPT_TOKENS_FOR_SUMMARIZE>要約処理に使った総プロンプト Token 数</PROMPT_TOKENS_FOR_SUMMARIZE>
-    -- <TOTAL_TOKENS_FOR_SUMMARIZE>要約処理に使った総トータル Token 数</TOTAL_TOKENS_FOR_SUMMARIZE>
-    -- <SUMMARIZE_LOG>要約処理 Token 数記録</SUMMARIZE_LOG>
-    -- の繰り返しとして記録される。
-    ----------------------------
-    SummarizedMedicalRecord NVARCHAR(max) NOT NULL,
-    Response NVARCHAR(max) NOT NULL,
-    CompletionTokens INT NOT NULL,
-    PromptTokens INT NOT NULL,
-    TotalTokens INT NOT NULL,
-	CreatedDateTime [datetime] NULL,
-	UpdatedDateTime [datetime] NULL,
-	IsDeleted [bit] NULL
+    Response NVARCHAR(max),
+    CompletionTokens INT,
+    PromptTokens INT,
+    TotalTokens INT,
+	CreatedLocalDateTime [datetime],
+	UpdatedLocalDateTime [datetime],
+    CreatedBy VARCHAR(50),
+    UpdatedBy VARCHAR(50),
+	CreatedDateTime [datetime],
+	UpdatedDateTime [datetime],
+	IsDeleted [bit]
     PRIMARY KEY (Id)
 );

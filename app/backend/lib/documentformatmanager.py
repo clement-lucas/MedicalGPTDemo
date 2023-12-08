@@ -56,11 +56,11 @@ class DocumentFormatManager:
                     ResponseMaxTokens,
                     TargetSoapRecords, 
                     UseAllergyRecords, 
-                    UseDischargeMedicineRecords
+                    UseDischargeMedicineRecords,
                     StartDayToUseSoapRangeAfterHospitalization,
                     UseSoapRangeDaysAfterHospitalization,
                     StartDayToUseSoapRangeBeforeDischarge,
-                    UseSoapRangeDaysBeforeDischarge,
+                    UseSoapRangeDaysBeforeDischarge
                 FROM DocumentFormatData 
                 WHERE IndexId = ?
                 AND Kind <> ?

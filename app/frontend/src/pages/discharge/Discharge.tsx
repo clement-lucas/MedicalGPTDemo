@@ -38,22 +38,22 @@ export type DayOfHistoryIndex = {
 // TODO ユーザー認証の仕組みができるまでのつなぎとしての SLOT。
 const momorySlotOptions: IDropdownOption[] = [
     { key: '', text: '指定なし' },
-    { key: 'slot1', text: 'User 1' },
-    { key: 'slot2', text: 'User 2' },
-    { key: 'slot3', text: 'User 3' },
-    { key: 'slot4', text: 'User 4' },
-    { key: 'slot5', text: 'User 5' },
-    { key: 'slot6', text: 'User 6' },
-    { key: 'slot7', text: 'User 7' },
-    { key: 'slot8', text: 'User 8' },
-    { key: 'slot9', text: 'User 9' },
-    { key: 'slot10', text: 'User 10' },
-    { key: 'slot11', text: 'User 11' },
-    { key: 'slot12', text: 'User 12' },
-    { key: 'slot13', text: 'User 13' },
-    { key: 'slot14', text: 'User 14' },
-    { key: 'slot15', text: 'User 15' },
-    { key: 'slot16', text: 'User 16' },
+    { key: 'user1', text: 'user1' },
+    { key: 'user2', text: 'user2' },
+    { key: 'user3', text: 'user3' },
+    { key: 'user4', text: 'user4' },
+    { key: 'user5', text: 'user5' },
+    { key: 'user6', text: 'user6' },
+    { key: 'user7', text: 'user7' },
+    { key: 'user8', text: 'user8' },
+    { key: 'user9', text: 'user9' },
+    { key: 'user10', text: 'user10' },
+    { key: 'user11', text: 'user11' },
+    { key: 'user12', text: 'user12' },
+    { key: 'user13', text: 'user13' },
+    { key: 'user14', text: 'user14' },
+    { key: 'user15', text: 'user15' },
+    { key: 'user16', text: 'user16' },
 
   ];
 
@@ -66,6 +66,7 @@ const Discharge = () => {
     const DEFAULT_USE_SOAP_RANGE_DAYS_AFTER_HOSPITALIZATION = 3
     const DEFAULT_START_DAY_TO_USE_SOAP_RANGE_BEFORE_DISCHARGE = 0
     const DEFAULT_USE_SOAP_RANGE_DAYS_BEFORE_DISCHARGE = 3
+    const DEFAULT_DEPARTMENT_CODE = "001"
 
     const [promptTemplate, setPromptTemplate] = useState<string>("");
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
@@ -110,6 +111,7 @@ const Discharge = () => {
         setIsDocumentFormatSettingEdited(false);
         getDocumentFormatIndexList();
         setSelectedSlot('');
+        setDepartmantCode(DEFAULT_DEPARTMENT_CODE);
         await getHistoryIndex();
     }
 
@@ -219,7 +221,7 @@ const Discharge = () => {
         try {
             const request: UpdateDocumentFormatRequest = {
                 document_format_index_id: index_id,
-                document_format_index_name: index_name,
+                document_format_index_name: saveAsName != undefined && saveAsName != "" ? saveAsName: index_name,
                 document_name: DOCUMENT_NAME,
                 tags: tags,
                 user_id: selectedSlot ? selectedSlot : '',
@@ -268,15 +270,7 @@ const Discharge = () => {
                 departmentCode: departmantCode,
                 pid: pid,
                 documentFormatIndexId: selectedDocumentFormatIndex ? selectedDocumentFormatIndex.index_id : 0,
-                userId: selectedSlot ? selectedSlot : '',
-                approach: Approaches.ReadRetrieveRead,
-                overrides: {
-                    promptTemplate: promptTemplate.length === 0 ? undefined : promptTemplate,
-                    excludeCategory: excludeCategory.length === 0 ? undefined : excludeCategory,
-                    top: retrieveCount,
-                    semanticRanker: useSemanticRanker,
-                    semanticCaptions: useSemanticCaptions
-                }
+                userId: selectedSlot ? selectedSlot : ''
             };
             const result = await dischargeApi(request);
             setAnswer(result);
@@ -323,26 +317,28 @@ const Discharge = () => {
             else {
                 documentFormat.temperature = temperature;
             }
-            if (isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_after_hospitalization_str)) {
+            if (!isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_after_hospitalization_str)) {
                 errorMessages += "入院後何日目からカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
             else {
                 documentFormat.start_day_to_use_soap_range_after_hospitalization = Number(documentFormat.start_day_to_use_soap_range_after_hospitalization_str);
             }
-            if (isNonNegativeInteger(documentFormat.use_soap_range_days_after_hospitalization_str)) {
-                errorMessages += "入院後何日分のカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            if (!isNonNegativeInteger(documentFormat.use_soap_range_days_after_hospitalization_str)
+                || documentFormat.use_soap_range_days_before_discharge_str === "0") {
+                errorMessages += "入院後何日分のカルテデータを使用するかには 1以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
             else {
                 documentFormat.use_soap_range_days_after_hospitalization = Number(documentFormat.use_soap_range_days_after_hospitalization_str);
             }
-            if (isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_before_discharge_str)) {
+            if (!isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_before_discharge_str)) {
                 errorMessages += "退院前何日目からカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
             else {
                 documentFormat.start_day_to_use_soap_range_before_discharge = Number(documentFormat.start_day_to_use_soap_range_before_discharge_str);
             }
-            if (isNonNegativeInteger(documentFormat.use_soap_range_days_before_discharge_str)) {
-                errorMessages += "退院前何日分のカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            if (!isNonNegativeInteger(documentFormat.use_soap_range_days_before_discharge_str)
+                || documentFormat.use_soap_range_days_before_discharge_str === "0") {
+                errorMessages += "退院前何日分のカルテデータを使用するかには 1以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
             }
             else {
                 documentFormat.use_soap_range_days_before_discharge = Number(documentFormat.use_soap_range_days_before_discharge_str);
@@ -538,6 +534,9 @@ const Discharge = () => {
     };
 
     const onSaveAsNameChanged = (newValue:string) => {
+        if (saveAsName !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
         setSaveAsName(newValue);
     };
 
@@ -937,14 +936,15 @@ const Discharge = () => {
                 )}
             </div>
         </div>
-        <Dropdown 
-                placeholder="Select user"
-                options={momorySlotOptions}
-                selectedKey={selectedSlot}
-                onChange={(e, newValue) => {
-                    onChangeSlot(newValue?.key as string || '');
-                }}
-            />  
+        <div>
+            <Dropdown 
+                    placeholder="Select user"
+                    options={momorySlotOptions}
+                    selectedKey={selectedSlot}
+                    onChange={(e, newValue) => {
+                        onChangeSlot(newValue?.key as string || '');
+                    }}
+            />  <br></br>
             <p>診療科コード：<br></br>
                 <TextField
                     readOnly={false}
@@ -957,6 +957,7 @@ const Discharge = () => {
                     onBlur={(e) => setDepartmantCode(e.target.value || "")}
                 />
             </p>
+        </div>
         {selectedDocumentFormatIndex && documentFormats && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 
@@ -979,6 +980,10 @@ const Discharge = () => {
                     onTargetSoapChanged={onTargetSoapChanged}
                     onQuestionChanged={onQuestionChanged}
                     onTemperatureChanged={onTemperatureChanged}
+                    onStartDayToUseSoapRangeAfterHospitalizationChanged={onStartDayToUseSoapRangeAfterHospitalizationChanged}
+                    onUseSoapRangeDaysAfterHospitalizationChanged={onUseSoapRangeDaysAfterHospitalizationChanged}
+                    onStartDayToUseSoapRangeBeforeDischargeChanged={onStartDayToUseSoapRangeBeforeDischargeChanged}
+                    onUseSoapRangeDaysBeforeDischargeChanged={onUseSoapRangeDaysBeforeDischargeChanged}
                     onUpClicked={onDocumentFormatUpClicked}
                     onDownClicked={onDocumentFormatDownClicked}
                     onDeleteCategoryClicked={onDocumentSettingCategoryDeleteClicked}

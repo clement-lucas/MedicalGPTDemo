@@ -252,7 +252,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
-    def run(self, department_code:str, pid:str, document_format_index_id:int, user_id:str, overrides: dict) -> any:
+    def run(self, department_code:str, pid:str, document_format_index_id:int, user_id:str) -> any:
         timer_total = LapTimer()
         timer_total.start("退院時サマリ作成処理全体")
 
@@ -445,21 +445,24 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # History テーブルに追加する
         # TODO 日本時間との時差調整の値を設定可能にする
         insert_history_sql = """INSERT INTO [dbo].[History]
-           ([UserId]
-           ,[PID]
+           ([PID]
            ,[DocumentName]
            ,[Prompt]
+           ,[DocumentFormatIndexId]
            ,[IntermediateDataIds]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
            ,[TotalTokens]
+           ,[CreatedLocalDateTime]
+           ,[UpdatedLocalDateTime]
+           ,[CreatedBy]
+           ,[UpdatedBy]
            ,[CreatedDateTime]
            ,[UpdatedDateTime]
            ,[IsDeleted])
         VALUES
            (?
-           ,?
            ,N'退院時サマリ'
            ,?
            ,?
@@ -470,16 +473,22 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,?
            ,dateadd(hour, 9, GETDATE())
            ,dateadd(hour, 9, GETDATE())
+           ,?
+           ,?
+           ,GETDATE()
+           ,GETDATE()
            ,0)"""
         
         # SQL Server に接続する
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-            cursor.execute(insert_history_sql, user_id, pid, 
-                        prompts, ids,
+            cursor.execute(insert_history_sql, pid, 
+                        prompts, 
+                        document_format_index_id,
+                        ids,
                         ret,
                         sum_of_completion_tokens,   
                         sum_of_prompt_tokens,   
-                        sum_of_total_tokens
+                        sum_of_total_tokens, user_id, user_id
                         )
             cursor.commit()
 

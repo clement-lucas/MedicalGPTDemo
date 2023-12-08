@@ -33,3 +33,7 @@
     display: flex;
     justify-content: space-between;
 }
+
+.dayTextField {  
+    width: 40px;  
+}  

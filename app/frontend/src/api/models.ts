@@ -33,9 +33,7 @@ export type DischargeRequest = {
     departmentCode: string;
     pid: string;
     documentFormatIndexId: number;
-    approach: Approaches;
     userId: string;
-    overrides?: AskRequestOverrides;
 };
 
 export type AskPatientRequest = {

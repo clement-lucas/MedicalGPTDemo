@@ -40,13 +40,13 @@ class SOAPManager:
                 FROM ECSCSM_ECTBSM
                 WHERE PID = ?
                 AND SUM_SYUBETU = '01'
-                AND (NOW_KA = ? OR ORIGINAL_KA = ?)
+                AND (NOW_KA = ? OR (NOW_KA IS NULL AND ORIGINAL_KA = ?))
                 AND SUM_SEQ = (
                 SELECT MAX(SUM_SEQ)
                 FROM ECSCSM_ECTBSM
                 WHERE PID = ?
                 AND SUM_SYUBETU = '01'
-                AND (NOW_KA = ? OR ORIGINAL_KA = ?)
+                AND (NOW_KA = ? OR (NOW_KA IS NULL AND ORIGINAL_KA = ?))
                 );
                 """
             cursor.execute(select_hospitalization_sql, 
@@ -63,18 +63,21 @@ class SOAPManager:
             # 例）20140224095813
 
             hospitalization_date = rows[0][0]   # 入院日
+            print(hospitalization_date)
             hospitalization_date = DateTimeConverter.get_start_of_the_day(hospitalization_date)
             discharge_date = rows[0][1]         # 退院日
+            print(discharge_date)
             discharge_date = DateTimeConverter.get_start_of_the_day(discharge_date)
 
             start_hospitalization_date = DateTimeConverter.add_days(hospitalization_date, startDayToUseSoapRangeAfterHospitalization)
-            end_hospitalization_date = DateTimeConverter.add_days(start_hospitalization_date, useSoapRangeDaysAfterHospitalization)
+            end_hospitalization_date = DateTimeConverter.add_days(start_hospitalization_date, useSoapRangeDaysAfterHospitalization - 1)
             end_discharge_date = DateTimeConverter.add_days(discharge_date, startDayToUseSoapRangeBeforeDischarge * -1)
-            start_discharge_date = DateTimeConverter.add_days(end_discharge_date, useSoapRangeDaysBeforeDischarge * -1)
+            start_discharge_date = DateTimeConverter.add_days(end_discharge_date, (useSoapRangeDaysBeforeDischarge - 1) * -1)
             end_hospitalization_date = DateTimeConverter.get_end_of_the_day(end_hospitalization_date)
             end_discharge_date = DateTimeConverter.get_end_of_the_day(end_discharge_date)
 
             range_str = "入院日カルテ期間：" + str(start_hospitalization_date) + "～" + str(end_hospitalization_date) + "\n退院日カルテ期間：" + str(start_discharge_date) + "～" + str(end_discharge_date)
+            print(range_str)
 
             select_data_sql = f"""
                 SELECT Id, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
@@ -120,6 +123,9 @@ class SOAPManager:
                 kind = row[2]
                 duplicate_source_data_id = row[3]
                 intermediateData = row[4]
+
+                if intermediateData is None or intermediateData == "":
+                    continue
 
                 if now_date != doc_date:
                     now_date = doc_date

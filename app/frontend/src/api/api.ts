@@ -79,20 +79,10 @@ export async function dischargeApi(options: DischargeRequest): Promise<AskRespon
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
+            department_code: options.departmentCode,
             pid: options.pid,
             document_format_index_id: options.documentFormatIndexId,
-            approach: options.approach,
-            user_id: options.userId,
-            overrides: {
-                semantic_ranker: options.overrides?.semanticRanker,
-                semantic_captions: options.overrides?.semanticCaptions,
-                top: options.overrides?.top,
-                temperature: options.overrides?.temperature,
-                prompt_template: options.overrides?.promptTemplate,
-                prompt_template_prefix: options.overrides?.promptTemplatePrefix,
-                prompt_template_suffix: options.overrides?.promptTemplateSuffix,
-                exclude_category: options.overrides?.excludeCategory
-            }
+            user_id: options.userId
         })
     });
 

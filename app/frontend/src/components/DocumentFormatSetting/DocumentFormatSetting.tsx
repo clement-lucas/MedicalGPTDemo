@@ -37,6 +37,10 @@ interface Props {
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
     onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onTemperatureChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onStartDayToUseSoapRangeAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onUseSoapRangeDaysAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onStartDayToUseSoapRangeBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onUseSoapRangeDaysBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onTagsChanged: (targetDocumentFormatIndex:DocumentFormatIndex, newValue:string) => void;
     onSaveAsNameChanged: (newValue:string) => void;
 
@@ -53,7 +57,10 @@ export const DocumentFormatSetting = ({
     onSaveClicked, onDeleteIndexClicked,
     onSystemContentsChanged,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
-    onTemperatureChanged, onTagsChanged, onSaveAsNameChanged,
+    onTemperatureChanged, 
+    onStartDayToUseSoapRangeAfterHospitalizationChanged, onUseSoapRangeDaysAfterHospitalizationChanged,
+    onStartDayToUseSoapRangeBeforeDischargeChanged, onUseSoapRangeDaysBeforeDischargeChanged,
+    onTagsChanged, onSaveAsNameChanged,
     onUpClicked, onDownClicked, onDeleteCategoryClicked: onDeleteClicked, onAddClicked
 }: Props) => {
     
@@ -130,6 +137,10 @@ export const DocumentFormatSetting = ({
                             onTargetSoapChanged={onTargetSoapChanged}
                             onQuestionChanged={onQuestionChanged}
                             onTemperatureChanged={onTemperatureChanged}
+                            onStartDayToUseSoapRangeAfterHospitalizationChanged={onStartDayToUseSoapRangeAfterHospitalizationChanged}
+                            onUseSoapRangeDaysAfterHospitalizationChanged={onUseSoapRangeDaysAfterHospitalizationChanged}
+                            onStartDayToUseSoapRangeBeforeDischargeChanged={onStartDayToUseSoapRangeBeforeDischargeChanged}
+                            onUseSoapRangeDaysBeforeDischargeChanged={onUseSoapRangeDaysBeforeDischargeChanged}
                             onUpClicked={onUpClicked}
                             onDownClicked={onDownClicked}
                             onDeleteClicked={onDeleteClicked}

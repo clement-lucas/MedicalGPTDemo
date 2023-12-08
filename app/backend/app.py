@@ -190,16 +190,16 @@ def document():
 @app.route("/discharge", methods=["POST"])
 def discharge():
     ensure_openai_token()
-    approach = request.json["approach"]
+    approach = "rrr"
     try:
         impl = discharge_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
         r = impl.run(
+                     request.json["department_code"], 
                      request.json["pid"], 
                      request.json["document_format_index_id"], 
-                     request.json["user_id"],
-                     request.json.get("overrides") or {})
+                     request.json["user_id"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /discharge")

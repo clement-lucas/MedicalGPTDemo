@@ -60,9 +60,13 @@ class GetDocumentFormatApproach(Approach):
                 "use_allergy_records":row[9],
                 "use_discharge_medicine_records":row[10],
                 "start_day_to_use_soap_range_after_hospitalization":row[11],
+                "start_day_to_use_soap_range_after_hospitalization_str":str(row[11]),
                 "use_soap_range_days_after_hospitalization":row[12],
+                "use_soap_range_days_after_hospitalization_str":str(row[12]),
                 "start_day_to_use_soap_range_before_discharge":row[13],
-                "use_soap_range_days_before_discharge":row[14]
+                "start_day_to_use_soap_range_before_discharge_str":str(row[13]),
+                "use_soap_range_days_before_discharge":row[14],
+                "use_soap_range_days_before_discharge_str":str(row[14])
             })
         return {
             "system_contents":system_contetns,
