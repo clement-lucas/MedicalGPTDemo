@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 
 class DateTimeConverter:
@@ -14,7 +15,7 @@ class DateTimeConverter:
 
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS
     @staticmethod
-    def get_datetime(org: int) -> datetime.datetime:
+    def get_datetime(org: int) -> datetime:
         strdate = str(org)
         if len(strdate) != 14:
             raise Exception("日時表現が14桁ではありません。")
@@ -31,7 +32,7 @@ class DateTimeConverter:
         MI = (org - yyyy * 10000000000 - MM * 100000000 - dd * 1000000 - HH * 10000) // 100
         # 14桁の数値 yyyyMMddHHMISS からSSを取得する
         SS = org - yyyy * 10000000000 - MM * 100000000 - dd * 1000000 - HH * 10000 - MI * 100
-        return datetime.datetime(yyyy, MM, dd, HH, MI, SS)
+        return datetime(yyyy, MM, dd, HH, MI, SS)
     
     @staticmethod
     # その日の00:00:00を表す14桁の数値を返す

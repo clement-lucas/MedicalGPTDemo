@@ -30,6 +30,7 @@ export type DocumentRequest = {
 };
 
 export type DischargeRequest = {
+    departmentCode: string;
     pid: string;
     documentFormatIndexId: number;
     approach: Approaches;
@@ -147,6 +148,10 @@ export type DocumentFormat = {
     use_soap_range_days_after_hospitalization: number;
     start_day_to_use_soap_range_before_discharge: number;
     use_soap_range_days_before_discharge: number;
+    start_day_to_use_soap_range_after_hospitalization_str: string;
+    use_soap_range_days_after_hospitalization_str: string;
+    start_day_to_use_soap_range_before_discharge_str: string;
+    use_soap_range_days_before_discharge_str: string;
 };
 
 export type DocumentFormatIndex = {

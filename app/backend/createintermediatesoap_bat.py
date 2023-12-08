@@ -22,6 +22,8 @@ from parser.doctorsnoteparser import DoctorsNoteParser
 from lib.deduplicator import Deduplicator
 from lib.datetimeconverter import DateTimeConverter
 
+NOT_HIT_ORIGINAL_DOC_NO = 'NOT_HIT_ORIGINAL_DOC_NO'
+
 # 第一パラメーター：.envファイルのパスを指定します
 # パラメーター取得
 args = sys.argv
@@ -70,7 +72,6 @@ def insert_intermediate_soap(cnxn, data_list:[]) -> None:
     # SQL Server に接続する
     with cnxn.cursor() as cursor:
         # レコードを挿入する
-
         insert_sql = """INSERT INTO IntermediateSOAP (
                 OriginalDocNo, DuplicateSourceDataId, Pid, DocDate, SoapKind, IntermediateData, 
                 CreatedBy, UpdatedBy, CreatedDateTime, UpdatedDateTime, IsDeleted)  
@@ -80,11 +81,18 @@ def insert_intermediate_soap(cnxn, data_list:[]) -> None:
                     WHERE IsDeleted = 0
                     AND SoapKind = ?
                     AND OriginalDocNo = ?
-                    ORDER BY Id DESC), -1), 
+                    ORDER BY Id DESC), NULL), 
                 ?, ?, ?, ?, 
                 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)
             """
-        cursor.executemany(insert_sql, data_list)
+
+        cnxn.autocommit = False
+        try:
+            cursor.executemany(insert_sql, data_list)
+        except Exception as e:
+            print(e)
+            cnxn.rollback()
+            raise
         cnxn.commit()
 
 # 3. 中間データを作成する。
@@ -95,24 +103,36 @@ def create_intermediate_soap_row(pid:str,
                                  current_doc_date:int,
                                  last_doc_no:str, 
                                  last_soap:DoctorsNoteParser):
-    last = last_soap.get(kind)
-    current = current_soap.get(kind)
-    if current is None or current == "":
+    last_text_soap = ""
+    if last_soap is None:
+        last_text_soap = None
+    else:
+        last_text_soap = last_soap.get(kind)
+    current_text_soap = current_soap.get(kind)
+    if current_text_soap is None or current_text_soap == "":
         return None
     # 相対→絶対日時変換
     # last = DateTimeConverter.relative_datetime_2_absolute_datetime(last, last_doc_date)
     # current = DateTimeConverter.relative_datetime_2_absolute_datetime(current, doc_date)
     # 重複記述削除
-    current = Deduplicator.deduplicate(current, last)
-    if duplicate_source_data_id < 0:
-        duplicate_source_data_id = None
-    data = (current_doc_no, kind, last_doc_no, pid, current_doc_date, kind, current)
+    original_doc_no = NOT_HIT_ORIGINAL_DOC_NO
+    if last_text_soap is not None:
+        deduplicated = Deduplicator.deduplicate(current_text_soap, last_text_soap)
+        found = deduplicated[0]
+        if found:
+            print("重複記述あり。doc_no:" + current_doc_no)
+            current_text_soap = deduplicated[1]
+            original_doc_no = last_doc_no
+    data = (current_doc_no, kind, original_doc_no, 
+            pid, current_doc_date, kind, current_text_soap)
+    #data = (current_doc_no, kind, original_doc_no, pid, current_doc_date, kind, current_text_soap)
     return data
 
 # 中間データ作成
 def create_intermediate_soap(cnxn,
                              pid:str,
                              last_doc_no:str,
+                             last_doc_date:int,
                              last_original_doc_datax:str) -> None:
     # 2. 患者ごとの未作成の中間データのリストを取得する。
     with cnxn.cursor() as cursor:
@@ -125,7 +145,7 @@ def create_intermediate_soap(cnxn,
             AND EXTBDH1.PID = ?
             AND EXTBDH1.DOCDATE > ?
             ORDER BY EXTBDH1.DOCDATE"""
-        cursor.execute(select_datax_sql,'MD01', pid)
+        cursor.execute(select_datax_sql,'MD01', pid, last_doc_date)
 
         # レコードを取得する
         rows = cursor.fetchall()
@@ -133,14 +153,17 @@ def create_intermediate_soap(cnxn,
         print("中間データを作成する対象のレコードがありません。")
         return
 
-    last_soap = DoctorsNoteParser(last_original_doc_datax)
-    rows_to_insert = []
+    if last_original_doc_datax is None or last_original_doc_datax == "":
+        last_soap = None
+    else:
+        last_soap = DoctorsNoteParser(last_original_doc_datax)
     for row in rows:
         current_doc_date = row[0]
         current_doc_no = row[1]
         current_doc_datax = row[2]
         # 3. 中間データを作成する。
         print("中間データを作成します。doc_no:" + current_doc_no)
+        rows_to_insert = []
         current_soap = DoctorsNoteParser(current_doc_datax)
         data = create_intermediate_soap_row(pid, "s", 
             current_doc_no, current_soap, current_doc_date,
@@ -209,7 +232,10 @@ def get_last_intermediate_soap(sql_connector:SQLConnector) -> None:
             else:
                 print("中間データを作成します。")
             
-            create_intermediate_soap(cnxn, pid, last_original_doc_no, last_doc_date, last_original_doc_datax)
+            create_intermediate_soap(cnxn, pid, 
+                                     last_original_doc_no, 
+                                     last_doc_date,
+                                     last_original_doc_datax)
 
 # 1. 患者ごとの最新の中間データを取得する
 get_last_intermediate_soap(sql_connector)

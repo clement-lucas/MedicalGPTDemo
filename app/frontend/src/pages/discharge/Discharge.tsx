@@ -104,6 +104,7 @@ const Discharge = () => {
     const [searchText, setSearchText] = useState<string>("");
     const [saveAsName, setSaveAsName] = useState<string>("");
     const [tags, setTags] = useState<string>("");
+    const [departmantCode, setDepartmantCode] = useState<string>("");
 
     const onLoad = async () => {
         setIsDocumentFormatSettingEdited(false);
@@ -264,6 +265,7 @@ const Discharge = () => {
 
         try {
             const request: DischargeRequest = {
+                departmentCode: departmantCode,
                 pid: pid,
                 documentFormatIndexId: selectedDocumentFormatIndex ? selectedDocumentFormatIndex.index_id : 0,
                 userId: selectedSlot ? selectedSlot : '',
@@ -302,6 +304,13 @@ const Discharge = () => {
         }
         makeApiRequest(documentName);
     };
+
+    // 0以上の整数かどうかチェックする関数
+    const isNonNegativeInteger = (str: string): boolean => {  
+        const pattern = /^\d+$/;   
+        return pattern.test(str);  
+    }  
+
     const onSaveDocumentFormatClicked = async (index_id:number, index_name:string) => {
         // 入力チェック
         let errorMessages:string = "";
@@ -313,6 +322,30 @@ const Discharge = () => {
             }
             else {
                 documentFormat.temperature = temperature;
+            }
+            if (isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_after_hospitalization_str)) {
+                errorMessages += "入院後何日目からカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            }
+            else {
+                documentFormat.start_day_to_use_soap_range_after_hospitalization = Number(documentFormat.start_day_to_use_soap_range_after_hospitalization_str);
+            }
+            if (isNonNegativeInteger(documentFormat.use_soap_range_days_after_hospitalization_str)) {
+                errorMessages += "入院後何日分のカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            }
+            else {
+                documentFormat.use_soap_range_days_after_hospitalization = Number(documentFormat.use_soap_range_days_after_hospitalization_str);
+            }
+            if (isNonNegativeInteger(documentFormat.start_day_to_use_soap_range_before_discharge_str)) {
+                errorMessages += "退院前何日目からカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            }
+            else {
+                documentFormat.start_day_to_use_soap_range_before_discharge = Number(documentFormat.start_day_to_use_soap_range_before_discharge_str);
+            }
+            if (isNonNegativeInteger(documentFormat.use_soap_range_days_before_discharge_str)) {
+                errorMessages += "退院前何日分のカルテデータを使用するかには 0以上の整数を入力してください。表示順: " + (documentFormat.order_no + 1) + "\n";
+            }
+            else {
+                documentFormat.use_soap_range_days_before_discharge = Number(documentFormat.use_soap_range_days_before_discharge_str);
             }
             if (documentFormat.category_name === "") {
                 errorMessages += "カテゴリ名が入力されていません。表示順: " + (documentFormat.order_no + 1) + "\n";
@@ -366,6 +399,66 @@ const Discharge = () => {
         const newDocumentFormats = documentFormats.map((documentFormat) => {
             if (documentFormat.id === targetDocumentFormat.id) {
                 documentFormat.temperature_str = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onStartDayToUseSoapRangeAfterHospitalizationChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.start_day_to_use_soap_range_after_hospitalization_str !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.start_day_to_use_soap_range_after_hospitalization_str = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onUseSoapRangeDaysAfterHospitalizationChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.use_soap_range_days_after_hospitalization_str !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.use_soap_range_days_after_hospitalization_str = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onStartDayToUseSoapRangeBeforeDischargeChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.start_day_to_use_soap_range_before_discharge_str !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.start_day_to_use_soap_range_before_discharge_str = newValue;
+            }
+            return documentFormat;
+        });
+        setDocumentFormats(newDocumentFormats);
+    };
+
+    const onUseSoapRangeDaysBeforeDischargeChanged = (targetDocumentFormat:DocumentFormat, newValue:string) => {
+        // 値が変わっているかチェック
+        if (targetDocumentFormat.use_soap_range_days_before_discharge_str !== newValue) {
+            setIsDocumentFormatSettingEdited(true);
+        }
+
+        const newDocumentFormats = documentFormats.map((documentFormat) => {
+            if (documentFormat.id === targetDocumentFormat.id) {
+                documentFormat.use_soap_range_days_before_discharge_str = newValue;
             }
             return documentFormat;
         });
@@ -530,6 +623,11 @@ const Discharge = () => {
             use_soap_range_days_after_hospitalization: DEFAULT_USE_SOAP_RANGE_DAYS_AFTER_HOSPITALIZATION,
             start_day_to_use_soap_range_before_discharge: DEFAULT_START_DAY_TO_USE_SOAP_RANGE_BEFORE_DISCHARGE,
             use_soap_range_days_before_discharge: DEFAULT_USE_SOAP_RANGE_DAYS_BEFORE_DISCHARGE,
+            start_day_to_use_soap_range_after_hospitalization_str: DEFAULT_START_DAY_TO_USE_SOAP_RANGE_AFTER_HOSPITALIZATION.toString(),
+            use_soap_range_days_after_hospitalization_str: DEFAULT_USE_SOAP_RANGE_DAYS_AFTER_HOSPITALIZATION.toString(),
+            start_day_to_use_soap_range_before_discharge_str: DEFAULT_START_DAY_TO_USE_SOAP_RANGE_BEFORE_DISCHARGE.toString(),
+            use_soap_range_days_before_discharge_str: DEFAULT_USE_SOAP_RANGE_DAYS_BEFORE_DISCHARGE.toString(),
+
         };
 
         const newDocumentFormats: DocumentFormat[] = [];
@@ -730,7 +828,8 @@ const Discharge = () => {
                             </div>
                             {/* <h3 className={styles.chatEmptyStateSubtitle}>カルテデータ プレビュー</h3> */}
                             {/* <h3 className={styles.chatEmptyStateSubtitle}>使用するプロンプトを指定する</h3> */}
-                            <SoapPreviewButton 
+                            {/* 中間データ作成により、この機能の整合性がとれなくなってきたため、一旦コメントアウト
+                             <SoapPreviewButton 
                                 pid={pid}
                                 onClick={onSoapPreviewClicked} />
                             {isLoadingSoap && <Spinner label="Loading soap" />}
@@ -745,7 +844,7 @@ const Discharge = () => {
                                     //onChange={onQuestionChange}
                                     //onKeyDown={onEnterPress}
                                 />)}
-                            <br></br>
+                            <br></br> */}
                             <Label>使用するプロンプトを選ぶ</Label>
                             <table className={styles.documentFormatSettingIndexSearchTable}>
                                 <tr>
@@ -845,7 +944,19 @@ const Discharge = () => {
                 onChange={(e, newValue) => {
                     onChangeSlot(newValue?.key as string || '');
                 }}
-            />            
+            />  
+            <p>診療科コード：<br></br>
+                <TextField
+                    readOnly={false}
+                    multiline={false}
+                    resizable={false}
+                    scrolling="false"
+                    defaultValue={departmantCode}
+                    value={departmantCode}
+                    onChange={(e, newValue) => setDepartmantCode(newValue || "")}
+                    onBlur={(e) => setDepartmantCode(e.target.value || "")}
+                />
+            </p>
         {selectedDocumentFormatIndex && documentFormats && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>
                 <DocumentFormatSetting 

@@ -100,6 +100,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
     def get_all_answers(self, 
                         row, 
+                        department_code,
                         pid, 
                         system_content):
 
@@ -142,23 +143,29 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # 以下は今は見ていない
         useAllergyRecords = row[9]
         useDischargeMedicineRecords = row[10]
+
+        start_day_to_use_soap_range_after_hospitalization = row[11]
+        use_soap_range_days_after_hospitalization = row[12]
+        start_day_to_use_soap_range_before_discharge = row[13]
+        use_soap_range_days_before_discharge = row[14]
         print(categoryName + "の処理開始")
 
+        ids = []
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
             soap = SOAPManager.get_values(
                 self.sql_connector,
+                department_code,
                 pid,
-                # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-                self._department_code,
                 targetSoapRecords,
-                row[11],
-                row[12],
-                row[13],
-                row[14])
+                start_day_to_use_soap_range_after_hospitalization,
+                use_soap_range_days_after_hospitalization,
+                start_day_to_use_soap_range_before_discharge,
+                use_soap_range_days_before_discharge)
             # print(soap)
-            summarized_soap = soap
+            summarized_soap = soap[0]
+            ids = soap[1]
 
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
@@ -240,12 +247,16 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 total_tokens, \
                 prompt, \
                 allergy, \
-                medicine
+                medicine, \
+                ids
 
-    def run(self, pid:str, document_format_index_id:int, user_id:str, overrides: dict) -> any:
+    # 退院時サマリの作成
+    # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
+    def run(self, department_code:str, pid:str, document_format_index_id:int, user_id:str, overrides: dict) -> any:
         timer_total = LapTimer()
         timer_total.start("退院時サマリ作成処理全体")
 
+        print("department_code:" + department_code)
         print("pid:" + pid)
         print("document_format_index_id:" + str(document_format_index_id))
         print("user_id:" + user_id)
@@ -354,7 +365,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
             #     ORDER BY EXTBOD1.SEQ
             #     """
 
-
         # system content 部分の文言取得
         document_manager = DocumentFormatManager(
             self.sql_connector,
@@ -366,13 +376,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         # ドキュメントフォーマットの取得
         rows = document_manager.get_document_format()
-
-        timer = LapTimer()
-        timer.start("SOAP の読込と必要に応じた要約処理")
-        # 医師記録の取得
-        # SOAP に割り当て可能なトークン数を計算する
-        num_tokens_for_soap = self.get_max_tokens_for_soap()
-        timer.stop()
 
         ret = ""
 
@@ -390,11 +393,13 @@ class ReadRetrieveDischargeReadApproach(Approach):
         allergy = ""
         medicine = ""
 
+        timer = LapTimer()
         timer.start("退院時サマリ作成処理")
-
+        ids = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
                         row, 
+                        department_code,
                         pid, 
                         system_content) for row in rows]
             for feature in features:
@@ -414,6 +419,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 # [5]:summarized_soap_history
                 # [6]:allergy
                 # [7]:medicine
+                # [8]:ids
 
                 ret = ''.join([ret, future_ret[0]])
                 sum_of_completion_tokens += future_ret[1]
@@ -422,23 +428,28 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 prompts = ''.join([prompts, future_ret[4], "\n"])
                 allergy = ''.join([allergy, future_ret[5]])
                 medicine = ''.join([medicine, future_ret[6]])
+                ids.extend(future_ret[7])
 
         # print(ret)
         # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-        records_soap = soap_manager.SOAP("soapb", True)
+        # records_soap = soap_manager.SOAP("soapb", True)
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
         timer.stop()
 
+        # ids の重複を削除する
+        ids = list(set(ids))
+
+        # ids をカンマ区切りの文字列に変換する
+        ids = ','.join(map(str, ids))
+
         # History テーブルに追加する
-        # TODO 今はログインの仕組みがないので、 UserId は '000001' 固定値とする
         # TODO 日本時間との時差調整の値を設定可能にする
         insert_history_sql = """INSERT INTO [dbo].[History]
            ([UserId]
            ,[PID]
            ,[DocumentName]
            ,[Prompt]
-           ,[MedicalRecord]
-           ,[SummarizedMedicalRecord]
+           ,[IntermediateDataIds]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
@@ -447,7 +458,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[UpdatedDateTime]
            ,[IsDeleted])
         VALUES
-           ('000001'
+           (?
            ,?
            ,N'退院時サマリ'
            ,?
@@ -463,9 +474,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         
         # SQL Server に接続する
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-            cursor.execute(insert_history_sql, pid, 
-                        prompts, ''.join([records_soap, allergy, medicine]),
-                        summarized_soap_history,
+            cursor.execute(insert_history_sql, user_id, pid, 
+                        prompts, ids,
                         ret,
                         sum_of_completion_tokens,   
                         sum_of_prompt_tokens,   
@@ -476,7 +486,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         timer_total.stop()
 
         return {"data_points": "test results", 
-                "answer": ''.join([ret, "\n\n\nカルテデータ：\n", records_soap, allergy, medicine]), 
+                "answer": ''.join([ret, allergy, medicine]), 
                 "thoughts": prompts, 
                 "completion_tokens": sum_of_completion_tokens,   
                 "prompt_tokens": sum_of_prompt_tokens,   

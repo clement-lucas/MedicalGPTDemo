@@ -8,8 +8,8 @@ class SOAPManager:
     @staticmethod
     def get_values(
         sql_connector:SQLConnector,
-        pid: str,
         department_code: str,
+        pid: str,
         target_soap_kinds: str,
         startDayToUseSoapRangeAfterHospitalization: int,
         useSoapRangeDaysAfterHospitalization: int,
@@ -58,6 +58,10 @@ class SOAPManager:
                 print(err_msg) 
                 raise Exception(err_msg)
             
+            # 入院日と退院日の範囲を計算する。
+            # hospitalization_date には、14桁の数値で日付時刻が格納されている。
+            # 例）20140224095813
+
             hospitalization_date = rows[0][0]   # 入院日
             hospitalization_date = DateTimeConverter.get_start_of_the_day(hospitalization_date)
             discharge_date = rows[0][1]         # 退院日
@@ -70,10 +74,6 @@ class SOAPManager:
             end_hospitalization_date = DateTimeConverter.get_end_of_the_day(end_hospitalization_date)
             end_discharge_date = DateTimeConverter.get_end_of_the_day(end_discharge_date)
 
-            # 入院日と退院日の範囲を計算する。
-            # hospitalization_date には、14桁の数値で日付時刻が格納されている。
-            # 例）20140224095813
-
             select_datax_sql = f"""
                 WITH CTE AS (
                     SELECT Id, OriginalDocNo, DuplicateSourceDataId
@@ -85,7 +85,7 @@ class SOAPManager:
                     FROM IntermediateSOAP i
                     INNER JOIN CTE c ON c.DuplicateSourceDataId = i.Id
                 )
-                SELECT DISTINCT i.DocDate, i.SoapKind, i.IntermediateData
+                SELECT DISTINCT i.Id, i.DocDate, i.SoapKind, i.IntermediateData
                 FROM CTE c
                 INNER JOIN IntermediateSOAP i ON c.Id = i.Id
                 WHERE c.DuplicateSourceDataId IS NULL OR c.DuplicateSourceDataId = i.Id
@@ -100,15 +100,18 @@ class SOAPManager:
 
             if len(rows) < 1:
                 timer.stop()
-                return ""
+                raise Exception("中間データが取得できませんでした。pid:" + str(pid) + ", now_ka:" + department_code)
 
             now_date = -1
             return_soap = "\n以下は医師の書いた SOAP です。\n\n"
+            ids = []
             for row in rows:
                 # 日付が変わったら、日付を更新する。
-                doc_date = row[0]
-                kind = row[1]
-                intermediateData = row[2]
+                id = row[0]
+                ids.append(id)
+                doc_date = row[1]
+                kind = row[2]
+                intermediateData = row[3]
 
                 if now_date != doc_date:
                     now_date = doc_date
@@ -116,6 +119,6 @@ class SOAPManager:
                 return_soap = ''.join([return_soap, kind.upper(), "：\n", intermediateData, "\n\n"])
                 # print(return_soap)
         timer.stop()
-        return return_soap
+        return return_soap, ids
 
     

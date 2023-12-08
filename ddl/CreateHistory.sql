@@ -4,8 +4,17 @@ CREATE TABLE History (
     PID VARCHAR(10),  
     DocumentName NVARCHAR(50) NOT NULL,
     Prompt NVARCHAR(max) NOT NULL,
-    MedicalRecord NVARCHAR(max) NOT NULL,
+
     ----------------------------
+    -- 使用した中間データの ID のリスト
+    ----------------------------
+    IntermediateDataIds NVARCHAR(max) NOT NULL,
+
+    -- 廃盤予定
+    MedicalRecord NVARCHAR(max) NOT NULL,
+
+    ----------------------------
+    -- 廃盤予定。
     -- 要約された診療記録
     -- <CATEGORY>カテゴリー名</CATEGORY>
     -- <SOAP>要約された診療記録</SOAP>
