@@ -66,7 +66,6 @@ else:
     openai.api_key = AZURE_OPENAI_KEY
 
 gpt_deployment = os.getenv("AZURE_OPENAI_GPT_DEPLOYMENT")
-num_tokens_for_soap = int(gptconfigmanager.get_value("MAX_TOTAL_TOKENS")) - int(gptconfigmanager.get_value("TOKEN_NUM_FOR_QUESTION"))
 
 def insert_intermediate_soap(cnxn, data_list:[]) -> None:
     # SQL Server に接続する
