@@ -10,9 +10,19 @@ CREATE TABLE History (
     DocumentFormatIndexId INT,
 
     ----------------------------
+    -- 使用した元データの EXTBDH1.DOC_NO のリスト
+    ----------------------------
+    OriginalDocNoList VARCHAR(max),
+
+    ----------------------------
     -- 使用した中間データの ID のリスト
     ----------------------------
-    IntermediateDataIds NVARCHAR(max),
+    IntermediateDataIds VARCHAR(max),
+
+    ----------------------------
+    -- 各カテゴリーの SOAP 入力データ
+    ----------------------------
+    SoapForCategories NVARCHAR(max),
 
     Response NVARCHAR(max),
     CompletionTokens INT,

@@ -23,6 +23,7 @@ class GetHistoryDetailApproach(Approach):
                 SELECT [History].[Id]
                     ,[History].[PID]
                     ,[History].[Prompt]
+                    ,[History].[SoapForCategories]
                     ,[History].[Response]
                     ,[History].[CompletionTokens]
                     ,[History].[PromptTokens]
@@ -38,16 +39,17 @@ class GetHistoryDetailApproach(Approach):
             id = row[0]
             pid = row[1]
             prompt = row[2]
-            response = row[3]
-            completion_tokens = row[4]
-            prompt_tokens = row[5]
-            total_tokens = row[6]
-            patient_name = row[7]
+            soap_text_history = row[3]
+            response = row[4]
+            completion_tokens = row[5]
+            prompt_tokens = row[6]
+            total_tokens = row[7]
+            patient_name = row[8]
 
             return {"data_points": "test results", 
                     "pid": pid,
                     "patient_name": patient_name,
-                    "answer": response,
+                    "answer": ''.join([response, "\n\nカルテデータ: \n\n", soap_text_history]),
                     "thoughts": prompt, 
                     "completion_tokens": completion_tokens,   
                     "prompt_tokens": prompt_tokens,   

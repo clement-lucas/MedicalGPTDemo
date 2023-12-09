@@ -80,7 +80,7 @@ class SOAPManager:
             print(range_str)
 
             select_data_sql = f"""
-                SELECT Id, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
+                SELECT Id, OriginalDocNo, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
                 FROM IntermediateSOAP
                 WHERE ((DocDate >= ? AND DocDate <= ?) OR (DocDate >= ? AND DocDate <= ?))
                     AND Pid = ? AND SoapKind IN ({placeholders}) AND IsDeleted = 0
@@ -103,10 +103,11 @@ class SOAPManager:
             for row in rows:
                 # 日付が変わったら、日付を更新する。
                 id = row[0]
-                doc_date = row[1]
-                kind = row[2]
-                duplicate_source_data_id = row[3]
-                intermediateData = row[4]
+                original_doc_no = row[1]
+                doc_date = row[2]
+                kind = row[3]
+                duplicate_source_data_id = row[4]
+                intermediateData = row[5]
 
                 SOAPManager._get_duplicate_data_source(
                     cnxn, duplicate_source_data_id, id_list, rows_include_duplicate)
@@ -116,13 +117,15 @@ class SOAPManager:
 
             now_date = -1
             return_soap = "\n以下は医師の書いた SOAP です。\n\n"
+            original_doc_no_list = []
             for row in rows_include_duplicate:
                 # 日付が変わったら、日付を更新する。
                 id = row[0]
-                doc_date = row[1]
-                kind = row[2]
-                duplicate_source_data_id = row[3]
-                intermediateData = row[4]
+                original_doc_no = row[1]
+                doc_date = row[2]
+                kind = row[3]
+                duplicate_source_data_id = row[4]
+                intermediateData = row[5]
 
                 if intermediateData is None or intermediateData == "":
                     continue
@@ -131,8 +134,9 @@ class SOAPManager:
                     now_date = doc_date
                     return_soap = ''.join([return_soap, "\n", DateTimeConverter.int_2_str(doc_date), "\n\n"])
                 return_soap = ''.join([return_soap, kind.upper(), "：\n", intermediateData, "\n\n"])
+                original_doc_no_list.append(original_doc_no)
         timer.stop()
-        return return_soap, id_list
+        return return_soap, id_list, original_doc_no_list
 
     @staticmethod
     def _get_duplicate_data_source(cnxn, duplicate_source_data_id:int, id_list:[], rows_include_duplicate:[]):
@@ -148,17 +152,19 @@ class SOAPManager:
             raise Exception("重複データが取得できませんでした。Id:" + str(duplicate_source_data_id))
         
         # 再帰的に重複データを取得する。
-        source_duplicate_source_data_id = source_data[3]
+        id = source_data[0]
+        source_duplicate_source_data_id = source_data[4]
         SOAPManager._get_duplicate_data_source(
             cnxn, source_duplicate_source_data_id, id_list, rows_include_duplicate)
 
+        id_list.append(id)
         rows_include_duplicate.append(source_data)
 
     @staticmethod
     def _get_data_by_duplicate_source_data_id(cnxn, duplicate_source_data_id:int):
         with cnxn.cursor() as cursor:
             select_data_sql = """
-                SELECT Id, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
+                SELECT Id, OriginalDocNo, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
                 FROM IntermediateSOAP
                 WHERE Id = ? AND IsDeleted = 0
                 """
@@ -166,4 +172,4 @@ class SOAPManager:
             rows = cursor.fetchall() 
             if len(rows) < 1:
                 return None
-            return rows[0][0], rows[0][1], rows[0][2], rows[0][3], rows[0][4]
+            return rows[0][0], rows[0][1], rows[0][2], rows[0][3], rows[0][4], rows[0][5]

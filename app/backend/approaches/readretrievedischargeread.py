@@ -150,7 +150,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         use_soap_range_days_before_discharge = row[14]
         print(categoryName + "の処理開始")
 
-        ids = []
+        id_list = []
+        original_data_no_list = []
+        soap_text = ""
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
@@ -164,8 +166,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 start_day_to_use_soap_range_before_discharge,
                 use_soap_range_days_before_discharge)
             # print(soap)
-            summarized_soap = soap[0]
-            ids = soap[1]
+            soap_text = soap[0]
+            id_list = soap[1]
+            original_data_no_list = soap[2]
 
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
@@ -173,7 +176,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
             answer = self.get_answer(
                 categoryName, temperature, question, 
-                summarized_soap,
+                soap_text,
                 system_content,
                 response_max_tokens)
             ret = answer[0]
@@ -248,7 +251,10 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 prompt, \
                 allergy, \
                 medicine, \
-                ids
+                id_list, \
+                original_data_no_list, \
+                soap_text, \
+                categoryName
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -384,8 +390,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
         sum_of_prompt_tokens: int = 0
         sum_of_total_tokens: int = 0
 
-        # 要約した SOAP を履歴として確保する（廃盤）
-        summarized_soap_history = ''
+        # SOAP を履歴として確保する
+        soap_text_history = ''
 
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
@@ -395,7 +401,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         timer = LapTimer()
         timer.start("退院時サマリ作成処理")
-        ids = []
+        id_list = []
+        original_data_no_list = []
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
                         row, 
@@ -411,15 +418,6 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     # print(e)
                     raise e
                 future_ret = feature.result()
-                # [0]:ret, \
-                # [1]:completion_tokens, \
-                # [2]:prompt_tokens, \
-                # [3]:total_tokens, \
-                # [4]:prompt, \
-                # [5]:summarized_soap_history
-                # [6]:allergy
-                # [7]:medicine
-                # [8]:ids
 
                 ret = ''.join([ret, future_ret[0]])
                 sum_of_completion_tokens += future_ret[1]
@@ -428,7 +426,14 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 prompts = ''.join([prompts, future_ret[4], "\n"])
                 allergy = ''.join([allergy, future_ret[5]])
                 medicine = ''.join([medicine, future_ret[6]])
-                ids.extend(future_ret[7])
+                id_list.extend(future_ret[7])
+                original_data_no_list.extend(future_ret[8])
+                soap_text = future_ret[9]
+                categoryName = future_ret[10]
+                if soap_text != "":
+                    soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
+                
+
 
         # print(ret)
         # ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
@@ -436,11 +441,13 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # print("\n\n\nカルテデータ：\n" + records_soap + allergy + medicine)
         timer.stop()
 
-        # ids の重複を削除する
-        ids = list(set(ids))
+        # 重複を削除する
+        id_list = list(set(id_list))
+        original_data_no_list = list(set(original_data_no_list))
 
-        # ids をカンマ区切りの文字列に変換する
-        ids = ','.join(map(str, ids))
+        # をカンマ区切りの文字列に変換する
+        id_list = ','.join(map(str, id_list))
+        original_data_no_list = ','.join(map(str, original_data_no_list))
 
         # History テーブルに追加する
         # TODO 日本時間との時差調整の値を設定可能にする
@@ -449,7 +456,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[DocumentName]
            ,[Prompt]
            ,[DocumentFormatIndexId]
+           ,[OriginalDocNoList]
            ,[IntermediateDataIds]
+           ,[SoapForCategories]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
@@ -471,6 +480,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,?
            ,?
            ,?
+           ,?
+           ,?
            ,dateadd(hour, 9, GETDATE())
            ,dateadd(hour, 9, GETDATE())
            ,?
@@ -478,13 +489,15 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,GETDATE()
            ,GETDATE()
            ,0)"""
-        
+
         # SQL Server に接続する
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             cursor.execute(insert_history_sql, pid, 
                         prompts, 
                         document_format_index_id,
-                        ids,
+                        original_data_no_list,
+                        id_list,
+                        soap_text_history,
                         ret,
                         sum_of_completion_tokens,   
                         sum_of_prompt_tokens,   
@@ -495,7 +508,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         timer_total.stop()
 
         return {"data_points": "test results", 
-                "answer": ''.join([ret, allergy, medicine]), 
+                "answer": ''.join([ret, "\n\nカルテデータ: \n\n", soap_text_history]), 
                 "thoughts": prompts, 
                 "completion_tokens": sum_of_completion_tokens,   
                 "prompt_tokens": sum_of_prompt_tokens,   
