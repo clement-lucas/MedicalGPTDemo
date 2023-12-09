@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["C:\\Users\\junkoabe\\source\\repos\\HL-231201\\HL-MedicalGPTDemo\\.azure\\HealthcareGPTdemo-dev-GPT4\\.env", "56"]
+            "args": ["C:\\Users\\junkoabe\\source\\repos\\HL-231201\\HL-MedicalGPTDemo\\.azure\\HealthcareGPTdemo-dev-GPT4\\.env", "0A497E602D52782014030315222700"]
         }
     ]
 }

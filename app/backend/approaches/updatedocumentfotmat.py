@@ -145,7 +145,6 @@ class UpdateDocumentFormatApproach(Approach):
                             user_id
                         ))
 
-                    # システムコンテンツの登録
                     rows_to_insert.append((
                         document_format_index_id,
                         0,
