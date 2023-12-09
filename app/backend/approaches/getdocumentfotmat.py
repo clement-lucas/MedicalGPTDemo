@@ -2,7 +2,6 @@ from approaches.approach import Approach
 from lib.sqlconnector import SQLConnector
 from lib.documentformatmanager import DocumentFormatManager
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
-DEFAULT_DEPARTMENT_CODE = "0000"
 
 class GetDocumentFormatApproach(Approach):
     def __init__(self, sql_connector:SQLConnector, sourcepage_field: str, content_field: str):
@@ -10,23 +9,14 @@ class GetDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, document_name: str, department_code:str, 
-            icd10_code:str, 
-            user_id:str,
-            force_master:bool   # マスターを強制的に取得するかどうか
+    def run(self, document_format_index_id:int
             ) -> any:
         print("GetDocumentFormatApproach.run")  
-        print("document_name:" + document_name)
-        print("department_code:" + department_code)
-        print("icd10_code:" + icd10_code)
-        print("user_id:" + user_id)
-
+        print("document_format_index_id:" + str(document_format_index_id))
+        
         manager = DocumentFormatManager(
             self.sql_connector,
-            document_name, department_code,
-            icd10_code, 
-            user_id,
-            force_master)
+            document_format_index_id)
         ret_system_contetns = manager.get_system_contents()
         system_contetns = ret_system_contetns[0]
         system_contetns_suffix = ret_system_contetns[1]
@@ -68,7 +58,15 @@ class GetDocumentFormatApproach(Approach):
                 "is_p":isP,
                 "is_b":isB,
                 "use_allergy_records":row[9],
-                "use_discharge_medicine_records":row[10]
+                "use_discharge_medicine_records":row[10],
+                "start_day_to_use_soap_range_after_hospitalization":row[11],
+                "start_day_to_use_soap_range_after_hospitalization_str":str(row[11]),
+                "use_soap_range_days_after_hospitalization":row[12],
+                "use_soap_range_days_after_hospitalization_str":str(row[12]),
+                "start_day_to_use_soap_range_before_discharge":row[13],
+                "start_day_to_use_soap_range_before_discharge_str":str(row[13]),
+                "use_soap_range_days_before_discharge":row[14],
+                "use_soap_range_days_before_discharge_str":str(row[14])
             })
         return {
             "system_contents":system_contetns,

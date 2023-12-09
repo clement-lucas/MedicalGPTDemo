@@ -692,56 +692,12 @@ const Discharge = () => {
     };
 
     const onChangeSlot = (newSlot: string) => {
-        if (isDocumnetFormatSettingVisible) {
-            if (isDocumentFormatSettingEdited) {
-                const result = window.confirm("スロットを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
-                if (!result) {
-                    return;
-                }
-            }
-            getDocumentFormat(false, selectedDepartmentCode, newSlot, selectedIcd10CodeMax);
-            setIsDocumentFormatSettingEdited(false);
-        }
         setSelectedSlot(newSlot ? newSlot : '');
     }
 
-    const onChangeDepartment = (newCode: string, newName:string) => {
-        if (isDocumnetFormatSettingVisible) {
-            if (isDocumentFormatSettingEdited) {
-                const result = window.confirm("診療科を切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
-                if (!result) {
-                    return;
-                }
-            }
-            getDocumentFormat(false, newCode, selectedSlot, selectedIcd10CodeMax);
-            setIsDocumentFormatSettingEdited(false);
-        }
-        setSelectedDepartmentCode(newCode);
-        setSelectedDepartmentName(newName);
-    }
-
-    const onChangeIcd10Code = (codeLevel:number, newCode: string, newText: string) => {
-        if (isDocumnetFormatSettingVisible) {
-            if (isDocumentFormatSettingEdited) {
-                const result = window.confirm("使用するプロンプトを切り替えます。\nプロンプト編集内容が保存されていません。\n編集内容を破棄してよろしいですか？");
-                if (!result) {
-                    return;
-                }
-                setIsDocumentFormatSettingEdited(false);
-            }
-        }
-
-        if (codeLevel === 0) setSelectedIcd10Code0(newCode ? newCode : '');
-        if (codeLevel === 1) setSelectedIcd10Code1(newCode ? newCode : '');
-        if (codeLevel === 2) setSelectedIcd10Code2(newCode ? newCode : '');
-
-        for (let i = codeLevel + 1; i < 3; i++) {
-            setIcd10Options(i, defaultIcd10Options);
-            setSelectedIcd10(i, DEFAULT_ICD10_CODE);
-        }
-        if (codeLevel < 2 && newCode != DEFAULT_ICD10_CODE) {
-            // 子の階層のマスターを取得
-            getIcd10Master(codeLevel + 1, newCode);
+    const onDocumentFormatIndexClicked = (newItem:DocumentFormatIndex) => {
+        if (selectedDocumentFormatIndex && selectedDocumentFormatIndex.index_id === newItem.index_id) {
+            return;
         }
 
         if (isDocumentFormatSettingEdited) {
@@ -932,49 +888,6 @@ const Discharge = () => {
                             </Stack.Item>
 
                             <br></br>
-                            <Label>プロンプトとして使用する疾病コードを選ぶ</Label>
-                            <Label>大項目</Label>
-                            {isLoadingIcd10Master0 && <Spinner label="Loading icd10 master" />}
-                            {!isLoadingIcd10Master0 && (
-                                <Dropdown
-                                    style={icd10DropDownStyle}
-                                    placeholder="Select icd10 code"
-                                    options={icd10Options0}
-                                    selectedKey={selectedIcd10Code0}
-                                    onChange={(e, newValue) => {
-                                        onChangeIcd10Code(0, newValue?.key as string || '', newValue?.text as string || '');
-                                    }}
-                                />            
-                            )}
-                            <Label>中項目</Label>
-                            {isLoadingIcd10Master1 && <Spinner label="Loading icd10 master" />}
-                            {!isLoadingIcd10Master1 && (
-                                <Dropdown 
-                                    style={icd10DropDownStyle}
-                                    placeholder="Select icd10 code"
-                                    options={icd10Options1}
-                                    selectedKey={selectedIcd10Code1}
-                                    onChange={(e, newValue) => {
-                                        onChangeIcd10Code(1, newValue?.key as string || '', newValue?.text as string || '');
-                                    }}
-                                />            
-                            )}
-                            <Label>小項目</Label>
-                            {isLoadingIcd10Master2 && <Spinner label="Loading icd10 master" />}
-                            {!isLoadingIcd10Master2 && (
-                                <Dropdown 
-                                    style={icd10DropDownStyle}
-                                    placeholder="Select icd10 code"
-                                    options={icd10Options2}
-                                    selectedKey={selectedIcd10Code2}
-                                    onChange={(e, newValue) => {
-                                        onChangeIcd10Code(2, newValue?.key as string || '', newValue?.text as string || '');
-                                    }}
-                                />            
-                            )}
-                            <br></br>
-                            <DocumentFormatEditButton 
-                                onClick={ onDocumentFormatEditClicked } />
                             <DischargeButton
                                 text="退院時サマリを作成する"
                                 value="退院時サマリ"
@@ -1025,13 +938,25 @@ const Discharge = () => {
         </div>
         <div>
             <Dropdown 
-                placeholder="Select prompt slot"
-                options={momorySlotOptions}
-                selectedKey={selectedSlot}
-                onChange={(e, newValue) => {
-                    onChangeSlot(newValue?.key as string || '');
-                }}
-            />            
+                    placeholder="Select user"
+                    options={momorySlotOptions}
+                    selectedKey={selectedSlot}
+                    onChange={(e, newValue) => {
+                        onChangeSlot(newValue?.key as string || '');
+                    }}
+            />  <br></br>
+            <p>診療科コード：<br></br>
+                <TextField
+                    readOnly={false}
+                    multiline={false}
+                    resizable={false}
+                    scrolling="false"
+                    defaultValue={departmantCode}
+                    value={departmantCode}
+                    onChange={(e, newValue) => setDepartmantCode(newValue || "")}
+                    onBlur={(e) => setDepartmantCode(e.target.value || "")}
+                />
+            </p>
         </div>
         {selectedDocumentFormatIndex && documentFormats && (
             <div className={styles.dischargeDocumentFormatSettingDiv}>

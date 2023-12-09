@@ -21,16 +21,13 @@ class GetHistoryDetailApproach(Approach):
             # SQL Server から履歴情報を取得する
             cursor.execute("""
                 SELECT [History].[Id]
-                    ,[History].[UserId]
                     ,[History].[PID]
                     ,[History].[Prompt]
-                    ,[History].[MedicalRecord]
+                    ,[History].[SoapForCategories]
                     ,[History].[Response]
                     ,[History].[CompletionTokens]
                     ,[History].[PromptTokens]
                     ,[History].[TotalTokens]
-                    ,[History].[CreatedDateTime]
-                    ,[History].[UpdatedDateTime]
                     ,[EXTBDH1].[PID_NAME]
                 FROM [dbo].[History]
                 INNER JOIN (SELECT DISTINCT PID, PID_NAME FROM EXTBDH1 WHERE ACTIVE_FLG = 1) AS EXTBDH1
@@ -40,23 +37,19 @@ class GetHistoryDetailApproach(Approach):
 
         for row in rows:
             id = row[0]
-            user_id = row[1]
-            pid = row[2]
-            prompt = row[3]
-            medical_record = row[4]
-            response = row[5]
-            completion_tokens = row[6]
-            prompt_tokens = row[7]
-            total_tokens = row[8]
-            created_date_time = row[9]
-            updated_date_time = row[10]
-            patient_name = row[11]
-
+            pid = row[1]
+            prompt = row[2]
+            soap_text_history = row[3]
+            response = row[4]
+            completion_tokens = row[5]
+            prompt_tokens = row[6]
+            total_tokens = row[7]
+            patient_name = row[8]
 
             return {"data_points": "test results", 
                     "pid": pid,
                     "patient_name": patient_name,
-                    "answer": response + "\n\n\nカルテデータ：\n" + medical_record, 
+                    "answer": ''.join([response, "\n\nカルテデータ: \n\n", soap_text_history]),
                     "thoughts": prompt, 
                     "completion_tokens": completion_tokens,   
                     "prompt_tokens": prompt_tokens,   

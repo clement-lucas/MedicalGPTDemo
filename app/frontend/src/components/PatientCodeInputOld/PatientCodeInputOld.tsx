@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Stack, TextField, Label } from "@fluentui/react";
 import { Search24Filled } from "@fluentui/react-icons";
-import { getPatientOldApi, GetPatientRequest } from "../../api";
+import { getPatientOldApi, GetPatientOldRequest } from "../../api";
 
 import styles from "./PatientCodeInputOld.module.css";
 
@@ -19,7 +19,7 @@ export const PatientCodeInputOld = ({ onPatientCodeChanged, disabled, placeholde
     const makeApiRequest = async (patientCode: string) => {
         setName("");
         try {
-            const request: GetPatientRequest = {
+            const request: GetPatientOldRequest = {
                 patient_code: patientCode,
             };
             const result = await getPatientOldApi(request);

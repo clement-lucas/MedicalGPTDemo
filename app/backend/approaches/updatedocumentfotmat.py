@@ -9,14 +9,18 @@ class UpdateDocumentFormatApproach(Approach):
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
         
-    def run(self, document_name: str, department_code:str, 
-            icd10_code:str, user_id:str, 
+    def run(self, 
+            document_format_index_id:int, 
+            document_format_index_name:str, 
+            document_name:str, 
+            tags:str,
+            user_id:str, 
             system_contents:str, system_contents_suffix:str, document_formats: []
             ) -> any:
         print("UpdateDocumentFormatApproach.run")  
+        print("document_format_index_id:" + str(document_format_index_id))
+        print("document_format_index_name:" + document_format_index_name)
         print("document_name:" + document_name)
-        print("department_code:" + department_code)
-        print("icd10_code:" + icd10_code)
         print("user_id:" + user_id)
 
         gpt_model_name = os.getenv("AZURE_GPT_MODEL_NAME")
@@ -30,34 +34,63 @@ class UpdateDocumentFormatApproach(Approach):
             with cnxn.cursor() as cursor:
 
                 try:
-                    # ドキュメントフォーマットの論理削除
-                    update_document_format_sql = """UPDATE DocumentFormat SET
-                            IsDeleted = 1,
-                            UpdatedBy = ?,
-                            UpdatedDateTime = GETDATE()
-                        WHERE IsMaster = 0
-                        AND UserId = ?
-                        AND DepartmentCode = ?
-                        AND Icd10Code = ?
-                        AND DocumentName = ?
-                        AND GPTModelName = ?
-                        AND IsDeleted = 0"""
-                    cursor.execute(update_document_format_sql,
-                                user_id,
-                                user_id,
-                                department_code, icd10_code,
-                                document_name,
-                                gpt_model_name)
+                    if document_format_index_id == -1:
+                        # ドキュメントフォーマットの新規登録
+                        insert_document_format_sql = """
+                            INSERT INTO DocumentFormatIndex
+                            ( 
+                                IsMaster,
+                                [IndexName],
+                                Tags,
+                                DocumentName,
+                                GPTModelName,
+                                CreatedBy,
+                                UpdatedBy,
+                                CreatedDateTime,
+                                UpdatedDateTime,
+                                IsDeleted
+                            )
+                            VALUES
+                            (0, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), 0);"""
+                        cursor.execute(insert_document_format_sql,
+                                    document_format_index_name,
+                                    tags,
+                                    document_name,
+                                    gpt_model_name,
+                                    user_id,
+                                    user_id)
+                        cursor.execute("SELECT @@IDENTITY AS ID;")
+                        document_format_index_id = cursor.fetchone()[0]
+                    else:
+                        # ドキュメントフォーマットの論理削除
+                        update_document_format_sql = """UPDATE DocumentFormatData SET
+                                IsDeleted = 1,
+                                UpdatedBy = ?,
+                                UpdatedDateTime = GETDATE()
+                            WHERE IndexId = ?
+                            AND IsDeleted = 0"""
+                        cursor.execute(update_document_format_sql,
+                                    user_id,
+                                    document_format_index_id)
                     
-                    # ドキュメントフォーマットの登録
-                    insert_document_format_sql = """INSERT INTO DocumentFormat
+                        # ドキュメントフォーマットファイルの更新
+                        update_document_format_sql = """UPDATE DocumentFormatIndex SET
+                                IndexName = ?,
+                                Tags = ?,
+                                UpdatedBy = ?,
+                                UpdatedDateTime = GETDATE()
+                            WHERE IndexId = ?
+                            AND IsDeleted = 0"""
+                        cursor.execute(update_document_format_sql,
+                                    document_format_index_name,
+                                    tags,
+                                    user_id,
+                                    document_format_index_id)
+                    
+                    insert_document_format_sql = """INSERT INTO DocumentFormatData
                         ( 
                             IsMaster,
-                            UserId,
-                            DepartmentCode,
-                            Icd10Code,
-                            DocumentName,
-                            GPTModelName,
+                            IndexId,
                             Kind, 
                             OrderNo, 
                             CategoryName, 
@@ -68,6 +101,10 @@ class UpdateDocumentFormatApproach(Approach):
                             TargetSoapRecords, 
                             UseAllergyRecords, 
                             UseDischargeMedicineRecords,
+                            StartDayToUseSoapRangeAfterHospitalization,
+                            UseSoapRangeDaysAfterHospitalization,
+                            StartDayToUseSoapRangeBeforeDischarge,
+                            UseSoapRangeDaysBeforeDischarge,
                             CreatedBy,
                             UpdatedBy,
                             CreatedDateTime,
@@ -75,7 +112,7 @@ class UpdateDocumentFormatApproach(Approach):
                             IsDeleted
                         )
                         VALUES
-                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, GETDATE(), GETDATE(), 0)"""
+                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), 0)"""
 
                     rows_to_insert = []
                     for document_format in document_formats:
@@ -91,11 +128,7 @@ class UpdateDocumentFormatApproach(Approach):
                         if document_format['is_b']:
                             target_soap += "b"
                         rows_to_insert.append((
-                            user_id,
-                            department_code,
-                            icd10_code,
-                            document_name,
-                            gpt_model_name,
+                            document_format_index_id,
                             document_format['kind'],
                             document_format['order_no'],
                             document_format['category_name'],
@@ -104,17 +137,16 @@ class UpdateDocumentFormatApproach(Approach):
                             document_format['question_suffix'],
                             document_format['response_max_tokens'],
                             target_soap,
+                            document_format['start_day_to_use_soap_range_after_hospitalization'],
+                            document_format['use_soap_range_days_after_hospitalization'],
+                            document_format['start_day_to_use_soap_range_before_discharge'],
+                            document_format['use_soap_range_days_before_discharge'],
                             user_id,
                             user_id
                         ))
 
-                    # システムコンテンツの登録
                     rows_to_insert.append((
-                        user_id,
-                        department_code,
-                        icd10_code,
-                        document_name,
-                        gpt_model_name,
+                        document_format_index_id,
                         0,
                         0,
                         '',
@@ -123,6 +155,10 @@ class UpdateDocumentFormatApproach(Approach):
                         system_contents_suffix,
                         0,
                         '',
+                        0,
+                        0,
+                        0,
+                        0,
                         user_id,
                         user_id
                     ))
@@ -135,4 +171,4 @@ class UpdateDocumentFormatApproach(Approach):
                     cnxn.rollback()
                     raise
 
-        return {"result": "OK"}
+        return {"document_format_index_id": document_format_index_id}

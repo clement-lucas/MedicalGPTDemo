@@ -18,6 +18,8 @@ from approaches.getpatientold import GetPatientOldApproach
 from approaches.gethistoryinex import GetHistoryIndexApproach
 from approaches.gethistorydetail import GetHistoryDetailApproach
 from approaches.getsoap import GetSoapApproach
+from approaches.getdocumentfotmatindex import GetDocumentFormatIndexApproach
+from approaches.deletedocumentfotmat import DeleteDocumentFormatApproach
 from approaches.getdocumentfotmat import GetDocumentFormatApproach
 from approaches.updatedocumentfotmat import UpdateDocumentFormatApproach
 from approaches.geticd10master import GetIcd10MasterApproach
@@ -120,9 +122,14 @@ soap_approaches = {
     "get": GetSoapApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
+document_format_index_approaches = {
+    "get": GetDocumentFormatIndexApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
+}
+
 document_format_approaches = {
     "get": GetDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
-    "upd": UpdateDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
+    "upd": UpdateDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT),
+    "del": DeleteDocumentFormatApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 get_icd10_master_approaches = {
@@ -183,17 +190,16 @@ def document():
 @app.route("/discharge", methods=["POST"])
 def discharge():
     ensure_openai_token()
-    approach = request.json["approach"]
+    approach = "rrr"
     try:
         impl = discharge_approaches.get(approach)
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["document_name"], 
-                     request.json["patient_code"], 
+        r = impl.run(
                      request.json["department_code"], 
-                     request.json["icd10_code"], 
-                     request.json["user_id"],
-                     request.json.get("overrides") or {})
+                     request.json["pid"], 
+                     request.json["document_format_index_id"], 
+                     request.json["user_id"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /discharge")
@@ -233,7 +239,7 @@ def get_patient():
         impl = get_patient_approaches.get("rrr")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["patient_code"])
+        r = impl.run(request.json["pid"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_patient")
@@ -281,10 +287,25 @@ def soap():
         impl = soap_approaches.get("get")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["patient_code"])
+        r = impl.run(request.json["pid"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /soap")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get_document_format_index", methods=["POST"])
+def get_document_format_index():
+    try:
+        impl = document_format_index_approaches.get("get")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_name"],
+                     request.json["user_id"],
+                     request.json["is_only_myself"],
+                     request.json["search_text"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /get_document_format_index")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_document_format", methods=["POST"])
@@ -293,11 +314,7 @@ def get_document_format():
         impl = document_format_approaches.get("get")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["document_name"], 
-                     request.json["department_code"], 
-                     request.json["icd10_code"],
-                     request.json["user_id"],
-                     request.json["force_master"])
+        r = impl.run(request.json["document_format_index_id"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_document_format")
@@ -309,9 +326,10 @@ def update_document_format():
         impl = document_format_approaches.get("upd")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["document_name"], 
-                     request.json["department_code"], 
-                     request.json["icd10_code"],
+        r = impl.run(request.json["document_format_index_id"],
+                     request.json["document_format_index_name"],
+                     request.json["document_name"], 
+                     request.json["tags"],
                      request.json["user_id"], 
                      request.json["system_contents"],
                      request.json["system_contents_suffix"],
@@ -320,7 +338,20 @@ def update_document_format():
     except Exception as e:
         logging.exception("Exception in /update_document_format")
         return jsonify({"error": str(e)}), 500
-    
+
+@app.route("/delete_document_format", methods=["POST"])
+def delete_document_format():
+    try:
+        impl = document_format_approaches.get("del")
+        if not impl:
+            return jsonify({"error": "unknown approach"}), 400
+        r = impl.run(request.json["document_format_index_id"],
+                     request.json["user_id"])
+        return jsonify(r)
+    except Exception as e:
+        logging.exception("Exception in /delete_document_format")
+        return jsonify({"error": str(e)}), 500
+
 def ensure_openai_token():
     if not is_openal_ad_auth:
         return

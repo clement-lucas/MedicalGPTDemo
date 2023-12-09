@@ -30,13 +30,10 @@ export type DocumentRequest = {
 };
 
 export type DischargeRequest = {
-    patientCode: string;
-    documentName: string;
     departmentCode: string;
-    icd10Code: string;
-    approach: Approaches;
+    pid: string;
+    documentFormatIndexId: number;
     userId: string;
-    overrides?: AskRequestOverrides;
 };
 
 export type AskPatientRequest = {
@@ -82,6 +79,10 @@ export type ChatPatientRequest = {
 };
 
 export type GetPatientRequest = {
+    pid: string;
+};
+
+export type GetPatientOldRequest = {
     patient_code: string;
 };
 
@@ -116,7 +117,7 @@ export type GetHistoryDetailRequest = {
 };
 
 export type GetSoapRequest = {
-    patient_code: string;
+    pid: string;
 };
 
 export type GetSoapResponse = {
@@ -141,14 +142,39 @@ export type DocumentFormat = {
     is_b: boolean;
     use_allergy_records: boolean;
     use_discharge_medicine_records: boolean;
+    start_day_to_use_soap_range_after_hospitalization: number;
+    use_soap_range_days_after_hospitalization: number;
+    start_day_to_use_soap_range_before_discharge: number;
+    use_soap_range_days_before_discharge: number;
+    start_day_to_use_soap_range_after_hospitalization_str: string;
+    use_soap_range_days_after_hospitalization_str: string;
+    start_day_to_use_soap_range_before_discharge_str: string;
+    use_soap_range_days_before_discharge_str: string;
+};
+
+export type DocumentFormatIndex = {
+    index_id: number;
+    is_master: boolean;
+    index_name: string;
+    tags: string;
+    updated_by: string;
+    updated_date_time: string;
+};
+
+export type GetDocumentFormatIndexRequest = {
+    document_name: string;
+    user_id: string;
+    is_only_myself: boolean;
+    search_text: string;
+};
+
+export type GetDocumentFormatIndexResponse = {
+    document_format_index_list: DocumentFormatIndex[];
+    error?: string;
 };
 
 export type GetDocumentFormatRequest = {
-    document_name: string;
-    department_code: string;
-    icd10_code: string;
-    user_id: string;
-    force_master: boolean;
+    documnet_format_index_id: number;
 };
 
 export type GetDocumentFormatResponse = {
@@ -159,9 +185,10 @@ export type GetDocumentFormatResponse = {
 };
 
 export type UpdateDocumentFormatRequest = {
+    document_format_index_id: number;
+    document_format_index_name: string;
     document_name: string;
-    department_code: string;
-    icd10_code: string;
+    tags: string;
     user_id: string;
     system_contents: string;
     system_contents_suffix: string;
@@ -169,6 +196,16 @@ export type UpdateDocumentFormatRequest = {
 };
 
 export type UpdateDocumentFormatResponse = {
+    document_format_index_id: number;
+    error?: string;
+};
+
+export type DeleteDocumentFormatRequest = {
+    document_format_index_id: number;
+    user_id: string;
+};
+
+export type DeleteDocumentFormatResponse = {
     error?: string;
 };
 

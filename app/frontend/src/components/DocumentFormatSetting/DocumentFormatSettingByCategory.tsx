@@ -13,11 +13,14 @@ interface Props {
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
     onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onTemperatureChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onStartDayToUseSoapRangeAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onUseSoapRangeDaysAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onStartDayToUseSoapRangeBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onUseSoapRangeDaysBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
     onDeleteClicked: (documentFormatId : number) => void;
 }
-
 
 // 0: システムコンテンツ
 // 1: SOAP と質問文からの生成
@@ -32,6 +35,10 @@ const kindOptions: IDropdownOption[] = [
 export const DocumentFormatSettingByCategory = ({ documentFormat, 
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
     onTemperatureChanged,
+    onStartDayToUseSoapRangeAfterHospitalizationChanged, 
+    onUseSoapRangeDaysAfterHospitalizationChanged,
+    onStartDayToUseSoapRangeBeforeDischargeChanged,
+    onUseSoapRangeDaysBeforeDischargeChanged,
     onUpClicked, onDownClicked, onDeleteClicked, isTop, isBottom
 }: Props) => {
     return (
@@ -113,8 +120,64 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                             onBlur={(e) => onTemperatureChanged(documentFormat, e.target.value || "")}
                         />
                     </p>
+                    <p>使用するカルテデータの期間：<br></br>
+                        <Stack horizontal>
+                            入院日から数えて
+                            <TextField 
+                                className={styles.dayTextField}
+                                readOnly={false}
+                                multiline={false}
+                                resizable={false}
+                                defaultValue={documentFormat.start_day_to_use_soap_range_after_hospitalization_str}
+                                value={documentFormat.start_day_to_use_soap_range_after_hospitalization_str}
+                                onChange={(e, newValue) => onStartDayToUseSoapRangeAfterHospitalizationChanged(documentFormat, newValue || "")}
+                                onBlur={(e) => onStartDayToUseSoapRangeAfterHospitalizationChanged(documentFormat, e.target.value || "")}
+                            />
+                            日目～
+                        </Stack>
+                        <Stack horizontal>
+                            <TextField
+                                className={styles.dayTextField}
+                                readOnly={false}
+                                multiline={false}
+                                resizable={false}
+                                defaultValue={documentFormat.use_soap_range_days_after_hospitalization_str}
+                                value={documentFormat.use_soap_range_days_after_hospitalization_str}
+                                onChange={(e, newValue) => onUseSoapRangeDaysAfterHospitalizationChanged(documentFormat, newValue || "")}
+                                onBlur={(e) => onUseSoapRangeDaysAfterHospitalizationChanged(documentFormat, e.target.value || "")}
+                            />
+                            日間のデータを使用
+                        </Stack>
+                        <Stack horizontal>
+                            退院日から数えて
+                            <TextField
+                                className={styles.dayTextField}
+                                readOnly={false}
+                                multiline={false}
+                                resizable={false}
+                                defaultValue={documentFormat.start_day_to_use_soap_range_before_discharge_str}
+                                value={documentFormat.start_day_to_use_soap_range_before_discharge_str}
+                                onChange={(e, newValue) => onStartDayToUseSoapRangeBeforeDischargeChanged(documentFormat, newValue || "")}
+                                onBlur={(e) => onStartDayToUseSoapRangeBeforeDischargeChanged(documentFormat, e.target.value || "")}
+                            />
+                            日前～
+                        </Stack>
+                        <Stack horizontal>
+                            <TextField
+                                className={styles.dayTextField}
+                                readOnly={false}
+                                multiline={false}
+                                resizable={false}
+                                defaultValue={documentFormat.use_soap_range_days_before_discharge_str}
+                                value={documentFormat.use_soap_range_days_before_discharge_str}
+                                onChange={(e, newValue) => onUseSoapRangeDaysBeforeDischargeChanged(documentFormat, newValue || "")}
+                                onBlur={(e) => onUseSoapRangeDaysBeforeDischargeChanged(documentFormat, e.target.value || "")}
+                            />
+                            日間遡った分のデータを使用
+                            </Stack>
+                    </p>
                     <p>プロンプト：<br></br>
-                        <TextField
+                        <TextField 
                             readOnly={false}
                             multiline={true}
                             resizable={true}
