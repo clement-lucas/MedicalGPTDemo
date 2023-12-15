@@ -12,6 +12,7 @@ from lib.soapmanager import SOAPManager
 from lib.gptconfigmanager import GPTConfigManager
 from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
+from lib.datetimeconverter import DateTimeConverter
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -99,6 +100,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         return records
 
     def get_all_answers(self, 
+                        soap:SOAPManager,
                         row, 
                         department_code,
                         pid, 
@@ -126,11 +128,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # response_max_tokens:row[7],
         # target_soap:row[8],
         # use_allergy_records:row[9],
-        # use_discharge_medicine_records:row[10]
-        # "start_day_to_use_soap_range_after_hospitalization":row[11],
-        # "use_soap_range_days_after_hospitalization":row[12],
-        # "start_day_to_use_soap_range_before_discharge":row[13],
-        # "use_soap_range_days_before_discharge":row[14]
+        # "use_discharge_medicine_records":row[10],
+        # "use_range_kind":row[11],
+        # "days_before_the_date_of_hospitalization_to_use":row[12],
+        # "days_after_the_date_of_hospitalization_to_use":row[13],
+        # "days_before_the_date_of_discharge_to_use":row[14],
+        # "days_after_the_date_of_discharge_to_use":row[15],
 
         kind = row[1]
         categoryName = row[2]
@@ -141,34 +144,38 @@ class ReadRetrieveDischargeReadApproach(Approach):
         targetSoapRecords = row[8]
 
         # 以下は今は見ていない
-        useAllergyRecords = row[9]
-        useDischargeMedicineRecords = row[10]
+        use_allergy_records = row[9]
+        use_discharge_medicine_records = row[10]
 
-        start_day_to_use_soap_range_after_hospitalization = row[11]
-        use_soap_range_days_after_hospitalization = row[12]
-        start_day_to_use_soap_range_before_discharge = row[13]
-        use_soap_range_days_before_discharge = row[14]
+        use_range_kind = row[11]
+        days_before_the_date_of_hospitalization_to_use = row[12]
+        days_after_the_date_of_hospitalization_to_use = row[13]
+        days_before_the_date_of_discharge_to_use = row[14]
+        days_after_the_date_of_discharge_to_use = row[15]
+
         print(categoryName + "の処理開始")
 
         id_list = []
         original_data_no_list = []
         soap_text = ""
+        absolute_range_satart_date = -1
+        absolute_range_end_date = -1
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
-            soap = SOAPManager.get_values(
-                self.sql_connector,
-                department_code,
-                pid,
+            soap_ret = soap.get_values(
                 targetSoapRecords,
-                start_day_to_use_soap_range_after_hospitalization,
-                use_soap_range_days_after_hospitalization,
-                start_day_to_use_soap_range_before_discharge,
-                use_soap_range_days_before_discharge)
-            # print(soap)
-            soap_text = soap[0]
-            id_list = soap[1]
-            original_data_no_list = soap[2]
+                use_range_kind,
+                days_before_the_date_of_hospitalization_to_use,
+                days_after_the_date_of_hospitalization_to_use,
+                days_before_the_date_of_discharge_to_use,
+                days_after_the_date_of_discharge_to_use)
+            # print(soap_ret)
+            soap_text = soap_ret[0]
+            id_list = soap_ret[1]
+            original_data_no_list = soap_ret[2]
+            absolute_range_satart_date = soap_ret[3]
+            absolute_range_end_date = soap_ret[4]
 
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
@@ -254,7 +261,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 id_list, \
                 original_data_no_list, \
                 soap_text, \
-                categoryName
+                categoryName, \
+                absolute_range_satart_date, \
+                absolute_range_end_date
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -393,6 +402,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # SOAP を履歴として確保する
         soap_text_history = ''
 
+        # 使用したデータ期間
+        use_date_range_list = ""
+
         # 作成されたプロンプトの回収（返却とログ用）
         prompts = ""
 
@@ -403,12 +415,17 @@ class ReadRetrieveDischargeReadApproach(Approach):
         timer.start("退院時サマリ作成処理")
         id_list = []
         original_data_no_list = []
+        soap = SOAPManager(
+            self.sql_connector,
+            department_code,
+            pid)
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
-                        row, 
-                        department_code,
-                        pid, 
-                        system_content) for row in rows]
+                                        soap,
+                                        row, 
+                                        department_code,
+                                        pid, 
+                                        system_content) for row in rows]
             for feature in features:
                 try:
                     exception = feature.exception() # 例外が発生しなかった場合はNoneを返す
@@ -430,9 +447,14 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 original_data_no_list.extend(future_ret[8])
                 soap_text = future_ret[9]
                 categoryName = future_ret[10]
+                absolute_range_satart_date = future_ret[11]
+                absolute_range_end_date = future_ret[12]
                 if soap_text != "":
                     soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
-                
+                if absolute_range_satart_date != -1 and absolute_range_end_date != -1:
+                    absolute_range_satart_date_str = DateTimeConverter.int_2_str(absolute_range_satart_date)
+                    absolute_range_end_date_str = DateTimeConverter.int_2_str(absolute_range_end_date)
+                    use_date_range_list = ''.join([use_date_range_list, "【", categoryName, " データ使用期間】\n", absolute_range_satart_date_str, " ～ ", absolute_range_end_date_str, "\n\n"])
 
 
         # print(ret)
@@ -455,9 +477,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ([PID]
            ,[DocumentName]
            ,[Prompt]
+           ,[HospitalizationDate]
+           ,[DischargeDate]
            ,[DocumentFormatIndexId]
            ,[OriginalDocNoList]
            ,[IntermediateDataIds]
+           ,[UseDateRangeList]
            ,[SoapForCategories]
            ,[Response]
            ,[CompletionTokens]
@@ -482,6 +507,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,?
            ,?
            ,?
+           ,?
+           ,?
+           ,?
            ,dateadd(hour, 9, GETDATE())
            ,dateadd(hour, 9, GETDATE())
            ,?
@@ -494,9 +522,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
         with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
             cursor.execute(insert_history_sql, pid, 
                         prompts, 
+                        soap.hospitalization_date_str,
+                        soap.discharge_date_str,
                         document_format_index_id,
                         original_data_no_list,
                         id_list,
+                        use_date_range_list,
                         soap_text_history,
                         ret,
                         sum_of_completion_tokens,   

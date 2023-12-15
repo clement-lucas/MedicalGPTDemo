@@ -1,0 +1,10 @@
+ALTER TABLE DocumentFormatData    ADD  UseRangeKind INT
+ALTER TABLE DocumentFormatData    ADD DaysBeforeTheDateOfHospitalizationToUse INT
+ALTER TABLE DocumentFormatData    ADD DaysAfterTheDateOfHospitalizationToUse INT
+ALTER TABLE DocumentFormatData    ADD DaysBeforeTheDateOfDischargeToUse INT
+ALTER TABLE DocumentFormatData    ADD DaysAfterTheDateOfDischargeToUse INT
+UPDATE DocumentFormatData  SET UseRangeKind  = 0
+UPDATE DocumentFormatData  SET DaysBeforeTheDateOfHospitalizationToUse = 0
+UPDATE DocumentFormatData  SET  DaysAfterTheDateOfHospitalizationToUse = 3
+UPDATE DocumentFormatData  SET  DaysBeforeTheDateOfDischargeToUse = 3
+UPDATE DocumentFormatData  SET  DaysAfterTheDateOfDischargeToUse = 0

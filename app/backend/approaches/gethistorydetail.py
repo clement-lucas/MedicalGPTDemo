@@ -23,6 +23,8 @@ class GetHistoryDetailApproach(Approach):
                 SELECT [History].[Id]
                     ,[History].[PID]
                     ,[History].[Prompt]
+                    ,[History].[HospitalizationDate]
+                    ,[History].[DischargeDate]
                     ,[History].[SoapForCategories]
                     ,[History].[Response]
                     ,[History].[CompletionTokens]
@@ -39,12 +41,14 @@ class GetHistoryDetailApproach(Approach):
             id = row[0]
             pid = row[1]
             prompt = row[2]
-            soap_text_history = row[3]
-            response = row[4]
-            completion_tokens = row[5]
-            prompt_tokens = row[6]
-            total_tokens = row[7]
-            patient_name = row[8]
+            hospitalization_date = row[3]
+            discharge_date = row[4]
+            soap_text_history = row[5]
+            response = row[6]
+            completion_tokens = row[7]
+            prompt_tokens = row[8]
+            total_tokens = row[9]
+            patient_name = row[10]
 
             return {"data_points": "test results", 
                     "pid": pid,
@@ -53,7 +57,9 @@ class GetHistoryDetailApproach(Approach):
                     "thoughts": prompt, 
                     "completion_tokens": completion_tokens,   
                     "prompt_tokens": prompt_tokens,   
-                    "total_tokens": total_tokens}
+                    "total_tokens": total_tokens,
+                    "hospitalization_date": hospitalization_date,
+                    "discharge_date": discharge_date}
 
         return {"name":"履歴情報が見つかりませんでした。"}
     

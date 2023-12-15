@@ -59,14 +59,16 @@ class GetDocumentFormatApproach(Approach):
                 "is_b":isB,
                 "use_allergy_records":row[9],
                 "use_discharge_medicine_records":row[10],
-                "start_day_to_use_soap_range_after_hospitalization":row[11],
-                "start_day_to_use_soap_range_after_hospitalization_str":str(row[11]),
-                "use_soap_range_days_after_hospitalization":row[12],
-                "use_soap_range_days_after_hospitalization_str":str(row[12]),
-                "start_day_to_use_soap_range_before_discharge":row[13],
-                "start_day_to_use_soap_range_before_discharge_str":str(row[13]),
-                "use_soap_range_days_before_discharge":row[14],
-                "use_soap_range_days_before_discharge_str":str(row[14])
+                "use_range_kind":row[11],
+                "use_range_kind_str":str(row[11]),
+                "days_before_the_date_of_hospitalization_to_use":row[12],
+                "days_after_the_date_of_hospitalization_to_use":row[13],
+                "days_before_the_date_of_discharge_to_use":row[14],
+                "days_after_the_date_of_discharge_to_use":row[15],
+                "days_before_the_date_of_hospitalization_to_use_str":str(row[12]),
+                "days_after_the_date_of_hospitalization_to_use_str":str(row[13]),
+                "days_before_the_date_of_discharge_to_use_str":str(row[14]),
+                "days_after_the_date_of_discharge_to_use_str":str(row[15])
             })
         return {
             "system_contents":system_contetns,

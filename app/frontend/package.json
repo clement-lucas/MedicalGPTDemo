@@ -11,6 +11,7 @@
   "dependencies": {
     "@fluentui/react": "^8.105.3",
     "@fluentui/react-icons": "^2.0.195",
+    "@fluentui/react-radio": "^9.1.58",
     "@react-spring/web": "^9.7.1",
     "dompurify": "^3.0.1",
     "react": "^18.2.0",

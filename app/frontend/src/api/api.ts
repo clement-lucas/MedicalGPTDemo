@@ -195,6 +195,7 @@ export async function getPatientApi(options: GetPatientRequest): Promise<GetPati
         },
         body: JSON.stringify({
             pid: options.pid,
+            department_code: options.department_code,
         })
     });
 

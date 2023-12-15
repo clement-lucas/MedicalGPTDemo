@@ -138,7 +138,7 @@ class DateTimeConverter:
     # yyyyMMddHHMISS -> yyyy/MM/dd HH:MI:SS に変換する関数
     # 例）20140224095813 -> 2014/02/24 09:58:13
     @staticmethod
-    def int_2_str(org: int):
+    def int_2_str(org: int, only_date:bool = False):
         strdate = str(org)
         if len(strdate) != 14:
             return strdate
@@ -148,4 +148,6 @@ class DateTimeConverter:
         hour = strdate[8:10]
         minute = strdate[10:12]
         second = strdate[12:14]
+        if (only_date):
+            return ''.join([year, "/", month, "/", day])
         return ''.join([year, "/", month, "/", day, " ", hour, ":", minute, ":", second])

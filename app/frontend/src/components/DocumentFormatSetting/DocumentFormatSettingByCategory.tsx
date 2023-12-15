@@ -1,4 +1,5 @@
 import { Stack, TextField, Dropdown, IDropdownOption, Checkbox, Label } from "@fluentui/react";
+import { Radio, RadioGroup } from '@fluentui/react-radio';
 import { ArrowUp20Filled, ArrowDown20Filled, Delete20Filled } from "@fluentui/react-icons";
 
 import styles from "./DocumentFormatSettingByCategory.module.css";
@@ -8,15 +9,17 @@ interface Props {
     documentFormat : DocumentFormat;
     isTop: boolean;
     isBottom: boolean;
+    
     onCategoryNameChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onKindChanged: (targetDocumentFormat:DocumentFormat, newValue: number) => void;
     onTargetSoapChanged: (targetDocumentFormat:DocumentFormat, targetSection:string, newValue:boolean) => void;
     onQuestionChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onTemperatureChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
-    onStartDayToUseSoapRangeAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
-    onUseSoapRangeDaysAfterHospitalizationChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
-    onStartDayToUseSoapRangeBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
-    onUseSoapRangeDaysBeforeDischargeChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onUseRangeKindChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onDaysBeforeTheDateOfHospitalizationToUseChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onDaysAfterTheDateOfHospitalizationToUseChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onDaysBeforeTheDateOfDischargeToUseChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
+    onDaysAfterTheDateOfDischargeToUseChanged: (targetDocumentFormat:DocumentFormat, newValue:string) => void;
     onUpClicked: (documentFormat : DocumentFormat) => void;
     onDownClicked: (documentFormat : DocumentFormat) => void;
     onDeleteClicked: (documentFormatId : number) => void;
@@ -32,13 +35,14 @@ const kindOptions: IDropdownOption[] = [
     { key: 3, text: '退院時使用薬剤' },
   ];
  
-export const DocumentFormatSettingByCategory = ({ documentFormat, 
+export const DocumentFormatSettingByCategory = ({ documentFormat,
     onCategoryNameChanged, onKindChanged, onTargetSoapChanged, onQuestionChanged,
     onTemperatureChanged,
-    onStartDayToUseSoapRangeAfterHospitalizationChanged, 
-    onUseSoapRangeDaysAfterHospitalizationChanged,
-    onStartDayToUseSoapRangeBeforeDischargeChanged,
-    onUseSoapRangeDaysBeforeDischargeChanged,
+    onUseRangeKindChanged,
+    onDaysBeforeTheDateOfHospitalizationToUseChanged, 
+    onDaysAfterTheDateOfHospitalizationToUseChanged,
+    onDaysBeforeTheDateOfDischargeToUseChanged,
+    onDaysAfterTheDateOfDischargeToUseChanged,
     onUpClicked, onDownClicked, onDeleteClicked, isTop, isBottom
 }: Props) => {
     return (
@@ -121,60 +125,64 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                         />
                     </p>
                     <p>使用するカルテデータの期間：<br></br>
-                        <Stack horizontal>
-                            入院日から数えて
-                            <TextField 
-                                className={styles.dayTextField}
-                                readOnly={false}
-                                multiline={false}
-                                resizable={false}
-                                defaultValue={documentFormat.start_day_to_use_soap_range_after_hospitalization_str}
-                                value={documentFormat.start_day_to_use_soap_range_after_hospitalization_str}
-                                onChange={(e, newValue) => onStartDayToUseSoapRangeAfterHospitalizationChanged(documentFormat, newValue || "")}
-                                onBlur={(e) => onStartDayToUseSoapRangeAfterHospitalizationChanged(documentFormat, e.target.value || "")}
-                            />
-                            日目～
-                        </Stack>
-                        <Stack horizontal>
-                            <TextField
-                                className={styles.dayTextField}
-                                readOnly={false}
-                                multiline={false}
-                                resizable={false}
-                                defaultValue={documentFormat.use_soap_range_days_after_hospitalization_str}
-                                value={documentFormat.use_soap_range_days_after_hospitalization_str}
-                                onChange={(e, newValue) => onUseSoapRangeDaysAfterHospitalizationChanged(documentFormat, newValue || "")}
-                                onBlur={(e) => onUseSoapRangeDaysAfterHospitalizationChanged(documentFormat, e.target.value || "")}
-                            />
-                            日間のデータを使用
-                        </Stack>
-                        <Stack horizontal>
-                            退院日から数えて
-                            <TextField
-                                className={styles.dayTextField}
-                                readOnly={false}
-                                multiline={false}
-                                resizable={false}
-                                defaultValue={documentFormat.start_day_to_use_soap_range_before_discharge_str}
-                                value={documentFormat.start_day_to_use_soap_range_before_discharge_str}
-                                onChange={(e, newValue) => onStartDayToUseSoapRangeBeforeDischargeChanged(documentFormat, newValue || "")}
-                                onBlur={(e) => onStartDayToUseSoapRangeBeforeDischargeChanged(documentFormat, e.target.value || "")}
-                            />
-                            日前～
-                        </Stack>
-                        <Stack horizontal>
-                            <TextField
-                                className={styles.dayTextField}
-                                readOnly={false}
-                                multiline={false}
-                                resizable={false}
-                                defaultValue={documentFormat.use_soap_range_days_before_discharge_str}
-                                value={documentFormat.use_soap_range_days_before_discharge_str}
-                                onChange={(e, newValue) => onUseSoapRangeDaysBeforeDischargeChanged(documentFormat, newValue || "")}
-                                onBlur={(e) => onUseSoapRangeDaysBeforeDischargeChanged(documentFormat, e.target.value || "")}
-                            />
-                            日間遡った分のデータを使用
+                        <RadioGroup value={documentFormat.use_range_kind_str} onChange={(_, data) => onUseRangeKindChanged(documentFormat, data.value)}>
+                            <Stack horizontal>
+                                <Radio className={styles.radioButton} value="0"/>
+                                入院日～退院日までのデータを使用
                             </Stack>
+                            <Stack horizontal>
+                                <Radio className={styles.radioButton} value="1"/>
+                                入院日
+                                <TextField 
+                                    className={styles.dayTextField}
+                                    readOnly={false}
+                                    multiline={false}
+                                    resizable={false}
+                                    defaultValue={documentFormat.days_before_the_date_of_hospitalization_to_use_str}
+                                    value={documentFormat.days_before_the_date_of_hospitalization_to_use_str}
+                                    onChange={(e, newValue) => onDaysBeforeTheDateOfHospitalizationToUseChanged(documentFormat, newValue || "")}
+                                    onBlur={(e) => onDaysBeforeTheDateOfHospitalizationToUseChanged(documentFormat, e.target.value || "")}
+                                />
+                                日前～入院日
+                                <TextField
+                                    className={styles.dayTextField}
+                                    readOnly={false}
+                                    multiline={false}
+                                    resizable={false}
+                                    defaultValue={documentFormat.days_after_the_date_of_hospitalization_to_use_str}
+                                    value={documentFormat.days_after_the_date_of_hospitalization_to_use_str}
+                                    onChange={(e, newValue) => onDaysAfterTheDateOfHospitalizationToUseChanged(documentFormat, newValue || "")}
+                                    onBlur={(e) => onDaysAfterTheDateOfHospitalizationToUseChanged(documentFormat, e.target.value || "")}
+                                />
+                                日後<br></br>までのデータを使用
+                            </Stack>
+                            <Stack horizontal>
+                                <Radio className={styles.radioButton} value="2"/>
+                                退院日
+                                <TextField 
+                                    className={styles.dayTextField}
+                                    readOnly={false}
+                                    multiline={false}
+                                    resizable={false}
+                                    defaultValue={documentFormat.days_before_the_date_of_discharge_to_use_str}
+                                    value={documentFormat.days_before_the_date_of_discharge_to_use_str}
+                                    onChange={(e, newValue) => onDaysBeforeTheDateOfDischargeToUseChanged(documentFormat, newValue || "")}
+                                    onBlur={(e) => onDaysBeforeTheDateOfDischargeToUseChanged(documentFormat, e.target.value || "")}
+                                />
+                                日前～退院日
+                                <TextField
+                                    className={styles.dayTextField}
+                                    readOnly={false}
+                                    multiline={false}
+                                    resizable={false}
+                                    defaultValue={documentFormat.days_after_the_date_of_discharge_to_use_str}
+                                    value={documentFormat.days_after_the_date_of_discharge_to_use_str}
+                                    onChange={(e, newValue) => onDaysAfterTheDateOfDischargeToUseChanged(documentFormat, newValue || "")}
+                                    onBlur={(e) => onDaysAfterTheDateOfDischargeToUseChanged(documentFormat, e.target.value || "")}
+                                />
+                                日後<br></br>までのデータを使用
+                            </Stack>
+                        </RadioGroup>
                     </p>
                     <p>プロンプト：<br></br>
                         <TextField 

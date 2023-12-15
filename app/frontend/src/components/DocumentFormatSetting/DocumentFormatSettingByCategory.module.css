@@ -35,5 +35,20 @@
 }
 
 .dayTextField {  
-    width: 40px;  
+    width: 40px;
+    height: 20px;  
 }  
+
+.radioButton {
+    border: 1px solid black;
+    border-radius: 50%;
+    height: 20px;
+    width: 20px;
+    margin-right: 4px;
+    margin-top: 6px;
+    margin-left: 0px;
+    padding-left: 1px;
+    padding-top: 1px;
+    cursor: pointer;
+
+}

@@ -4,17 +4,69 @@ from lib.sqlconnector import SQLConnector
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
 class SOAPManager:
-    
-    @staticmethod
-    def get_values(
+
+    def __init__(self, 
         sql_connector:SQLConnector,
         department_code: str,
         pid: str,
+                 ):
+        self._sql_connector = sql_connector
+        self._department_code = department_code
+        self._pid = pid
+        with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+            # サマリ管理テーブルから、入院日と退院日を取得する。
+            select_hospitalization_sql = """
+                SELECT NOW_DATE, TAIIN_DATE
+                FROM ECSCSM_ECTBSM
+                WHERE PID = ?
+                AND SUM_SYUBETU = '01'
+                AND NOW_KA = ?
+                AND SUM_SEQ = (
+                SELECT MAX(SUM_SEQ)
+                FROM ECSCSM_ECTBSM
+                WHERE PID = ?
+                AND SUM_SYUBETU = '01'
+                AND NOW_KA = ?
+                );
+                """
+            cursor.execute(select_hospitalization_sql, 
+                           pid, department_code, 
+                           pid, department_code)
+            rows = cursor.fetchall() 
+            if len(rows) < 1:
+                err_msg = "サマリ管理テーブルから入院日と退院日を取得できませんでした。pid:" + str(pid) + ", now_ka:" + department_code
+                print(err_msg) 
+                raise Exception(err_msg)
+            
+            # 入院日と退院日の範囲を計算する。
+            # hospitalization_date には、14桁の数値で日付時刻が格納されている。
+            # 例）20140224095813
+
+            self._hospitalization_date = rows[0][0]   # 入院日
+            # print(self._hospitalization_date)
+            self._hospitalization_date = DateTimeConverter.get_start_of_the_day(self._hospitalization_date)
+            self._discharge_date = rows[0][1]         # 退院日
+            # print(self._discharge_date)
+            self._discharge_date = DateTimeConverter.get_start_of_the_day(self._discharge_date)
+            self._hospitalization_date_str = DateTimeConverter.int_2_str(self._hospitalization_date, True)
+            self._discharge_date_str = DateTimeConverter.int_2_str(self._discharge_date, True)
+
+    @property
+    def hospitalization_date_str(self):
+        return self._hospitalization_date_str
+    
+    @property
+    def discharge_date_str(self):
+        return self._discharge_date_str
+
+    def get_values(
+        self,
         target_soap_kinds: str,
-        startDayToUseSoapRangeAfterHospitalization: int,
-        useSoapRangeDaysAfterHospitalization: int,
-        startDayToUseSoapRangeBeforeDischarge: int,
-        useSoapRangeDaysBeforeDischarge: int) -> str:
+        use_range_kind: int,
+        days_before_the_date_of_hospitalization_to_use: int,
+        days_after_the_date_of_hospitalization_to_use: int,
+        days_before_the_date_of_discharge_to_use: int,
+        days_after_the_date_of_discharge_to_use: int) -> str:
 
         # 'SoP' -> 'sop'
         target_soap_kinds = target_soap_kinds.lower()
@@ -28,74 +80,45 @@ class SOAPManager:
         timer = LapTimer()
         timer.start("SQL SELECT 処理")
         
-        with sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-            # サマリ管理テーブルから、入院日と退院日を取得する。
-            select_hospitalization_sql = """
-                SELECT 
-                    CASE 
-                        WHEN NOW_DATE IS NOT NULL THEN NOW_DATE
-                        ELSE ORIGINAL_DATE 
-                    END as NYUI_DATE,
-                    TAIIN_DATE
-                FROM ECSCSM_ECTBSM
-                WHERE PID = ?
-                AND SUM_SYUBETU = '01'
-                AND (NOW_KA = ? OR (NOW_KA IS NULL AND ORIGINAL_KA = ?))
-                AND SUM_SEQ = (
-                SELECT MAX(SUM_SEQ)
-                FROM ECSCSM_ECTBSM
-                WHERE PID = ?
-                AND SUM_SYUBETU = '01'
-                AND (NOW_KA = ? OR (NOW_KA IS NULL AND ORIGINAL_KA = ?))
-                );
-                """
-            cursor.execute(select_hospitalization_sql, 
-                           pid, department_code, department_code, 
-                           pid, department_code, department_code)
-            rows = cursor.fetchall() 
-            if len(rows) < 1:
-                err_msg = "サマリ管理テーブルから入院日と退院日を取得できませんでした。pid:" + str(pid) + ", now_ka:" + department_code
-                print(err_msg) 
-                raise Exception(err_msg)
+        with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+            # 期間の計算
+            absolute_range_satart_date: int = 0
+            absolute_range_end_date: int = 0
+            if use_range_kind == 0:
+                absolute_range_satart_date = self._hospitalization_date
+                absolute_range_end_date = self._discharge_date
+            elif use_range_kind == 1:
+                absolute_range_satart_date = DateTimeConverter.add_days(self._hospitalization_date, days_before_the_date_of_hospitalization_to_use * -1)
+                absolute_range_end_date = DateTimeConverter.add_days(self._hospitalization_date, days_after_the_date_of_hospitalization_to_use)
+            elif use_range_kind == 2:
+                absolute_range_satart_date = DateTimeConverter.add_days(self._discharge_date, days_before_the_date_of_discharge_to_use * -1)
+                absolute_range_end_date = DateTimeConverter.add_days(self._discharge_date, days_after_the_date_of_discharge_to_use)
+            else:
+                raise Exception("不正な値です。use_range_kind:" + str(use_range_kind))
             
-            # 入院日と退院日の範囲を計算する。
-            # hospitalization_date には、14桁の数値で日付時刻が格納されている。
-            # 例）20140224095813
+            # 期間を0時0分0秒から23時59分59秒にする。
+            absolute_range_satart_date = DateTimeConverter.get_start_of_the_day(absolute_range_satart_date)
+            absolute_range_end_date = DateTimeConverter.get_end_of_the_day(absolute_range_end_date)
 
-            hospitalization_date = rows[0][0]   # 入院日
-            print(hospitalization_date)
-            hospitalization_date = DateTimeConverter.get_start_of_the_day(hospitalization_date)
-            discharge_date = rows[0][1]         # 退院日
-            print(discharge_date)
-            discharge_date = DateTimeConverter.get_start_of_the_day(discharge_date)
-
-            start_hospitalization_date = DateTimeConverter.add_days(hospitalization_date, startDayToUseSoapRangeAfterHospitalization)
-            end_hospitalization_date = DateTimeConverter.add_days(start_hospitalization_date, useSoapRangeDaysAfterHospitalization - 1)
-            end_discharge_date = DateTimeConverter.add_days(discharge_date, startDayToUseSoapRangeBeforeDischarge * -1)
-            start_discharge_date = DateTimeConverter.add_days(end_discharge_date, (useSoapRangeDaysBeforeDischarge - 1) * -1)
-            end_hospitalization_date = DateTimeConverter.get_end_of_the_day(end_hospitalization_date)
-            end_discharge_date = DateTimeConverter.get_end_of_the_day(end_discharge_date)
-
-            range_str = "入院日カルテ期間：" + str(start_hospitalization_date) + "～" + str(end_hospitalization_date) + "\n退院日カルテ期間：" + str(start_discharge_date) + "～" + str(end_discharge_date)
-            print(range_str)
+            range_str = "使用するカルテ期間：" + str(absolute_range_satart_date) + "～" + str(absolute_range_end_date)
+            #print(range_str)
 
             select_data_sql = f"""
                 SELECT Id, OriginalDocNo, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
                 FROM IntermediateSOAP
-                WHERE ((DocDate >= ? AND DocDate <= ?) OR (DocDate >= ? AND DocDate <= ?))
+                WHERE (? <= DocDate AND DocDate <= ?)
                     AND Pid = ? AND SoapKind IN ({placeholders}) AND IsDeleted = 0
                 ORDER BY Id"""
 
             # 中間データの取得
             cursor.execute(select_data_sql,
-                           start_hospitalization_date, end_hospitalization_date, 
-                           start_discharge_date, end_discharge_date, 
-                           pid, *target_soap_kinds)
+                           absolute_range_satart_date, absolute_range_end_date, 
+                           self._pid, *target_soap_kinds)
             rows = cursor.fetchall() 
 
             if len(rows) < 1:
                 timer.stop()
-                raise Exception("中間データが取得できませんでした。pid:" + str(pid) + ", now_ka:" + department_code + range_str)
+                raise Exception("中間データが取得できませんでした。pid:" + str(self._pid) + ", now_ka:" + self._department_code + range_str)
 
             id_list = []
             rows_include_duplicate = []
@@ -136,7 +159,10 @@ class SOAPManager:
                 return_soap = ''.join([return_soap, kind.upper(), "：\n", intermediateData, "\n\n"])
                 original_doc_no_list.append(original_doc_no)
         timer.stop()
-        return return_soap, id_list, original_doc_no_list
+        return return_soap, id_list, \
+                original_doc_no_list, \
+                absolute_range_satart_date, \
+                absolute_range_end_date
 
     @staticmethod
     def _get_duplicate_data_source(cnxn, duplicate_source_data_id:int, id_list:[], rows_include_duplicate:[]):

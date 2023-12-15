@@ -239,7 +239,7 @@ def get_patient():
         impl = get_patient_approaches.get("rrr")
         if not impl:
             return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["pid"])
+        r = impl.run(request.json["pid"], request.json["department_code"])
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_patient")

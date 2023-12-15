@@ -110,18 +110,25 @@ CREATE TABLE DocumentFormatData (
     UseDischargeMedicineRecords BIT, 
 
     ------------------
-    -- 使用するカルテデータの範囲。
-    -- 入院後何日目から何日間のカルテデータを使用するかを指定する。
-    ------------------
-    StartDayToUseSoapRangeAfterHospitalization INT,
-    UseSoapRangeDaysAfterHospitalization INT,
+    -- 使用するカルテデータの範囲の種類。
+    -- 0: 入院日～退院日までのデータを使用
+    -- 1: 入院日　　　日前～入院日　　　日後までのデータを使用
+    -- 2: 退院日　　　日前～退院日　　　日後までのデータを使用
+    UseRangeKind INT,
 
     ------------------
     -- 使用するカルテデータの範囲。
-    -- 退院前何日目から何日間のカルテデータを使用するかを指定する。
+    -- 入院日　　　日前～入院日　　　日後までのデータを使用
     ------------------
-    StartDayToUseSoapRangeBeforeDischarge INT,
-    UseSoapRangeDaysBeforeDischarge INT,
+    DaysBeforeTheDateOfHospitalizationToUse INT,
+    DaysAfterTheDateOfHospitalizationToUse INT,
+
+    ------------------
+    -- 使用するカルテデータの範囲。
+    -- 退院日　　　日前～退院日　　　日後までのデータを使用
+    ------------------
+    DaysBeforeTheDateOfDischargeToUse INT,
+    DaysAfterTheDateOfDischargeToUse INT,
 
     CreatedBy VARCHAR(50),
     UpdatedBy VARCHAR(50),

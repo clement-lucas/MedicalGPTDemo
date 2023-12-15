@@ -52,6 +52,8 @@ export type AskResponse = {
     completion_tokens: number;
     prompt_tokens: number;
     total_tokens: number;
+    hospitalization_date: string | null;
+    discharge_date: string | null;
     error?: string;
 };
 
@@ -80,6 +82,7 @@ export type ChatPatientRequest = {
 
 export type GetPatientRequest = {
     pid: string;
+    department_code: string;
 };
 
 export type GetPatientOldRequest = {
@@ -88,6 +91,8 @@ export type GetPatientOldRequest = {
 
 export type GetPatientResponse = {
     name: string;
+    hospitalization_date: string;
+    discharge_date: string;
     error?: string;
 };
 
@@ -142,14 +147,16 @@ export type DocumentFormat = {
     is_b: boolean;
     use_allergy_records: boolean;
     use_discharge_medicine_records: boolean;
-    start_day_to_use_soap_range_after_hospitalization: number;
-    use_soap_range_days_after_hospitalization: number;
-    start_day_to_use_soap_range_before_discharge: number;
-    use_soap_range_days_before_discharge: number;
-    start_day_to_use_soap_range_after_hospitalization_str: string;
-    use_soap_range_days_after_hospitalization_str: string;
-    start_day_to_use_soap_range_before_discharge_str: string;
-    use_soap_range_days_before_discharge_str: string;
+    use_range_kind: number;
+    use_range_kind_str: string;
+    days_before_the_date_of_hospitalization_to_use : number;
+    days_after_the_date_of_hospitalization_to_use : number;
+    days_before_the_date_of_discharge_to_use : number;
+    days_after_the_date_of_discharge_to_use : number;
+    days_before_the_date_of_hospitalization_to_use_str : string;
+    days_after_the_date_of_hospitalization_to_use_str : string;
+    days_before_the_date_of_discharge_to_use_str : string;
+    days_after_the_date_of_discharge_to_use_str : string;
 };
 
 export type DocumentFormatIndex = {

@@ -65,8 +65,12 @@ else:
 
 gpt_deployment = os.getenv("AZURE_OPENAI_GPT_DEPLOYMENT")
 
-#soap = SOAPManager.get_values(sql_connector, '001', '8888000059', 'soapb', 0, 1, 0, 1)
-soap = SOAPManager.get_values(sql_connector, '001', '8888001192', 'soapb', 0, 1, 0, 1)
-print(soap[0])
-print(soap[1])
-print(soap[2])
+soap = SOAPManager(sql_connector, '001', '8888001192')
+ret = soap.get_values('soapb', 2, 2, -1, 0, 0)
+print(soap.hospitalization_date_str)
+print(soap.discharge_date_str)
+print(ret[0])
+print(ret[1])
+print(ret[2])
+print(ret[3])
+print(ret[4])

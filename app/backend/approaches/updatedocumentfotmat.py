@@ -101,10 +101,11 @@ class UpdateDocumentFormatApproach(Approach):
                             TargetSoapRecords, 
                             UseAllergyRecords, 
                             UseDischargeMedicineRecords,
-                            StartDayToUseSoapRangeAfterHospitalization,
-                            UseSoapRangeDaysAfterHospitalization,
-                            StartDayToUseSoapRangeBeforeDischarge,
-                            UseSoapRangeDaysBeforeDischarge,
+                            UseRangeKind,
+                            DaysBeforeTheDateOfHospitalizationToUse,
+                            DaysAfterTheDateOfHospitalizationToUse,
+                            DaysBeforeTheDateOfDischargeToUse,
+                            DaysAfterTheDateOfDischargeToUse,
                             CreatedBy,
                             UpdatedBy,
                             CreatedDateTime,
@@ -112,7 +113,7 @@ class UpdateDocumentFormatApproach(Approach):
                             IsDeleted
                         )
                         VALUES
-                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), 0)"""
+                        ( 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE(), 0)"""
 
                     rows_to_insert = []
                     for document_format in document_formats:
@@ -137,10 +138,11 @@ class UpdateDocumentFormatApproach(Approach):
                             document_format['question_suffix'],
                             document_format['response_max_tokens'],
                             target_soap,
-                            document_format['start_day_to_use_soap_range_after_hospitalization'],
-                            document_format['use_soap_range_days_after_hospitalization'],
-                            document_format['start_day_to_use_soap_range_before_discharge'],
-                            document_format['use_soap_range_days_before_discharge'],
+                            document_format['use_range_kind'],
+                            document_format['days_before_the_date_of_hospitalization_to_use'],
+                            document_format['days_after_the_date_of_hospitalization_to_use'],
+                            document_format['days_before_the_date_of_discharge_to_use'],
+                            document_format['days_after_the_date_of_discharge_to_use'],
                             user_id,
                             user_id
                         ))
@@ -155,6 +157,7 @@ class UpdateDocumentFormatApproach(Approach):
                         system_contents_suffix,
                         0,
                         '',
+                        0,
                         0,
                         0,
                         0,

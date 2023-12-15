@@ -57,10 +57,11 @@ class DocumentFormatManager:
                     TargetSoapRecords, 
                     UseAllergyRecords, 
                     UseDischargeMedicineRecords,
-                    StartDayToUseSoapRangeAfterHospitalization,
-                    UseSoapRangeDaysAfterHospitalization,
-                    StartDayToUseSoapRangeBeforeDischarge,
-                    UseSoapRangeDaysBeforeDischarge
+                    UseRangeKind,
+                    DaysBeforeTheDateOfHospitalizationToUse,
+                    DaysAfterTheDateOfHospitalizationToUse,
+                    DaysBeforeTheDateOfDischargeToUse,
+                    DaysAfterTheDateOfDischargeToUse
                 FROM DocumentFormatData 
                 WHERE IndexId = ?
                 AND Kind <> ?
