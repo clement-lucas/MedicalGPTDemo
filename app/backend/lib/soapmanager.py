@@ -3,6 +3,11 @@
 from lib.sqlconnector import SQLConnector
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
+
+USE_RANGE_KIND_ALL = 0
+USE_RANGE_KIND_HOSPITALIZATION = 1
+USE_RANGE_KIND_DISCHARGE = 2
+
 class SOAPManager:
 
     def __init__(self, 
@@ -80,36 +85,36 @@ class SOAPManager:
         timer = LapTimer()
         timer.start("SQL SELECT 処理")
         
+        # 期間の計算
+        absolute_range_satart_date: int = 0
+        absolute_range_end_date: int = 0
+        if use_range_kind == USE_RANGE_KIND_ALL:
+            absolute_range_satart_date = self._hospitalization_date
+            absolute_range_end_date = self._discharge_date
+        elif use_range_kind == USE_RANGE_KIND_HOSPITALIZATION:
+            absolute_range_satart_date = DateTimeConverter.add_days(self._hospitalization_date, days_before_the_date_of_hospitalization_to_use * -1)
+            absolute_range_end_date = DateTimeConverter.add_days(self._hospitalization_date, days_after_the_date_of_hospitalization_to_use)
+        elif use_range_kind == USE_RANGE_KIND_DISCHARGE:
+            absolute_range_satart_date = DateTimeConverter.add_days(self._discharge_date, days_before_the_date_of_discharge_to_use * -1)
+            absolute_range_end_date = DateTimeConverter.add_days(self._discharge_date, days_after_the_date_of_discharge_to_use)
+        else:
+            raise Exception("不正な値です。use_range_kind:" + str(use_range_kind))
+        
+        # 期間を0時0分0秒から23時59分59秒にする。
+        absolute_range_satart_date = DateTimeConverter.get_start_of_the_day(absolute_range_satart_date)
+        absolute_range_end_date = DateTimeConverter.get_end_of_the_day(absolute_range_end_date)
+
+        range_str = "使用するカルテ期間：" + str(absolute_range_satart_date) + "～" + str(absolute_range_end_date)
+        #print(range_str)
+
+        select_data_sql = f"""
+            SELECT Id, OriginalDocNo, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
+            FROM IntermediateSOAP
+            WHERE (? <= DocDate AND DocDate <= ?)
+                AND Pid = ? AND SoapKind IN ({placeholders}) AND IsDeleted = 0
+            ORDER BY Id"""
+
         with self._sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-            # 期間の計算
-            absolute_range_satart_date: int = 0
-            absolute_range_end_date: int = 0
-            if use_range_kind == 0:
-                absolute_range_satart_date = self._hospitalization_date
-                absolute_range_end_date = self._discharge_date
-            elif use_range_kind == 1:
-                absolute_range_satart_date = DateTimeConverter.add_days(self._hospitalization_date, days_before_the_date_of_hospitalization_to_use * -1)
-                absolute_range_end_date = DateTimeConverter.add_days(self._hospitalization_date, days_after_the_date_of_hospitalization_to_use)
-            elif use_range_kind == 2:
-                absolute_range_satart_date = DateTimeConverter.add_days(self._discharge_date, days_before_the_date_of_discharge_to_use * -1)
-                absolute_range_end_date = DateTimeConverter.add_days(self._discharge_date, days_after_the_date_of_discharge_to_use)
-            else:
-                raise Exception("不正な値です。use_range_kind:" + str(use_range_kind))
-            
-            # 期間を0時0分0秒から23時59分59秒にする。
-            absolute_range_satart_date = DateTimeConverter.get_start_of_the_day(absolute_range_satart_date)
-            absolute_range_end_date = DateTimeConverter.get_end_of_the_day(absolute_range_end_date)
-
-            range_str = "使用するカルテ期間：" + str(absolute_range_satart_date) + "～" + str(absolute_range_end_date)
-            #print(range_str)
-
-            select_data_sql = f"""
-                SELECT Id, OriginalDocNo, DocDate, SoapKind, DuplicateSourceDataId, IntermediateData
-                FROM IntermediateSOAP
-                WHERE (? <= DocDate AND DocDate <= ?)
-                    AND Pid = ? AND SoapKind IN ({placeholders}) AND IsDeleted = 0
-                ORDER BY Id"""
-
             # 中間データの取得
             cursor.execute(select_data_sql,
                            absolute_range_satart_date, absolute_range_end_date, 

@@ -141,7 +141,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         question = row[5]
 
         response_max_tokens = row[7]
-        targetSoapRecords = row[8]
+        target_soap_records = row[8]
 
         # 以下は今は見ていない
         use_allergy_records = row[9]
@@ -158,13 +158,13 @@ class ReadRetrieveDischargeReadApproach(Approach):
         id_list = []
         original_data_no_list = []
         soap_text = ""
-        absolute_range_satart_date = -1
+        absolute_range_start_date = -1
         absolute_range_end_date = -1
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
             soap_ret = soap.get_values(
-                targetSoapRecords,
+                target_soap_records,
                 use_range_kind,
                 days_before_the_date_of_hospitalization_to_use,
                 days_after_the_date_of_hospitalization_to_use,
@@ -174,7 +174,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
             soap_text = soap_ret[0]
             id_list = soap_ret[1]
             original_data_no_list = soap_ret[2]
-            absolute_range_satart_date = soap_ret[3]
+            absolute_range_start_date = soap_ret[3]
             absolute_range_end_date = soap_ret[4]
 
             # print("★★★★"+categoryName+"★★★★")
@@ -262,8 +262,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 original_data_no_list, \
                 soap_text, \
                 categoryName, \
-                absolute_range_satart_date, \
-                absolute_range_end_date
+                absolute_range_start_date, \
+                absolute_range_end_date, \
+                target_soap_records
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -447,14 +448,15 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 original_data_no_list.extend(future_ret[8])
                 soap_text = future_ret[9]
                 categoryName = future_ret[10]
-                absolute_range_satart_date = future_ret[11]
+                absolute_range_start_date = future_ret[11]
                 absolute_range_end_date = future_ret[12]
+                target_soap_records = future_ret[13]
                 if soap_text != "":
                     soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
-                if absolute_range_satart_date != -1 and absolute_range_end_date != -1:
-                    absolute_range_satart_date_str = DateTimeConverter.int_2_str(absolute_range_satart_date)
+                if absolute_range_start_date != -1 and absolute_range_end_date != -1:
+                    absolute_range_start_date_str = DateTimeConverter.int_2_str(absolute_range_start_date)
                     absolute_range_end_date_str = DateTimeConverter.int_2_str(absolute_range_end_date)
-                    use_date_range_list = ''.join([use_date_range_list, "【", categoryName, " データ使用期間】\n", absolute_range_satart_date_str, " ～ ", absolute_range_end_date_str, "\n\n"])
+                    use_date_range_list = ''.join([use_date_range_list, "【", categoryName, " データ使用期間】\n", absolute_range_start_date_str, " ～ ", absolute_range_end_date_str, "\n", target_soap_records, "\n\n"])
 
 
         # print(ret)
