@@ -19,9 +19,15 @@ import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel
 import heart from "../../assets/heart.svg";
 import { PatientCodeInput } from "../../components/PatientCodeInput/PatientCodeInput";
 import { DocumentFormatSetting } from "../../components/DocumentFormatSetting/DocumentFormatSetting";
-import { SoapPreviewButton } from "../../components/DocumentFormatSetting/SoapPreviewButton";
 import { Search24Filled } from "@fluentui/react-icons";
-import { a } from "@react-spring/web";
+import { 
+    USE_RANGE_KIND_ALL_STR, 
+    USE_RANGE_KIND_HOSPITALIZATION_STR, 
+    USE_RANGE_KIND_DISCHARGE_STR,
+    USE_RANGE_KIND_ALL, 
+    USE_RANGE_KIND_HOSPITALIZATION, 
+    USE_RANGE_KIND_DISCHARGE
+    } from "../../components/DocumentFormatSetting/DocumentFormatSettingByCategory";
 
 export type HistoryIndex = {
     id: number;
@@ -70,11 +76,6 @@ const Discharge = () => {
     
     const DEFAULT_DEPARTMENT_CODE = "001"
 
-    const [promptTemplate, setPromptTemplate] = useState<string>("");
-    const [retrieveCount, setRetrieveCount] = useState<number>(3);
-    const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
-    const [useSemanticCaptions, setUseSemanticCaptions] = useState<boolean>(false);
-    const [excludeCategory, setExcludeCategory] = useState<string>("");
     const [pid, setPid] = useState<string>("");
     const [patientName, setPatientName] = useState<string>("");
     const [hospitalizationDate, setHospitalizationDate] = useState<string>(""); // 入院日
@@ -347,15 +348,15 @@ const Discharge = () => {
             else {
                 documentFormat.days_after_the_date_of_discharge_to_use = Number(documentFormat.days_after_the_date_of_discharge_to_use_str);
             }
-            if (documentFormat.use_range_kind_str === "0") {
-                documentFormat.use_range_kind = 0;
-            } else if(documentFormat.use_range_kind_str === "1") {
-                documentFormat.use_range_kind = 1;
+            if (documentFormat.use_range_kind_str === USE_RANGE_KIND_ALL_STR) {
+                documentFormat.use_range_kind = USE_RANGE_KIND_ALL;
+            } else if(documentFormat.use_range_kind_str === USE_RANGE_KIND_HOSPITALIZATION_STR) {
+                documentFormat.use_range_kind = USE_RANGE_KIND_HOSPITALIZATION;
                 if (documentFormat.days_before_the_date_of_hospitalization_to_use + documentFormat.days_after_the_date_of_hospitalization_to_use < 0) {
                     errorMessages += "使用するカルテデータの合計期間が0日以上になるように入力してください。 表示順: " + (documentFormat.order_no + 1) + "\n";
                 }
             } else {
-                documentFormat.use_range_kind = 2;
+                documentFormat.use_range_kind = USE_RANGE_KIND_DISCHARGE;
                 if (documentFormat.days_before_the_date_of_discharge_to_use + documentFormat.days_after_the_date_of_discharge_to_use < 0) {
                     errorMessages += "使用するカルテデータの合計期間が0日以上になるように入力してください。 表示順: " + (documentFormat.order_no + 1) + "\n";
                 }

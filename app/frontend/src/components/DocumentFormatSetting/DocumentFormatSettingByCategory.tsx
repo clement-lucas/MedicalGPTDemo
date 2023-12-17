@@ -5,6 +5,13 @@ import { ArrowUp20Filled, ArrowDown20Filled, Delete20Filled } from "@fluentui/re
 import styles from "./DocumentFormatSettingByCategory.module.css";
 import { DocumentFormat } from "../../api";
 
+export const USE_RANGE_KIND_ALL_STR = "0"
+export const USE_RANGE_KIND_HOSPITALIZATION_STR = "1"
+export const USE_RANGE_KIND_DISCHARGE_STR = "2"
+export const USE_RANGE_KIND_ALL = 0
+export const USE_RANGE_KIND_HOSPITALIZATION = 1
+export const USE_RANGE_KIND_DISCHARGE = 2
+
 interface Props {
     documentFormat : DocumentFormat;
     isTop: boolean;
@@ -127,11 +134,11 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                     <p>使用するカルテデータの期間：<br></br>
                         <RadioGroup value={documentFormat.use_range_kind_str} onChange={(_, data) => onUseRangeKindChanged(documentFormat, data.value)}>
                             <Stack horizontal>
-                                <Radio className={styles.radioButton} value="0"/>
+                                <Radio className={styles.radioButton} value={USE_RANGE_KIND_ALL_STR}/>
                                 入院日～退院日までのデータを使用
                             </Stack>
                             <Stack horizontal>
-                                <Radio className={styles.radioButton} value="1"/>
+                                <Radio className={styles.radioButton} value={USE_RANGE_KIND_HOSPITALIZATION_STR}/>
                                 入院日
                                 <TextField 
                                     className={styles.dayTextField}
