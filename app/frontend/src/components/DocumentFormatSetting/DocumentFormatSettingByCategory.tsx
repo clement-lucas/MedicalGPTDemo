@@ -138,8 +138,10 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                 入院日～退院日までのデータを使用
                             </Stack>
                             <Stack horizontal>
-                                <Radio className={styles.radioButton} value={USE_RANGE_KIND_HOSPITALIZATION_STR}/>
-                                入院日
+                                <Radio className={styles.radioButtonForW} value={USE_RANGE_KIND_HOSPITALIZATION_STR}/>
+                                <div className={styles.textForRange}>
+                                    入院日
+                                </div>
                                 <TextField 
                                     className={styles.dayTextField}
                                     readOnly={false}
@@ -150,7 +152,9 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                     onChange={(e, newValue) => onDaysBeforeTheDateOfHospitalizationToUseChanged(documentFormat, newValue || "")}
                                     onBlur={(e) => onDaysBeforeTheDateOfHospitalizationToUseChanged(documentFormat, e.target.value || "")}
                                 />
-                                日前～入院日
+                                <div className={styles.textForRange}>
+                                    日前～入院日
+                                </div>
                                 <TextField
                                     className={styles.dayTextField}
                                     readOnly={false}
@@ -161,11 +165,18 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                     onChange={(e, newValue) => onDaysAfterTheDateOfHospitalizationToUseChanged(documentFormat, newValue || "")}
                                     onBlur={(e) => onDaysAfterTheDateOfHospitalizationToUseChanged(documentFormat, e.target.value || "")}
                                 />
-                                日後<br></br>までのデータを使用
+                                <div className={styles.textForRange}>
+                                    日後
+                                </div>
                             </Stack>
+                            <div className={styles.textForRangeSufix}>
+                                までのデータを使用
+                            </div>
                             <Stack horizontal>
-                                <Radio className={styles.radioButton} value="2"/>
-                                退院日
+                                <Radio className={styles.radioButtonForW} value="2"/>
+                                <div className={styles.textForRange}>
+                                    退院日
+                                </div>
                                 <TextField 
                                     className={styles.dayTextField}
                                     readOnly={false}
@@ -176,7 +187,9 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                     onChange={(e, newValue) => onDaysBeforeTheDateOfDischargeToUseChanged(documentFormat, newValue || "")}
                                     onBlur={(e) => onDaysBeforeTheDateOfDischargeToUseChanged(documentFormat, e.target.value || "")}
                                 />
-                                日前～退院日
+                                <div className={styles.textForRange}>
+                                    日前～退院日
+                                </div>
                                 <TextField
                                     className={styles.dayTextField}
                                     readOnly={false}
@@ -187,8 +200,13 @@ export const DocumentFormatSettingByCategory = ({ documentFormat,
                                     onChange={(e, newValue) => onDaysAfterTheDateOfDischargeToUseChanged(documentFormat, newValue || "")}
                                     onBlur={(e) => onDaysAfterTheDateOfDischargeToUseChanged(documentFormat, e.target.value || "")}
                                 />
-                                日後<br></br>までのデータを使用
+                                <div className={styles.textForRange}>
+                                    日後
+                                </div>
                             </Stack>
+                            <div className={styles.textForRangeSufix}>
+                                までのデータを使用
+                            </div>
                         </RadioGroup>
                     </p>
                     <p>プロンプト：<br></br>
