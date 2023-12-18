@@ -13,6 +13,7 @@ from lib.gptconfigmanager import GPTConfigManager
 from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
+from lib.tokencounter import TokenCounter
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -34,6 +35,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         self.gpt_deployment = gpt_deployment
         self.sourcepage_field = sourcepage_field
         self.content_field = content_field
+        self.model_name_for_tiktoken = GPTConfigManager(self.sql_connector).get_value("MODEL_NAME_FOR_TIKTOKEN")
 
     # SOAP に割り当て可能なトークン数を計算する
     def get_max_tokens_for_soap(self):
@@ -46,6 +48,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":''.join([question, "\n\nmedical record:\n\n", sources])}]
         # print(messages)
+
+        timer = LapTimer()
+        timer.start("推定 Token 数取得 " + category_name)
+        token_num = TokenCounter.num_tokens_from_messages(messages, self.model_name_for_tiktoken)
+        print("category_name: " + category_name + "  推定 Token 数:" + str(token_num))
+        timer.stop()
 
         timer = LapTimer()
         timer.start("GPTによる回答取得 " + category_name)
