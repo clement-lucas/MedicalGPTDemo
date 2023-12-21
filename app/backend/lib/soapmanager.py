@@ -267,6 +267,7 @@ class SOAPManager:
         model_name_for_tiktoken = self._gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN")
 
         # 段階的要約の開始
+        now_date = -1
         for row in rows_include_duplicate:
             # 日付が変わったら、日付を更新する。
             doc_date = row[2]
@@ -298,6 +299,7 @@ class SOAPManager:
                 prompt_tokens += summary[1].prompt_tokens
                 total_tokens += summary[1].total_tokens
                 summarize_log += summary[2]
+                now_date = -1
 
             # 今見ているレコードを要約バッファに追加する。
             summarize_buffer += one_record
