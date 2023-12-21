@@ -21,8 +21,9 @@ gpt-4-32k-0613',
 ('COMPRESSIBILITY_FOR_SUMMARY', N'繰り返し要約を行う際の一回の要約処理における圧縮率。', '0.7', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0),
 
 ('SUMMARIZE_SOAP_PROMPT_USER_CONTENTS', N'SOAP の要約に用いるプロンプト（user contents の部分）。', '
-以下は医師の書いた SOAP です。これを {expected_token_num} 以下で要約してください。
-SOAP:
+以下は医師の書いた SOAP 文書です。これを {expected_token_num} 以下で要約してください。
+文書は、S,O,A,P,＃ の各セクションから構成されます。要約は、各セクション内で行ってください。セクション間での内容の混在は許可されません。
+例えば、Sセクションの内容を要約する場合、Sセクションの内容のみを用いて要約を行ってください。
 {soap}', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0),
 
 ('SUMMARIZE_SOAP_PROMPT_SYSTEM_CONTENTS', 'SOAP の要約に用いるプロンプト（system contents の部分）。', 

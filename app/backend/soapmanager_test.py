@@ -64,8 +64,9 @@ else:
     openai.api_key = AZURE_OPENAI_KEY
 
 gpt_deployment = os.getenv("AZURE_OPENAI_GPT_DEPLOYMENT")
+gptconfigmanager = GPTConfigManager(sql_connector)
 
-soap = SOAPManager(sql_connector, '001', '8888001192')
+soap = SOAPManager(sql_connector, '001', '8888001192', gptconfigmanager, gpt_deployment)
 ret = soap.get_values('soapb', 2, 2, -1, 0, 0)
 print(soap.hospitalization_date_str)
 print(soap.discharge_date_str)

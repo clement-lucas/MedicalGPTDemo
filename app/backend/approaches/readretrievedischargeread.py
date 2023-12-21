@@ -168,6 +168,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         soap_text = ""
         absolute_range_start_date = -1
         absolute_range_end_date = -1
+        summarized_soap_history = ""
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
@@ -185,6 +186,16 @@ class ReadRetrieveDischargeReadApproach(Approach):
             absolute_range_start_date = soap_ret[3]
             absolute_range_end_date = soap_ret[4]
 
+            # 要約が発生した場合は履歴を確保する
+            summarized_log = soap_ret[8]
+            if summarized_log != "":
+                summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
+                    soap_text + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[5]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[6]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap[7]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                    summarized_log + "</SUMMARIZE_LOG>"
+            
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
             # print("★★★★★★★★")
@@ -272,7 +283,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 categoryName, \
                 absolute_range_start_date, \
                 absolute_range_end_date, \
-                target_soap_records
+                target_soap_records, \
+                summarized_soap_history
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -420,6 +432,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         allergy = ""
         medicine = ""
 
+        # 要約ログ
+        summarized_soap_history = ""
+
         timer = LapTimer()
         timer.start("退院時サマリ作成処理")
         id_list = []
@@ -427,7 +442,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         soap = SOAPManager(
             self.sql_connector,
             department_code,
-            pid)
+            pid,
+            self.gptconfigmanager,
+            self.gpt_deployment)
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
                                         soap,
@@ -459,6 +476,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 absolute_range_start_date = future_ret[11]
                 absolute_range_end_date = future_ret[12]
                 target_soap_records = future_ret[13]
+                summarized_soap_history = ''.join([summarized_soap_history, future_ret[14]])
                 if soap_text != "":
                     soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
                 if absolute_range_start_date != -1 and absolute_range_end_date != -1:
@@ -494,6 +512,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[IntermediateDataIds]
            ,[UseDateRangeList]
            ,[SoapForCategories]
+           ,[SummarizedMedicalRecord]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
@@ -508,6 +527,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         VALUES
            (?
            ,N'退院時サマリ'
+           ,?
            ,?
            ,?
            ,?
@@ -539,6 +559,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         id_list,
                         use_date_range_list,
                         soap_text_history,
+                        summarized_soap_history,
                         ret,
                         sum_of_completion_tokens,   
                         sum_of_prompt_tokens,   
