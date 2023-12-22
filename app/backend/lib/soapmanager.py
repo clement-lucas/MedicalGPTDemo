@@ -6,7 +6,6 @@ from lib.datetimeconverter import DateTimeConverter
 from lib.tokencounter import TokenCounter
 from lib.gptconfigmanager import GPTConfigManager
 from lib.soapsummarizer import SOAPSummarizer
-from lib.soapexception import SoapException
 import math
 
 USE_RANGE_KIND_ALL = 0
@@ -136,7 +135,7 @@ class SOAPManager:
             if len(rows) < 1:
                 timer.stop()
                 msg = f"中間データが取得できませんでした。pid:{self._pid}, now_ka:{self._department_code}, {range_str}, 対象 SOAP 種別:{target_soap_kinds}"
-                raise SoapException(msg)
+                return False, msg
 
             id_list = []
             rows_include_duplicate = []  # 欠損していた重複データを補った行を格納する。
@@ -190,7 +189,7 @@ class SOAPManager:
         if contents_token <= max_tokens_for_soap_contents:
             print("Ptn1: SOAP Token 上限に収まるので、要約を行わない。 Token 数: " + str(contents_token))
             not_sumarrized_soap = ''.join([SOAP_PREFIX, not_sumarrized_soap])
-            return not_sumarrized_soap, id_list, \
+            return True, not_sumarrized_soap, id_list, \
                     original_doc_no_list, \
                     absolute_range_start_date, \
                     absolute_range_end_date, \
@@ -226,7 +225,7 @@ class SOAPManager:
             summary = summarizer.summarize(not_sumarrized_soap, max_tokens_for_soap_contents)
             sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
             timer.stop()
-            return not_sumarrized_soap, id_list, \
+            return True, not_sumarrized_soap, id_list, \
                     original_doc_no_list, \
                     absolute_range_start_date, \
                     absolute_range_end_date, \
@@ -241,7 +240,7 @@ class SOAPManager:
         summary = self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents)
         sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
         timer.stop()
-        return not_sumarrized_soap, id_list, \
+        return True, not_sumarrized_soap, id_list, \
                 original_doc_no_list, \
                 absolute_range_start_date, \
                 absolute_range_end_date, \

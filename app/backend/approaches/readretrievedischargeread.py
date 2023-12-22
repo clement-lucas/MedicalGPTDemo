@@ -14,7 +14,6 @@ from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
 from lib.tokencounter import TokenCounter
-from lib.soapexception import SoapException
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -173,19 +172,17 @@ class ReadRetrieveDischargeReadApproach(Approach):
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
-            try:
-                # SOAP から情報を取得する
-                soap_ret = soap.get_values(
-                    target_soap_records,
-                    use_range_kind,
-                    days_before_the_date_of_hospitalization_to_use,
-                    days_after_the_date_of_hospitalization_to_use,
-                    days_before_the_date_of_discharge_to_use,
-                    days_after_the_date_of_discharge_to_use)
-            except SoapException as e:
-                print(e)
+            # SOAP から情報を取得する
+            soap_ret = soap.get_values(
+                target_soap_records,
+                use_range_kind,
+                days_before_the_date_of_hospitalization_to_use,
+                days_after_the_date_of_hospitalization_to_use,
+                days_before_the_date_of_discharge_to_use,
+                days_after_the_date_of_discharge_to_use)
+            if soap_ret[0] == False:
                 print(categoryName + "の処理終了")
-                return f"【{categoryName }】\n該当するカルテデータがありません。{e.message}\n\n", \
+                return f"【{categoryName }】\n該当するカルテデータがありません。{soap_ret[1]}\n\n", \
                         completion_tokens, \
                         prompt_tokens, \
                         total_tokens, \
@@ -202,21 +199,21 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         summarized_soap_history
             
                 # print(soap_ret)
-            not_summarized_soap = soap_ret[0]
-            id_list = soap_ret[1]
-            original_data_no_list = soap_ret[2]
-            absolute_range_start_date = soap_ret[3]
-            absolute_range_end_date = soap_ret[4]
-            summarized_soap = soap_ret[5]
+            not_summarized_soap = soap_ret[1]
+            id_list = soap_ret[2]
+            original_data_no_list = soap_ret[3]
+            absolute_range_start_date = soap_ret[4]
+            absolute_range_end_date = soap_ret[5]
+            summarized_soap = soap_ret[6]
 
             # 要約が発生した場合は履歴を確保する
-            summarized_log = soap_ret[9]
+            summarized_log = soap_ret[10]
             if summarized_soap != "":
                 summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
                     summarized_soap + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[6]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[7]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[8]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                    str(soap_ret[7]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[8]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[9]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
                     summarized_log + "</SUMMARIZE_LOG>"
             
             # print("★★★★"+categoryName+"★★★★")
