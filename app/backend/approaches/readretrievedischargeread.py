@@ -14,6 +14,7 @@ from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
 from lib.tokencounter import TokenCounter
+from lib.soapexception import SoapException
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -165,33 +166,66 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         id_list = []
         original_data_no_list = []
-        soap_text = ""
+        not_summarized_soap = ""
         absolute_range_start_date = -1
         absolute_range_end_date = -1
+        summarized_soap_history = ""
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
-            soap_ret = soap.get_values(
-                target_soap_records,
-                use_range_kind,
-                days_before_the_date_of_hospitalization_to_use,
-                days_after_the_date_of_hospitalization_to_use,
-                days_before_the_date_of_discharge_to_use,
-                days_after_the_date_of_discharge_to_use)
-            # print(soap_ret)
-            soap_text = soap_ret[0]
+            try:
+                # SOAP から情報を取得する
+                soap_ret = soap.get_values(
+                    target_soap_records,
+                    use_range_kind,
+                    days_before_the_date_of_hospitalization_to_use,
+                    days_after_the_date_of_hospitalization_to_use,
+                    days_before_the_date_of_discharge_to_use,
+                    days_after_the_date_of_discharge_to_use)
+            except SoapException as e:
+                print(e)
+                print(categoryName + "の処理終了")
+                return f"【{categoryName }】\n該当するカルテデータがありません。{e.message}\n\n", \
+                        completion_tokens, \
+                        prompt_tokens, \
+                        total_tokens, \
+                        prompt, \
+                        allergy, \
+                        medicine, \
+                        id_list, \
+                        original_data_no_list, \
+                        not_summarized_soap, \
+                        categoryName, \
+                        absolute_range_start_date, \
+                        absolute_range_end_date, \
+                        target_soap_records, \
+                        summarized_soap_history
+            
+                # print(soap_ret)
+            not_summarized_soap = soap_ret[0]
             id_list = soap_ret[1]
             original_data_no_list = soap_ret[2]
             absolute_range_start_date = soap_ret[3]
             absolute_range_end_date = soap_ret[4]
+            summarized_soap = soap_ret[5]
 
+            # 要約が発生した場合は履歴を確保する
+            summarized_log = soap_ret[9]
+            if summarized_soap != "":
+                summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
+                    summarized_soap + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[6]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[7]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[8]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                    summarized_log + "</SUMMARIZE_LOG>"
+            
             # print("★★★★"+categoryName+"★★★★")
             # print(summarized_soap)
             # print("★★★★★★★★")
 
             answer = self.get_answer(
                 categoryName, temperature, question, 
-                soap_text,
+                not_summarized_soap if summarized_soap == "" else summarized_soap,
                 system_content,
                 response_max_tokens)
             ret = answer[0]
@@ -268,11 +302,12 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 medicine, \
                 id_list, \
                 original_data_no_list, \
-                soap_text, \
+                not_summarized_soap, \
                 categoryName, \
                 absolute_range_start_date, \
                 absolute_range_end_date, \
-                target_soap_records
+                target_soap_records, \
+                summarized_soap_history
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -420,6 +455,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         allergy = ""
         medicine = ""
 
+        # 要約ログ
+        summarized_soap_history = ""
+
         timer = LapTimer()
         timer.start("退院時サマリ作成処理")
         id_list = []
@@ -427,7 +465,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
         soap = SOAPManager(
             self.sql_connector,
             department_code,
-            pid)
+            pid,
+            self.gptconfigmanager,
+            self.gpt_deployment)
         with concurrent.futures.ThreadPoolExecutor() as executor:
             features = [executor.submit(self.get_all_answers,
                                         soap,
@@ -459,6 +499,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 absolute_range_start_date = future_ret[11]
                 absolute_range_end_date = future_ret[12]
                 target_soap_records = future_ret[13]
+                summarized_soap_history = ''.join([summarized_soap_history, future_ret[14]])
                 if soap_text != "":
                     soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
                 if absolute_range_start_date != -1 and absolute_range_end_date != -1:
@@ -494,6 +535,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
            ,[IntermediateDataIds]
            ,[UseDateRangeList]
            ,[SoapForCategories]
+           ,[SummarizedMedicalRecord]
            ,[Response]
            ,[CompletionTokens]
            ,[PromptTokens]
@@ -508,6 +550,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         VALUES
            (?
            ,N'退院時サマリ'
+           ,?
            ,?
            ,?
            ,?
@@ -539,6 +582,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         id_list,
                         use_date_range_list,
                         soap_text_history,
+                        summarized_soap_history,
                         ret,
                         sum_of_completion_tokens,   
                         sum_of_prompt_tokens,   

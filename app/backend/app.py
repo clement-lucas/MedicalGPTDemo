@@ -17,7 +17,6 @@ from approaches.getpatient import GetPatientApproach
 from approaches.getpatientold import GetPatientOldApproach
 from approaches.gethistoryinex import GetHistoryIndexApproach
 from approaches.gethistorydetail import GetHistoryDetailApproach
-from approaches.getsoap import GetSoapApproach
 from approaches.getdocumentfotmatindex import GetDocumentFormatIndexApproach
 from approaches.deletedocumentfotmat import DeleteDocumentFormatApproach
 from approaches.getdocumentfotmat import GetDocumentFormatApproach
@@ -116,10 +115,6 @@ get_history_index_approaches = {
 
 get_history_detail_approaches = {
     "rrr": GetHistoryDetailApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
-}
-
-soap_approaches = {
-    "get": GetSoapApproach(sql_connector, KB_FIELDS_SOURCEPAGE, KB_FIELDS_CONTENT)
 }
 
 document_format_index_approaches = {
@@ -279,18 +274,6 @@ def get_history_detail():
         return jsonify(r)
     except Exception as e:
         logging.exception("Exception in /get_history_detail")
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/soap", methods=["POST"])
-def soap():
-    try:
-        impl = soap_approaches.get("get")
-        if not impl:
-            return jsonify({"error": "unknown approach"}), 400
-        r = impl.run(request.json["pid"])
-        return jsonify(r)
-    except Exception as e:
-        logging.exception("Exception in /soap")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_document_format_index", methods=["POST"])

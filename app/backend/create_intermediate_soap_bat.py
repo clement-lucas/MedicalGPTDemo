@@ -89,7 +89,6 @@ def create_intermediate_soap_row(pid:str,
             original_doc_no = last_doc_no
     data = (current_doc_no, kind, original_doc_no, 
             pid, current_doc_date, kind, current_text_soap)
-    #data = (current_doc_no, kind, original_doc_no, pid, current_doc_date, kind, current_text_soap)
     return data
 
 # 中間データ作成
