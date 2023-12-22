@@ -301,7 +301,7 @@ class SOAPManager:
                 if summarize_token > capacity_for_befor_text - one_record_token:
                     summarize_token = capacity_for_befor_text - one_record_token
                 summary = summarizer.summarize(summarize_buffer, summarize_token)
-                print("summarize_buffer:" + summarize_buffer)
+                # print("summarize_buffer:" + summarize_buffer)
                 summarize_buffer = summary[0] + "\n\n"
                 # print("summarize_buffer1:" + summarize_buffer)
                 completion_tokens += summary[1].completion_tokens
@@ -313,7 +313,7 @@ class SOAPManager:
             # 今見ているレコードを要約バッファに追加する。
             summarize_buffer += one_record
             # print("summarize_buffer2:" + summarize_buffer)
-        print("summarize_buffer:" + summarize_buffer)
+        # print("summarize_buffer:" + summarize_buffer)
 
         # 最後まで見終わったので、SOAP Token 上限に収まるか調べて、収まる場合はそのまま返す。
         contents_token = TokenCounter.count(summarize_buffer, model_name_for_tiktoken)
