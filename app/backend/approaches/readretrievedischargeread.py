@@ -14,6 +14,7 @@ from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
 from lib.tokencounter import TokenCounter
+from lib.soapexception import SoapException
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -165,35 +166,57 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         id_list = []
         original_data_no_list = []
-        soap_text = ""
+        not_summarized_soap = ""
         absolute_range_start_date = -1
         absolute_range_end_date = -1
         summarized_soap_history = ""
         if kind == DOCUMENT_FORMAT_KIND_SOAP:
             # SOAP からの情報取得である
 
-            soap_ret = soap.get_values(
-                target_soap_records,
-                use_range_kind,
-                days_before_the_date_of_hospitalization_to_use,
-                days_after_the_date_of_hospitalization_to_use,
-                days_before_the_date_of_discharge_to_use,
-                days_after_the_date_of_discharge_to_use)
-            # print(soap_ret)
-            soap_text = soap_ret[0]
+            try:
+                # SOAP から情報を取得する
+                soap_ret = soap.get_values(
+                    target_soap_records,
+                    use_range_kind,
+                    days_before_the_date_of_hospitalization_to_use,
+                    days_after_the_date_of_hospitalization_to_use,
+                    days_before_the_date_of_discharge_to_use,
+                    days_after_the_date_of_discharge_to_use)
+            except SoapException as e:
+                print(e)
+                print(categoryName + "の処理終了")
+                return f"【{categoryName }】\n該当するカルテデータがありません。{e.message}\n\n", \
+                        completion_tokens, \
+                        prompt_tokens, \
+                        total_tokens, \
+                        prompt, \
+                        allergy, \
+                        medicine, \
+                        id_list, \
+                        original_data_no_list, \
+                        not_summarized_soap, \
+                        categoryName, \
+                        absolute_range_start_date, \
+                        absolute_range_end_date, \
+                        target_soap_records, \
+                        summarized_soap_history
+            
+                # print(soap_ret)
+            not_summarized_soap = soap_ret[0]
             id_list = soap_ret[1]
             original_data_no_list = soap_ret[2]
             absolute_range_start_date = soap_ret[3]
             absolute_range_end_date = soap_ret[4]
+            summarized_soap = soap_ret[5]
 
             # 要約が発生した場合は履歴を確保する
-            summarized_log = soap_ret[8]
-            if summarized_log != "":
+            summarized_log = soap_ret[9]
+            if summarized_soap != "":
                 summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
-                    soap_text + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[5]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[6]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap[7]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                    summarized_soap + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[6]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[7]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                    str(soap_ret[8]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
                     summarized_log + "</SUMMARIZE_LOG>"
             
             # print("★★★★"+categoryName+"★★★★")
@@ -202,7 +225,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
             answer = self.get_answer(
                 categoryName, temperature, question, 
-                soap_text,
+                not_summarized_soap if summarized_soap == "" else summarized_soap,
                 system_content,
                 response_max_tokens)
             ret = answer[0]
@@ -279,7 +302,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                 medicine, \
                 id_list, \
                 original_data_no_list, \
-                soap_text, \
+                not_summarized_soap, \
                 categoryName, \
                 absolute_range_start_date, \
                 absolute_range_end_date, \
