@@ -8,6 +8,12 @@ class GPTConfigManager:
             return self._config[key]
         else:
             return None
+        
+    def get_int_value(self, key: str, default_value:int):
+            if key in self._config:
+                return int(self._config[key])
+            else:
+                return default_value
 
     def __init__(self, sql_connector:SQLConnector) -> None:
         self._sql_connector = sql_connector

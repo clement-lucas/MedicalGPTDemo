@@ -1,6 +1,7 @@
-import openai
 from lib.tokencounter import TokenCounter
 from lib.gptconfigmanager import GPTConfigManager
+from lib.openaimanager import OpenAIManager
+from lib.soapsummarizerexception import SOAPSummarizerException
 
 class SOAPSummarizer:
 
@@ -28,28 +29,35 @@ class SOAPSummarizer:
         return self._max_total_tokens - tokens
     
     # GPT を利用して SOAP を要約する。
-    def summarize(self, soap:str, expected_token_num:int):
+    async def summarize(self, soap:str, expected_token_num:int, session):
         messages = [{"role":"system","content": self._system_content},
             {"role":"user","content": self._user_content.format(expected_token_num=expected_token_num, soap=soap)}]
         
         # print(expected_token_num)
+        openaimanager = OpenAIManager()
+        completion = await openaimanager.get_response(session, messages, self._temperature, expected_token_num)
 
-        completion = openai.ChatCompletion.create(
-            engine=self._engine,
-            messages = messages,
-            temperature=self._temperature,
-            max_tokens=expected_token_num,
-            top_p=0.95,
-            frequency_penalty=0,
-            presence_penalty=0,
-            stop=None)
+        # completion が要素["choices"] を持っていない場合は、なしとして扱う
+        content_error_message = "要約処理に失敗したため、処理を中断します。AI からのレスポンスが不正です。"
+        if (not 'choices' in completion) \
+        or (len(completion['choices']) == 0) \
+        or (not 'message' in completion['choices'][0]):
+            print(content_error_message)
+            print(f"Failed to get response from OpenAI. response={completion}")
+            raise SOAPSummarizerException(content_error_message)
+        if ('finish_reason' in completion['choices'][0]) and (completion['choices'][0]['finish_reason'] == "content_filter"):
+            errmsg = "要約処理が AI によりフィルタリングされました。\n"
+            if 'content' in completion['choices'][0]['message']:
+                errmsg += "詳細：" + completion['choices'][0]['message']['content']
+            print(errmsg)
+            raise SOAPSummarizerException(errmsg)
+        if not 'content' in completion['choices'][0]['message']:
+            print(content_error_message)
+            print(f"Failed to get response from OpenAI. response={completion}")
+            raise SOAPSummarizerException(content_error_message)
 
-        # print(completion.choices[0].message.content)
-        # print(completion.usage.completion_tokens)
-        # print(completion.usage.prompt_tokens)
-        # print(completion.usage.total_tokens)
-        ret = completion.choices[0].message.content
+        ret = completion['choices'][0]['message']['content']
         log = ''.join([str(TokenCounter.count(soap, self._model_name_for_tiktoken)), 
                        "=>", 
                        str(TokenCounter.count(ret, self._model_name_for_tiktoken)), ", "])
-        return ret, completion.usage, log
+        return ret, completion['usage'], log

@@ -75,14 +75,15 @@ class SOAPManager:
     def discharge_date_str(self):
         return self._discharge_date_str
 
-    def get_values(
+    async def get_values(
         self,
         target_soap_kinds: str,
         use_range_kind: int,
         days_before_the_date_of_hospitalization_to_use: int,
         days_after_the_date_of_hospitalization_to_use: int,
         days_before_the_date_of_discharge_to_use: int,
-        days_after_the_date_of_discharge_to_use: int) -> str:
+        days_after_the_date_of_discharge_to_use: int,
+        session) -> str:
 
         # 'SoP' -> 'sop'
         target_soap_kinds = target_soap_kinds.lower()
@@ -222,7 +223,7 @@ class SOAPManager:
             # 要約時の GPT 応答用の領域は、退院時サマリ作成時よりも大きく確保することが一般的に考えられ、
             # そうすると、同じトークン上限を持つモデルを使っている場合、
             # 要約前の文書として渡せるトークン数が、退院時サマリ作成時に渡せる SOAP のトークン数よりも大きくなることは考えられない。
-            summary = summarizer.summarize(not_sumarrized_soap, max_tokens_for_soap_contents)
+            summary = await summarizer.summarize(not_sumarrized_soap, max_tokens_for_soap_contents, session)
             sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
             timer.stop()
             return True, not_sumarrized_soap, id_list, \
@@ -230,14 +231,14 @@ class SOAPManager:
                     absolute_range_start_date, \
                     absolute_range_end_date, \
                     sumarrized_soap, \
-                    summary[1].completion_tokens, \
-                    summary[1].prompt_tokens, \
-                    summary[1].total_tokens, \
+                    summary[1]['completion_tokens'], \
+                    summary[1]['prompt_tokens'], \
+                    summary[1]['total_tokens'], \
                     summary[2]        
         # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
         #       段階的に要約して返却する。
         print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合")
-        summary = self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents)
+        summary = await self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents, session)
         sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
         timer.stop()
         return True, not_sumarrized_soap, id_list, \
@@ -251,7 +252,7 @@ class SOAPManager:
                 summary[4]
 
     # 段階的に要約する。
-    def _summarize(self, summarizer:SOAPSummarizer, rows_include_duplicate:[], max_tokens_for_soap_contents:int):
+    async def _summarize(self, summarizer:SOAPSummarizer, rows_include_duplicate:[], max_tokens_for_soap_contents:int, session):
         
         # 要約前のテキストとして渡せる最大トークン数を計算する。
         compressibility_for_summary = float(self._gptconfigmanager.get_value("COMPRESSIBILITY_FOR_SUMMARY"))
@@ -300,13 +301,13 @@ class SOAPManager:
                 one_record_token = TokenCounter.count(one_record, model_name_for_tiktoken)
                 if summarize_token > capacity_for_befor_text - one_record_token:
                     summarize_token = capacity_for_befor_text - one_record_token
-                summary = summarizer.summarize(summarize_buffer, summarize_token)
+                summary = await summarizer.summarize(summarize_buffer, summarize_token, session)
                 # print("summarize_buffer:" + summarize_buffer)
                 summarize_buffer = summary[0] + "\n\n"
                 # print("summarize_buffer1:" + summarize_buffer)
-                completion_tokens += summary[1].completion_tokens
-                prompt_tokens += summary[1].prompt_tokens
-                total_tokens += summary[1].total_tokens
+                completion_tokens += summary[1]['completion_tokens']
+                prompt_tokens += summary[1]['prompt_tokens']
+                total_tokens += summary[1]['total_tokens']
                 summarize_log += summary[2]
                 now_date = -1
 
@@ -329,10 +330,10 @@ class SOAPManager:
         if max_tokens_for_soap_contents > expected_summarized_token_num: 
             summarize_token = expected_summarized_token_num
 
-        summary = summarizer.summarize(summarize_buffer, summarize_token)
-        completion_tokens += summary[1].completion_tokens
-        prompt_tokens += summary[1].prompt_tokens
-        total_tokens += summary[1].total_tokens
+        summary = await summarizer.summarize(summarize_buffer, summarize_token, session)
+        completion_tokens += summary[1]['completion_tokens']
+        prompt_tokens += summary[1]['prompt_tokens']
+        total_tokens += summary[1]['total_tokens']
         summarize_log += summary[2]
         return summary[0], completion_tokens, prompt_tokens, total_tokens, summarize_log
 
