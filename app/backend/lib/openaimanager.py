@@ -9,7 +9,7 @@ class OpenAIManager:
             raise Exception("AZURE_OPENAI_KEY is required")
 
         self._url = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com/openai/deployments/{AZURE_OPENAI_GPT_DEPLOYMENT}/chat/completions?api-version={AZURE_OPENAI_API_VERSION}"
-        print("gpt ulr: " + self._url)
+        #print("gpt url: " + self._url)
         self._headers = {
                 "Content-Type": "application/json",
                 "api-key": AZURE_OPENAI_KEY
