@@ -2,8 +2,8 @@
 # 退院時サマリの作成 #
 ######################
 
-import openai
-import os
+import asyncio
+import aiohttp
 import concurrent.futures
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
@@ -14,6 +14,9 @@ from lib.documentformatmanager import DocumentFormatManager
 from lib.laptimer import LapTimer
 from lib.datetimeconverter import DateTimeConverter
 from lib.tokencounter import TokenCounter
+from lib.progresslog import ProgressLog
+from lib.openaimanager import OpenAIManager
+from lib.soapsummarizerexception import SOAPSummarizerException
 
 DOCUMENT_FORMAT_KIND_SYSTEM_CONTENT = 0
 DOCUMENT_FORMAT_KIND_SOAP = 1
@@ -43,7 +46,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         return num_tokens_for_soap
 
     # 質問文とカルテデータを受け取って GPT に投げる関数
-    def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens):
+    async def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens, session):
 
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":''.join([question, "\n\nmedical record:\n\n", sources])}]
@@ -57,23 +60,27 @@ class ReadRetrieveDischargeReadApproach(Approach):
 
         timer = LapTimer()
         timer.start("GPTによる回答取得 " + category_name)
-        completion = openai.ChatCompletion.create(
-            engine=self.gpt_deployment,
-            messages = messages,
-            temperature=temperature,
-            max_tokens=response_max_tokens,
-            top_p=0.95,
-            frequency_penalty=0,
-            presence_penalty=0,
-            stop=None)
+        openaimanager = OpenAIManager()
+        completion = await openaimanager.get_response(session, messages, temperature, response_max_tokens)
         timer.stop()
-
-        # completion.choices[0].message.content がとして存在するか調べる
-        # 存在しない場合は、「なし」を返却する
+        # print("★★★★★★★★★★★★★★★★★★")
         # print(completion)
-        if hasattr(completion.choices[0].message, 'content') == False:
-            return "【" + category_name+ "】" + "なし\n" + "\n\n", completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, ""
-        answer = completion.choices[0].message.content
+        # print("★★★★★★★★★★★★★★★★★★")
+
+        # completion が要素["choices"] を持っていない場合は、なしとして扱う
+        if (not 'choices' in completion) \
+        or (len(completion['choices']) == 0) \
+        or (not 'message' in completion['choices'][0]):
+            return "【" + category_name+ "】" + "なし\n" + "\n\n", completion['usage']['completion_tokens'], completion['usage']['prompt_tokens'], completion['usage']['total_tokens'], ""
+        if ('finish_reason' in completion['choices'][0]) and (completion['choices'][0]['finish_reason'] == "content_filter"):
+            errmsg = "このカテゴリーの生成は AI によりフィルタリングされました。\n"
+            if 'content' in completion['choices'][0]['message']:
+                errmsg += "詳細：" + completion['choices'][0]['message']['content']
+            return "【" + category_name+ "】" + errmsg + "\n\n", completion['usage']['completion_tokens'], completion['usage']['prompt_tokens'], completion['usage']['total_tokens'], ""
+        if (not 'content' in completion['choices'][0]['message']):
+            return "【" + category_name+ "】" + "なし\n" + "\n\n", completion['usage']['completion_tokens'], completion['usage']['prompt_tokens'], completion['usage']['total_tokens'], ""
+
+        answer = completion['choices'][0]['message']['content']
         answer = answer.lstrip("【" + category_name+ "】")
         answer = answer.lstrip(category_name)
         answer = answer.lstrip(" ")
@@ -91,7 +98,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         # 例）「なし」と出力します。 -> なし
         # if answer.find("「なし」と出力します。") != -1 or answer.find("「なし」という文言を出力します。") != -1:
         #     answer = "なし"
-        return ''.join(["【", category_name, "】\n", answer, "\n\n"]), completion.usage.completion_tokens, completion.usage.prompt_tokens, completion.usage.total_tokens, prompt
+        return ''.join(["【", category_name, "】\n", answer, "\n\n"]), completion['usage']['completion_tokens'], completion['usage']['prompt_tokens'], completion['usage']['total_tokens'], prompt
 
     def get_allergy(self, cursor, pi_item_id, jpn_item_name, pid):
         select_allergy_sql = """SELECT PI_ITEM_02, PI_ITEM_03
@@ -107,204 +114,241 @@ class ReadRetrieveDischargeReadApproach(Approach):
             records = ''.join([records, jpn_item_name, "アレルギー：", row[0], "による", row[1], "\n"])
         return records
 
-    def get_all_answers(self, 
+    async def get_all_answers(self, 
                         soap:SOAPManager,
                         row, 
-                        department_code,
                         pid, 
-                        system_content):
+                        system_content,
+                        session, semaphore, progress_log):
+        async with semaphore:
 
-        ret = ""
-        allergy = ""
-        medicine = ""
-
-        # token の集計
-        completion_tokens: int = 0
-        prompt_tokens: int = 0
-        total_tokens: int = 0
-
-        prompt = ""
-
-        # id:row[0],
-        # kind:row[1],
-        # category_name:row[2],
-        # order_no:row[3], 
-        # temperature:row[4],
-        # temperature_str:str(row[4]),
-        # question:row[5],
-        # question_suffix:row[6],
-        # response_max_tokens:row[7],
-        # target_soap:row[8],
-        # use_allergy_records:row[9],
-        # "use_discharge_medicine_records":row[10],
-        # "use_range_kind":row[11],
-        # "days_before_the_date_of_hospitalization_to_use":row[12],
-        # "days_after_the_date_of_hospitalization_to_use":row[13],
-        # "days_before_the_date_of_discharge_to_use":row[14],
-        # "days_after_the_date_of_discharge_to_use":row[15],
-
-        kind = row[1]
-        categoryName = row[2]
-        temperature = row[4]
-        question = row[5]
-
-        response_max_tokens = row[7]
-        target_soap_records = row[8]
-
-        # 以下は今は見ていない
-        use_allergy_records = row[9]
-        use_discharge_medicine_records = row[10]
-
-        use_range_kind = row[11]
-        days_before_the_date_of_hospitalization_to_use = row[12]
-        days_after_the_date_of_hospitalization_to_use = row[13]
-        days_before_the_date_of_discharge_to_use = row[14]
-        days_after_the_date_of_discharge_to_use = row[15]
-
-        print(categoryName + "の処理開始")
-
-        id_list = []
-        original_data_no_list = []
-        not_summarized_soap = ""
-        absolute_range_start_date = -1
-        absolute_range_end_date = -1
-        summarized_soap_history = ""
-        if kind == DOCUMENT_FORMAT_KIND_SOAP:
-            # SOAP からの情報取得である
-
-            # SOAP から情報を取得する
-            soap_ret = soap.get_values(
-                target_soap_records,
-                use_range_kind,
-                days_before_the_date_of_hospitalization_to_use,
-                days_after_the_date_of_hospitalization_to_use,
-                days_before_the_date_of_discharge_to_use,
-                days_after_the_date_of_discharge_to_use)
-            if soap_ret[0] == False:
-                print(categoryName + "の処理終了")
-                return f"【{categoryName }】\n該当するカルテデータがありません。{soap_ret[1]}\n\n", \
-                        completion_tokens, \
-                        prompt_tokens, \
-                        total_tokens, \
-                        prompt, \
-                        allergy, \
-                        medicine, \
-                        id_list, \
-                        original_data_no_list, \
-                        not_summarized_soap, \
-                        categoryName, \
-                        absolute_range_start_date, \
-                        absolute_range_end_date, \
-                        target_soap_records, \
-                        summarized_soap_history
-            
-                # print(soap_ret)
-            not_summarized_soap = soap_ret[1]
-            id_list = soap_ret[2]
-            original_data_no_list = soap_ret[3]
-            absolute_range_start_date = soap_ret[4]
-            absolute_range_end_date = soap_ret[5]
-            summarized_soap = soap_ret[6]
-
-            # 要約が発生した場合は履歴を確保する
-            summarized_log = soap_ret[10]
-            if summarized_soap != "":
-                summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
-                    summarized_soap + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[7]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[8]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
-                    str(soap_ret[9]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
-                    summarized_log + "</SUMMARIZE_LOG>"
-            
-            # print("★★★★"+categoryName+"★★★★")
-            # print(summarized_soap)
-            # print("★★★★★★★★")
-
-            answer = self.get_answer(
-                categoryName, temperature, question, 
-                not_summarized_soap if summarized_soap == "" else summarized_soap,
-                system_content,
-                response_max_tokens)
-            ret = answer[0]
-            completion_tokens = answer[1]
-            prompt_tokens = answer[2]
-            total_tokens = answer[3]
-            prompt = ''.join([answer[4], "\n"])
-            
-        elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
-            # 【アレルギー・不適応反応】​
-            # ARG001（薬剤アレルギー）
-            # ARG010（食物アレルギー）
-            # ARG040（注意すべき食物）
-            # ARGN10（その他アレルギー）
-
-            # SQL Server に接続する
-            with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-                allergy = ''.join([
-                    # 薬剤アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARG001', '薬剤', pid),
-                    
-                    # 食物アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARG010', '食物', pid),
-
-                    # 注意すべき食物情報の取得
-                    self.get_allergy(cursor, 'ARG040', '注意すべき食物', pid),
-
-                    # その他アレルギー情報の取得
-                    self.get_allergy(cursor, 'ARGN10', 'その他原因物質', pid)])
-            if allergy != "":
-                allergy = ''.join(["【", categoryName, "】\n", allergy, "\n"])
-            else :
-                allergy = "【" + categoryName + "】\nなし\n\n"
-            ret = allergy
-        elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
-            # 【退院時使用薬剤】​
-            select_taiinji_shoho_sql = """
-            SELECT EXTBOD1.IATTR, EXTBOD1.INAME, EXTBOD1.NUM, EXTBOD1.UNAME FROM EXTBDH1 
-                INNER JOIN EXTBOD1 
-                ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
-                AND EXTBDH1.DOC_K = 'H004'
-                AND EXTBOD1.IATTR in ('HD1','HY1')
-                AND EXTBDH1.ACTIVE_FLG = 1 
-                AND EXTBOD1.ACTIVE_FLG = 1 
-                AND EXTBDH1.PID = ?
-                ORDER BY EXTBOD1.SEQ"""
-            # SQL Server に接続する
-            with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
-                cursor.execute(select_taiinji_shoho_sql, pid)
-                rows = cursor.fetchall() 
+            ret = ""
+            allergy = ""
             medicine = ""
-            for row in rows:
-                if row[0] == "HY1":
-                    medicine = ''.join([medicine, "　"])
-                quantity = str(row[2])
-                # quantity の小数点以下の0を削除する
-                if quantity.find(".") != -1:
-                    quantity = quantity.rstrip("0")
-                    quantity = quantity.rstrip(".")
-                medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
-            if medicine != "":
-                medicine = ''.join(["【", categoryName, "】\n", medicine, "\n"])
-            else:
-                medicine = "【" + categoryName + "】\nなし\n\n"
-            ret = medicine
 
-        print(categoryName + "の処理終了")
-        return ret, \
-                completion_tokens, \
-                prompt_tokens, \
-                total_tokens, \
-                prompt, \
-                allergy, \
-                medicine, \
-                id_list, \
-                original_data_no_list, \
-                not_summarized_soap, \
-                categoryName, \
-                absolute_range_start_date, \
-                absolute_range_end_date, \
-                target_soap_records, \
-                summarized_soap_history
+            # token の集計
+            completion_tokens: int = 0
+            prompt_tokens: int = 0
+            total_tokens: int = 0
+
+            prompt = ""
+
+            # id:row[0],
+            # kind:row[1],
+            # category_name:row[2],
+            # order_no:row[3], 
+            # temperature:row[4],
+            # temperature_str:str(row[4]),
+            # question:row[5],
+            # question_suffix:row[6],
+            # response_max_tokens:row[7],
+            # target_soap:row[8],
+            # use_allergy_records:row[9],
+            # "use_discharge_medicine_records":row[10],
+            # "use_range_kind":row[11],
+            # "days_before_the_date_of_hospitalization_to_use":row[12],
+            # "days_after_the_date_of_hospitalization_to_use":row[13],
+            # "days_before_the_date_of_discharge_to_use":row[14],
+            # "days_after_the_date_of_discharge_to_use":row[15],
+
+            kind = row[1]
+            categoryName = row[2]
+            temperature = row[4]
+            question = row[5]
+
+            response_max_tokens = row[7]
+            target_soap_records = row[8]
+
+            # 以下は今は見ていない
+            use_allergy_records = row[9]
+            use_discharge_medicine_records = row[10]
+
+            use_range_kind = row[11]
+            days_before_the_date_of_hospitalization_to_use = row[12]
+            days_after_the_date_of_hospitalization_to_use = row[13]
+            days_before_the_date_of_discharge_to_use = row[14]
+            days_after_the_date_of_discharge_to_use = row[15]
+
+            print(categoryName + "の処理開始")
+
+            id_list = []
+            original_data_no_list = []
+            not_summarized_soap = ""
+            absolute_range_start_date = -1
+            absolute_range_end_date = -1
+            summarized_soap_history = ""
+            if kind == DOCUMENT_FORMAT_KIND_SOAP:
+                # SOAP からの情報取得である
+
+                # SOAP から情報を取得する
+                try:
+                    soap_ret = await soap.get_values(
+                        target_soap_records,
+                        use_range_kind,
+                        days_before_the_date_of_hospitalization_to_use,
+                        days_after_the_date_of_hospitalization_to_use,
+                        days_before_the_date_of_discharge_to_use,
+                        days_after_the_date_of_discharge_to_use,
+                        session)
+                except SOAPSummarizerException as e:
+                    print(e)
+                    return f"【{categoryName }】\n{e}\n\n", \
+                            completion_tokens, \
+                            prompt_tokens, \
+                            total_tokens, \
+                            prompt, \
+                            allergy, \
+                            medicine, \
+                            id_list, \
+                            original_data_no_list, \
+                            not_summarized_soap, \
+                            categoryName, \
+                            absolute_range_start_date, \
+                            absolute_range_end_date, \
+                            target_soap_records, \
+                            summarized_soap_history
+                if soap_ret[0] == False:
+                    print(categoryName + "の処理終了")
+                    return f"【{categoryName }】\n該当するカルテデータがありません。{soap_ret[1]}\n\n", \
+                            completion_tokens, \
+                            prompt_tokens, \
+                            total_tokens, \
+                            prompt, \
+                            allergy, \
+                            medicine, \
+                            id_list, \
+                            original_data_no_list, \
+                            not_summarized_soap, \
+                            categoryName, \
+                            absolute_range_start_date, \
+                            absolute_range_end_date, \
+                            target_soap_records, \
+                            summarized_soap_history
+                
+                    # print(soap_ret)
+                not_summarized_soap = soap_ret[1]
+                id_list = soap_ret[2]
+                original_data_no_list = soap_ret[3]
+                absolute_range_start_date = soap_ret[4]
+                absolute_range_end_date = soap_ret[5]
+                summarized_soap = soap_ret[6]
+
+                # 要約が発生した場合は履歴を確保する
+                summarized_log = soap_ret[10]
+                if summarized_soap != "":
+                    summarized_soap_history = "<CATEGORY>" + str(categoryName) + "</CATEGORY><SOAP>" + \
+                        summarized_soap + "</SOAP><COMPLETION_TOKENS_FOR_SUMMARIZE>" + \
+                        str(soap_ret[7]) + "</COMPLETION_TOKENS_FOR_SUMMARIZE><PROMPT_TOKENS_FOR_SUMMARIZE>" + \
+                        str(soap_ret[8]) + "</PROMPT_TOKENS_FOR_SUMMARIZE><TOTAL_TOKENS_FOR_SUMMARIZE>" + \
+                        str(soap_ret[9]) + "</TOTAL_TOKENS_FOR_SUMMARIZE><SUMMARIZE_LOG>" + \
+                        summarized_log + "</SUMMARIZE_LOG>"
+                
+                # print("★★★★"+categoryName+"★★★★")
+                # print(summarized_soap)
+                # print("★★★★★★★★")
+
+                answer = await self.get_answer(
+                    categoryName, temperature, question, 
+                    not_summarized_soap if summarized_soap == "" else summarized_soap,
+                    system_content,
+                    response_max_tokens, session)
+                ret = answer[0]
+                completion_tokens = answer[1]
+                prompt_tokens = answer[2]
+                total_tokens = answer[3]
+                prompt = ''.join([answer[4], "\n"])
+                
+            elif kind == DOCUMENT_FORMAT_KIND_ALLERGY:
+                # 【アレルギー・不適応反応】​
+                # ARG001（薬剤アレルギー）
+                # ARG010（食物アレルギー）
+                # ARG040（注意すべき食物）
+                # ARGN10（その他アレルギー）
+
+                # SQL Server に接続する
+                with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+                    allergy = ''.join([
+                        # 薬剤アレルギー情報の取得
+                        self.get_allergy(cursor, 'ARG001', '薬剤', pid),
+                        
+                        # 食物アレルギー情報の取得
+                        self.get_allergy(cursor, 'ARG010', '食物', pid),
+
+                        # 注意すべき食物情報の取得
+                        self.get_allergy(cursor, 'ARG040', '注意すべき食物', pid),
+
+                        # その他アレルギー情報の取得
+                        self.get_allergy(cursor, 'ARGN10', 'その他原因物質', pid)])
+                if allergy != "":
+                    allergy = ''.join(["【", categoryName, "】\n", allergy, "\n"])
+                else :
+                    allergy = "【" + categoryName + "】\nなし\n\n"
+                ret = allergy
+            elif kind == DOCUMENT_FORMAT_KIND_DISCHARGE_MEDICINE:
+                # 【退院時使用薬剤】​
+                select_taiinji_shoho_sql = """
+                SELECT EXTBOD1.IATTR, EXTBOD1.INAME, EXTBOD1.NUM, EXTBOD1.UNAME FROM EXTBDH1 
+                    INNER JOIN EXTBOD1 
+                    ON EXTBOD1.DOC_NO = EXTBDH1.DOC_NO
+                    AND EXTBDH1.DOC_K = 'H004'
+                    AND EXTBOD1.IATTR in ('HD1','HY1')
+                    AND EXTBDH1.ACTIVE_FLG = 1 
+                    AND EXTBOD1.ACTIVE_FLG = 1 
+                    AND EXTBDH1.PID = ?
+                    ORDER BY EXTBOD1.SEQ"""
+                # SQL Server に接続する
+                with self.sql_connector.get_conn() as cnxn, cnxn.cursor() as cursor:
+                    cursor.execute(select_taiinji_shoho_sql, pid)
+                    rows = cursor.fetchall() 
+                medicine = ""
+                for row in rows:
+                    if row[0] == "HY1":
+                        medicine = ''.join([medicine, "　"])
+                    quantity = str(row[2])
+                    # quantity の小数点以下の0を削除する
+                    if quantity.find(".") != -1:
+                        quantity = quantity.rstrip("0")
+                        quantity = quantity.rstrip(".")
+                    medicine = ''.join([medicine, row[1], "　", quantity, row[3], "\n"])
+                if medicine != "":
+                    medicine = ''.join(["【", categoryName, "】\n", medicine, "\n"])
+                else:
+                    medicine = "【" + categoryName + "】\nなし\n\n"
+                ret = medicine
+
+            print(categoryName + "の処理終了")
+            progress_log.increment()
+            print(progress_log)
+
+            return ret, \
+                    completion_tokens, \
+                    prompt_tokens, \
+                    total_tokens, \
+                    prompt, \
+                    allergy, \
+                    medicine, \
+                    id_list, \
+                    original_data_no_list, \
+                    not_summarized_soap, \
+                    categoryName, \
+                    absolute_range_start_date, \
+                    absolute_range_end_date, \
+                    target_soap_records, \
+                    summarized_soap_history
+        
+    async def get_completion_list(self, 
+                                        soap,
+                                        pid, 
+                                        system_content, rows, max_parallel_calls, timeout):
+        semaphore = asyncio.Semaphore(value=max_parallel_calls)
+        progress_log = ProgressLog(len(rows))
+
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(timeout)) as session:
+            return await asyncio.gather(*[self.get_all_answers(
+                                        soap,
+                                        row, 
+                                        pid, 
+                                        system_content, session, semaphore, progress_log) for row in rows])
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
@@ -465,44 +509,36 @@ class ReadRetrieveDischargeReadApproach(Approach):
             pid,
             self.gptconfigmanager,
             self.gpt_deployment)
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            features = [executor.submit(self.get_all_answers,
-                                        soap,
-                                        row, 
-                                        department_code,
-                                        pid, 
-                                        system_content) for row in rows]
-            for feature in features:
-                try:
-                    exception = feature.exception() # 例外が発生しなかった場合はNoneを返す
-                    if exception is not None:
-                        raise exception
-                except Exception as e:
-                    # print(e)
-                    raise e
-                future_ret = feature.result()
+        
+        max_parallel_calls = self.gptconfigmanager.get_int_value("MAX_PARALLEL_CALLS", 100)
+        timeout = self.gptconfigmanager.get_int_value("GPT_SESSION_TIMEOUT", 100)
 
-                ret = ''.join([ret, future_ret[0]])
-                sum_of_completion_tokens += future_ret[1]
-                sum_of_prompt_tokens += future_ret[2]
-                sum_of_total_tokens += future_ret[3]
-                prompts = ''.join([prompts, future_ret[4], "\n"])
-                allergy = ''.join([allergy, future_ret[5]])
-                medicine = ''.join([medicine, future_ret[6]])
-                id_list.extend(future_ret[7])
-                original_data_no_list.extend(future_ret[8])
-                soap_text = future_ret[9]
-                categoryName = future_ret[10]
-                absolute_range_start_date = future_ret[11]
-                absolute_range_end_date = future_ret[12]
-                target_soap_records = future_ret[13]
-                summarized_soap_history = ''.join([summarized_soap_history, future_ret[14]])
-                if soap_text != "":
-                    soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
-                if absolute_range_start_date != -1 and absolute_range_end_date != -1:
-                    absolute_range_start_date_str = DateTimeConverter.int_2_str(absolute_range_start_date)
-                    absolute_range_end_date_str = DateTimeConverter.int_2_str(absolute_range_end_date)
-                    use_date_range_list = ''.join([use_date_range_list, "【", categoryName, " データ使用期間】\n", absolute_range_start_date_str, " ～ ", absolute_range_end_date_str, "\n", target_soap_records, "\n\n"])
+        competions = asyncio.run(self.get_completion_list(
+                                        soap,
+                                        pid, 
+                                        system_content, rows, max_parallel_calls, timeout))
+        for cmp in competions:
+            ret = ''.join([ret, cmp[0]])
+            sum_of_completion_tokens += cmp[1]
+            sum_of_prompt_tokens += cmp[2]
+            sum_of_total_tokens += cmp[3]
+            prompts = ''.join([prompts, cmp[4], "\n"])
+            allergy = ''.join([allergy, cmp[5]])
+            medicine = ''.join([medicine, cmp[6]])
+            id_list.extend(cmp[7])
+            original_data_no_list.extend(cmp[8])
+            soap_text = cmp[9]
+            categoryName = cmp[10]
+            absolute_range_start_date = cmp[11]
+            absolute_range_end_date = cmp[12]
+            target_soap_records = cmp[13]
+            summarized_soap_history = ''.join([summarized_soap_history, cmp[14]])
+            if soap_text != "":
+                soap_text_history = ''.join([soap_text_history, "【", categoryName, " 使用データ】\n", soap_text, "\n\n"])
+            if absolute_range_start_date != -1 and absolute_range_end_date != -1:
+                absolute_range_start_date_str = DateTimeConverter.int_2_str(absolute_range_start_date)
+                absolute_range_end_date_str = DateTimeConverter.int_2_str(absolute_range_end_date)
+                use_date_range_list = ''.join([use_date_range_list, "【", categoryName, " データ使用期間】\n", absolute_range_start_date_str, " ～ ", absolute_range_end_date_str, "\n", target_soap_records, "\n\n"])
 
 
         # print(ret)

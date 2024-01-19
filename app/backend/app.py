@@ -42,8 +42,9 @@ KB_FIELDS_SOURCEPAGE = os.environ.get("KB_FIELDS_SOURCEPAGE") or "sourcepage"
 AZURE_OPENAI_AUTHENTICATION=os.environ.get("AZURE_OPENAI_AUTHENTICATION") or "ActiveDirectory"
 is_openal_ad_auth = False if AZURE_OPENAI_AUTHENTICATION == "ApiKey" else True
 AZURE_OPENAI_KEY=os.environ.get("AZURE_OPENAI_KEY") or ""
-if (not is_openal_ad_auth and not AZURE_OPENAI_KEY):
+if ((not is_openal_ad_auth) and ((not AZURE_OPENAI_KEY) or (AZURE_OPENAI_KEY == ""))):
     raise Exception("AZURE_OPENAI_KEY is required")
+AZURE_OPENAI_API_VERSION=os.environ.get("AZURE_OPENAI_API_VERSION") or "2023-05-15"
 
 # Use the current user identity to authenticate with Azure OpenAI, Cognitive Search and Blob Storage (no secrets needed, 
 # just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the 
@@ -53,7 +54,7 @@ azure_credential = DefaultAzureCredential()
 
 # Used by the OpenAI SDK
 openai.api_base = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-openai.api_version = "2023-05-15"
+openai.api_version = AZURE_OPENAI_API_VERSION
 
 if is_openal_ad_auth:
     print("Using Azure AD authentication for OpenAI")
@@ -184,7 +185,6 @@ def document():
     
 @app.route("/discharge", methods=["POST"])
 def discharge():
-    ensure_openai_token()
     approach = "rrr"
     try:
         impl = discharge_approaches.get(approach)
