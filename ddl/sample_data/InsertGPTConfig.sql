@@ -49,6 +49,6 @@ P：
 
 ('SUMMARIZE_SOAP_TEMPERATURE', N'SOAP 要約に使用する temperature.', '0.01', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0),
 
-('TOKEN_NUM_FOR_QUESTION', N'退院時サマリ作成時の GPT Call にて、SOAP 部分を除く質問文の領域に割り当てるトークン数.', '1200', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)
-('MAX_PARALLEL_CALLS', N'一回の退院時サマリ作成要求に対して、カテゴリーごとの退院時サマリ作成処理が並行で実行される最大数.', '100', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)
+('TOKEN_NUM_FOR_QUESTION', N'退院時サマリ作成時の GPT Call にて、SOAP 部分を除く質問文の領域に割り当てるトークン数.', '1200', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0),
+('MAX_PARALLEL_CALLS', N'一回の退院時サマリ作成要求に対して、カテゴリーごとの退院時サマリ作成処理が並行で実行される最大数.', '100', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0),
 ('GPT_SESSION_TIMEOUT', N'GPT との通信時、aiohttp.ClientSession に渡されるセッションタイムアウト値.', '100', 'SYSTEM', 'SYSTEM', GETDATE(), GETDATE(), 0)
