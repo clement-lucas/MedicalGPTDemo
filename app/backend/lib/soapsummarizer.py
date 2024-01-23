@@ -12,15 +12,13 @@ class SOAPSummarizer:
 
     def __init__(self, 
                 gptconfigmanager:GPTConfigManager, 
-                engine:str,
-                timer_log_string:str):
+                engine:str):
         self._engine = engine
         self._max_total_tokens = int(gptconfigmanager.get_value("MAX_TOTAL_TOKENS"))
         self._model_name_for_tiktoken = gptconfigmanager.get_value("MODEL_NAME_FOR_TIKTOKEN")
         self._system_content = gptconfigmanager.get_value("SUMMARIZE_SOAP_PROMPT_SYSTEM_CONTENTS")
         self._user_content = gptconfigmanager.get_value("SUMMARIZE_SOAP_PROMPT_USER_CONTENTS")
         self._temperature = float(gptconfigmanager.get_value("SUMMARIZE_SOAP_TEMPERATURE"))
-        self.timer_log_string = timer_log_string
 
         self._capacity_for_befor_and_after_summarize_text = self._get_capacity_for_befor_text()
 
@@ -38,7 +36,7 @@ class SOAPSummarizer:
         
         # print(expected_token_num)
         openaimanager = OpenAIManager()
-        timer = LapTimer(self.timer_log_string)
+        timer = LapTimer()
         timer.start("GPTによる要約実行", thread_uuid)
         completion = await openaimanager.get_response(session, messages, self._temperature, expected_token_num)
         timer.stop()

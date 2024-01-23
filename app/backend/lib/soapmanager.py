@@ -238,7 +238,7 @@ class SOAPManager:
         # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
         #       段階的に要約して返却する。
         print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合" + " スレッドID:" + str(thread_uuid))
-        summary = await self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents, session)
+        summary = await self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents, session, thread_uuid)
         sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
         timer.stop()
         return True, not_sumarrized_soap, id_list, \
