@@ -83,7 +83,7 @@ class SOAPManager:
         days_after_the_date_of_hospitalization_to_use: int,
         days_before_the_date_of_discharge_to_use: int,
         days_after_the_date_of_discharge_to_use: int,
-        session) -> str:
+        session, thread_uuid) -> str:
 
         # 'SoP' -> 'sop'
         target_soap_kinds = target_soap_kinds.lower()
@@ -95,7 +95,7 @@ class SOAPManager:
         placeholders = ', '.join('?' for _ in target_soap_kinds_list)
 
         timer = LapTimer()
-        timer.start("SQL SELECT 処理")
+        timer.start("SQL SELECT 処理", thread_uuid)
         
         # 期間の計算
         absolute_range_start_date: int = 0
@@ -188,7 +188,7 @@ class SOAPManager:
         # Ptn1: 作成された SOAP が SOAP Token 上限に収まる場合
         #       そのまま返却する。
         if contents_token <= max_tokens_for_soap_contents:
-            print("Ptn1: SOAP Token 上限に収まるので、要約を行わない。 Token 数: " + str(contents_token))
+            print("Ptn1: SOAP Token 上限に収まるので、要約を行わない。 Token 数: " + str(contents_token) + " スレッドID:" + str(thread_uuid))
             not_sumarrized_soap = ''.join([SOAP_PREFIX, not_sumarrized_soap])
             return True, not_sumarrized_soap, id_list, \
                     original_doc_no_list, \
@@ -200,7 +200,7 @@ class SOAPManager:
                     0, \
                     ""
 
-        print("SOAP Token 上限に収まらないので、要約を行う。 Token 数: " + str(contents_token))            
+        print("SOAP Token 上限に収まらないので、要約を行う。 Token 数: " + str(contents_token) + " スレッドID:" + str(thread_uuid))            
 
         # Ptn2: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約で収まる場合
         #       要約して返却する。
@@ -210,12 +210,12 @@ class SOAPManager:
         # print("max_tokens_for_soap" + str(max_tokens_for_soap))
 
         timer = LapTimer()
-        timer.start("要約処理")
+        timer.start("要約処理", thread_uuid)
 
         summarizer = SOAPSummarizer(self._gptconfigmanager, self._gpt_deployment)
         if max_tokens_for_soap_contents < contents_token  and \
             contents_token <= summarizer.capacity_for_befor_and_after_summarize_text - max_tokens_for_soap:
-            print("Ptn2: SOAP Token 上限を超え、且つ、一回の要約で収まる場合")
+            print("Ptn2: SOAP Token 上限を超え、且つ、一回の要約で収まる場合" + " スレッドID:" + str(thread_uuid))
             # 退院時サマリ作成に使用するモデルよりもはるかに大きい Token 上限を持つ要約用モデルを使用するなどしない限り、
             # ここに入ることはない。
             # なぜならば、退院時サマリ作成のために GPT に送信する時点で Token 超を over するならば、
@@ -223,7 +223,7 @@ class SOAPManager:
             # 要約時の GPT 応答用の領域は、退院時サマリ作成時よりも大きく確保することが一般的に考えられ、
             # そうすると、同じトークン上限を持つモデルを使っている場合、
             # 要約前の文書として渡せるトークン数が、退院時サマリ作成時に渡せる SOAP のトークン数よりも大きくなることは考えられない。
-            summary = await summarizer.summarize(not_sumarrized_soap, max_tokens_for_soap_contents, session)
+            summary = await summarizer.summarize(not_sumarrized_soap, max_tokens_for_soap_contents, session, thread_uuid)
             sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
             timer.stop()
             return True, not_sumarrized_soap, id_list, \
@@ -237,7 +237,7 @@ class SOAPManager:
                     summary[2]        
         # Ptn3: 作成された SOAP が SOAP Token 上限を超え、且つ、一回の要約では収まらない場合
         #       段階的に要約して返却する。
-        print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合")
+        print("Ptn3: SOAP Token 上限を超え、且つ、一回の要約では収まらない場合" + " スレッドID:" + str(thread_uuid))
         summary = await self._summarize(summarizer, rows_include_duplicate, max_tokens_for_soap_contents, session)
         sumarrized_soap = ''.join([SOAP_PREFIX, summary[0]])
         timer.stop()
@@ -252,7 +252,7 @@ class SOAPManager:
                 summary[4]
 
     # 段階的に要約する。
-    async def _summarize(self, summarizer:SOAPSummarizer, rows_include_duplicate:[], max_tokens_for_soap_contents:int, session):
+    async def _summarize(self, summarizer:SOAPSummarizer, rows_include_duplicate:[], max_tokens_for_soap_contents:int, session, thread_uuid):
         
         # 要約前のテキストとして渡せる最大トークン数を計算する。
         compressibility_for_summary = float(self._gptconfigmanager.get_value("COMPRESSIBILITY_FOR_SUMMARY"))
@@ -301,7 +301,7 @@ class SOAPManager:
                 one_record_token = TokenCounter.count(one_record, model_name_for_tiktoken)
                 if summarize_token > capacity_for_befor_text - one_record_token:
                     summarize_token = capacity_for_befor_text - one_record_token
-                summary = await summarizer.summarize(summarize_buffer, summarize_token, session)
+                summary = await summarizer.summarize(summarize_buffer, summarize_token, session, thread_uuid)
                 # print("summarize_buffer:" + summarize_buffer)
                 summarize_buffer = summary[0] + "\n\n"
                 # print("summarize_buffer1:" + summarize_buffer)
@@ -320,7 +320,7 @@ class SOAPManager:
         contents_token = TokenCounter.count(summarize_buffer, model_name_for_tiktoken)
         # print("contents_token:" + str(contents_token))
         if contents_token <= max_tokens_for_soap_contents:
-            print("最後まで見終わり。SOAP Token 上限に収まるので、そのまま返す。"+str(contents_token)+":"+str(max_tokens_for_soap_contents))
+            print("最後まで見終わり。SOAP Token 上限に収まるので、そのまま返す。"+str(contents_token)+":"+str(max_tokens_for_soap_contents) + " スレッドID:" + str(thread_uuid))
             return summarize_buffer, completion_tokens, prompt_tokens, total_tokens, summarize_log
 
         # 超過する場合は、最後の要約を行って返す。
@@ -330,7 +330,7 @@ class SOAPManager:
         if max_tokens_for_soap_contents > expected_summarized_token_num: 
             summarize_token = expected_summarized_token_num
 
-        summary = await summarizer.summarize(summarize_buffer, summarize_token, session)
+        summary = await summarizer.summarize(summarize_buffer, summarize_token, session, thread_uuid)
         completion_tokens += summary[1]['completion_tokens']
         prompt_tokens += summary[1]['prompt_tokens']
         total_tokens += summary[1]['total_tokens']

@@ -5,6 +5,7 @@
 import asyncio
 import aiohttp
 import concurrent.futures
+import uuid
 from lib.sqlconnector import SQLConnector
 from approaches.approach import Approach
 from azure.search.documents import SearchClient
@@ -46,20 +47,20 @@ class ReadRetrieveDischargeReadApproach(Approach):
         return num_tokens_for_soap
 
     # 質問文とカルテデータを受け取って GPT に投げる関数
-    async def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens, session):
+    async def get_answer(self, category_name, temperature, question, sources, system_content, response_max_tokens, session, thread_uuid):
 
         messages = [{"role":"system","content":system_content},
                     {"role":"user","content":''.join([question, "\n\nmedical record:\n\n", sources])}]
         # print(messages)
 
         timer = LapTimer()
-        timer.start("推定 Token 数取得 " + category_name)
+        timer.start("推定 Token 数取得 " + category_name, thread_uuid)
         token_num = TokenCounter.num_tokens_from_messages(messages, self.model_name_for_tiktoken)
-        print("category_name: " + category_name + "  推定 Token 数:" + str(token_num))
+        print("category_name: " + category_name + "  推定 Token 数:" + str(token_num) + " スレッドid:" + str(thread_uuid))
         timer.stop()
 
         timer = LapTimer()
-        timer.start("GPTによる回答取得 " + category_name)
+        timer.start("GPTによる回答取得 " + category_name, thread_uuid)
         openaimanager = OpenAIManager()
         completion = await openaimanager.get_response(session, messages, temperature, response_max_tokens)
         timer.stop()
@@ -119,7 +120,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         row, 
                         pid, 
                         system_content,
-                        session, semaphore, progress_log):
+                        session, semaphore, progress_log, parent_thread_uuid):
         async with semaphore:
 
             ret = ""
@@ -169,7 +170,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
             days_before_the_date_of_discharge_to_use = row[14]
             days_after_the_date_of_discharge_to_use = row[15]
 
-            print(categoryName + "の処理開始")
+            thread_uuid = uuid.uuid4()
+            print(categoryName + "の処理開始 スレッドid:" + str(thread_uuid) + " 親スレッドid:" + str(parent_thread_uuid))
 
             id_list = []
             original_data_no_list = []
@@ -189,9 +191,9 @@ class ReadRetrieveDischargeReadApproach(Approach):
                         days_after_the_date_of_hospitalization_to_use,
                         days_before_the_date_of_discharge_to_use,
                         days_after_the_date_of_discharge_to_use,
-                        session)
+                        session, thread_uuid)
                 except SOAPSummarizerException as e:
-                    print(e)
+                    print(e, "スレッドid:" + str(thread_uuid) + " 親スレッドid:" + str(parent_thread_uuid))
                     return f"【{categoryName }】\n{e}\n\n", \
                             completion_tokens, \
                             prompt_tokens, \
@@ -208,7 +210,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                             target_soap_records, \
                             summarized_soap_history
                 if soap_ret[0] == False:
-                    print(categoryName + "の処理終了")
+                    print(categoryName + "の処理終了" + "スレッドid:" + str(thread_uuid) + " 親スレッドid:" + str(parent_thread_uuid))
                     return f"【{categoryName }】\n該当するカルテデータがありません。{soap_ret[1]}\n\n", \
                             completion_tokens, \
                             prompt_tokens, \
@@ -251,7 +253,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     categoryName, temperature, question, 
                     not_summarized_soap if summarized_soap == "" else summarized_soap,
                     system_content,
-                    response_max_tokens, session)
+                    response_max_tokens, session, thread_uuid)
                 ret = answer[0]
                 completion_tokens = answer[1]
                 prompt_tokens = answer[2]
@@ -316,9 +318,8 @@ class ReadRetrieveDischargeReadApproach(Approach):
                     medicine = "【" + categoryName + "】\nなし\n\n"
                 ret = medicine
 
-            print(categoryName + "の処理終了")
             progress_log.increment()
-            print(progress_log)
+            print(categoryName + "の処理終了 スレッドid:" + str(thread_uuid) + " 親スレッドid" + str(parent_thread_uuid) + " 進捗:" + str(progress_log))
 
             return ret, \
                     completion_tokens, \
@@ -339,7 +340,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
     async def get_completion_list(self, 
                                         soap,
                                         pid, 
-                                        system_content, rows, max_parallel_calls, timeout):
+                                        system_content, rows, parent_thread_uuid, max_parallel_calls, timeout):
         semaphore = asyncio.Semaphore(value=max_parallel_calls)
         progress_log = ProgressLog(len(rows))
 
@@ -348,18 +349,19 @@ class ReadRetrieveDischargeReadApproach(Approach):
                                         soap,
                                         row, 
                                         pid, 
-                                        system_content, session, semaphore, progress_log) for row in rows])
+                                        system_content, session, semaphore, progress_log, parent_thread_uuid) for row in rows])
 
     # 退院時サマリの作成
     # department_code: 診療科コード これは、ECSCSM.ECTBSM.NOW_KA に格納されている値
     def run(self, department_code:str, pid:str, document_format_index_id:int, user_id:str) -> any:
+        thread_uuid = uuid.uuid4()
         timer_total = LapTimer()
-        timer_total.start("退院時サマリ作成処理全体")
+        timer_total.start("退院時サマリ作成処理全体", thread_uuid)
 
-        print("department_code:" + department_code)
-        print("pid:" + pid)
-        print("document_format_index_id:" + str(document_format_index_id))
-        print("user_id:" + user_id)
+        print("department_code:" + department_code + " スレッドid:" + str(thread_uuid))
+        print("pid:" + pid + " スレッドid:" + str(thread_uuid))
+        print("document_format_index_id:" + str(document_format_index_id) + " スレッドid:" + str(thread_uuid))
+        print("user_id:" + user_id + " スレッドid:" + str(thread_uuid))
                 
         self.gptconfigmanager = GPTConfigManager(self.sql_connector)
 
@@ -500,7 +502,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         summarized_soap_history = ""
 
         timer = LapTimer()
-        timer.start("退院時サマリ作成処理")
+        timer.start("退院時サマリ作成処理", thread_uuid)
         id_list = []
         original_data_no_list = []
         soap = SOAPManager(
@@ -516,7 +518,7 @@ class ReadRetrieveDischargeReadApproach(Approach):
         competions = asyncio.run(self.get_completion_list(
                                         soap,
                                         pid, 
-                                        system_content, rows, max_parallel_calls, timeout))
+                                        system_content, rows, thread_uuid, max_parallel_calls, timeout))
         for cmp in competions:
             ret = ''.join([ret, cmp[0]])
             sum_of_completion_tokens += cmp[1]
