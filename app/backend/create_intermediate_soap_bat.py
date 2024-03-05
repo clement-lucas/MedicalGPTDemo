@@ -4,7 +4,7 @@
 ########
 # 使い方
 # app\backend に移動し、以下のコマンドを実行します
-# py .\create_intermediate_soap_bat.py.py '{your .env file path}'
+# py .\create_intermediate_soap_bat.py '{your .env file path}'
 # ex)
 # HL-MedicalGPTDemo\app\backend> py .\create_intermediate_soap_bat.py.py 'C:\HL-MedicalGPTDemo\.azure\HealthcareGPTdemo-dev-GPT35\.env'
 ########
