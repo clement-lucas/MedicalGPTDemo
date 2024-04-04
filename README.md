@@ -143,6 +143,11 @@ AZURE_GPT_MODEL_NAME="gpt-4"
 
 3. 通常のデプロイ手順を実行する。  
 
+4. 必要に応じて、GPTConfig テーブルの以下の設定値を変更する。
+- MODEL_NAME_FOR_TIKTOKEN
+- MAX_TOTAL_TOKENS
+- TOKEN_NUM_FOR_QUESTION
+
 
 # GPT モデルを変更する（既にある環境のモデルを変更する場合）
 1. Azure Portal などから、Azure OpenAI インスタンスの Azure OpenAI Studio に移動する。  
@@ -158,10 +163,27 @@ AZURE_OPENAI_GPT_DEPLOYMENT="chat“
 4. ddl/sample_data/InsertDocumentFormat.sql  
 内の GPT モデル名も適宜変更あるいはレコード追加し、SQL 実行する。  
 
-5. App Service を再起動する。  
+5. 必要に応じて、GPTConfig テーブルの以下の設定値を変更する。
+- MODEL_NAME_FOR_TIKTOKEN
+- MAX_TOTAL_TOKENS
+- TOKEN_NUM_FOR_QUESTION
+
+6. App Service を再起動する。  
 
 ※：これは Azure 上にデプロイする場合の手順。 app/.start.ps1 コマンドによりローカル上で実行する場合は、同様の値を .env ファイルに設定する。   
 
+# GPT モデルを変更する（既にある環境のモデルのバージョンを変更する場合）
+
+1. Azure Portal などから、Azure OpenAI インスタンスの Azure OpenAI Studio に移動する。
+
+2. [デプロイ]メニューから、対象のデプロイを選択し、[デプロイの編集]を選択する。
+
+3. デプロイの編集画面にて、モデルバージョンを変更する。
+
+4. 必要に応じて、GPTConfig テーブルの以下の設定値を変更する。
+- MODEL_NAME_FOR_TIKTOKEN
+- MAX_TOTAL_TOKENS
+- TOKEN_NUM_FOR_QUESTION
 
 # Azure SQL Server の認証に Entra ID 認証（旧 AAD 認証）を使用する場合の手順
 1. Azure Portal にアクセスし、Azure SQL Server の認証方式に Entra ID 認証（旧 AAD 認証）があることを確認する。  
