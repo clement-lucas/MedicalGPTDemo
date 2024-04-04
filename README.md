@@ -119,24 +119,47 @@ cd <project_root>
 azd deploy  
 
 
-# GPT モデルを変更する
-本システムでは通常 gpt-35-turbo モデルを使用するが、 gpt-4 を使用したい場合は、  
-.azure\<env_name>\.env  
-ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
-AZURE_GPT_MODEL_NAME="gpt-4"  
+# GPT モデルの API バージョンを変更する
+1. Azure Portal, App Service の 構成メニューからアプリケーション設定に以下を設定する（※）。  
+
+  AZURE_OPENAI_API_VERSION="2024-02-01"  
+ 
+2. App Service を再起動する。  
   
-なお、provision 実行後は、再度 AppService のアプリケーション設定に SQL_CONNECTION_STRING を設定する必要がある。  
-
-また、  
-ddl/sample_data/InsertDocumentFormat.sql  
-内の GPT モデル名も適宜変更あるいはレコード追加する。  
+※：これは Azure 上にデプロイする場合の手順。 app/.start.ps1 コマンドによりローカル上で実行する場合は、同様の値を .env ファイルに設定する。   
 
 
-# GPT モデルの location を変更する
-gpt-4 の location を強制された等の理由により、 Azure Open AI リソースのみ location を変更したい場合は、  
+# GPT モデルを変更する（新しく環境を作成する場合）
+
+1. 本システムでは通常 gpt-35-turbo モデルを使用するが、例えば gpt-4 を使用したい場合は、  
 .azure\<env_name>\.env  
-ファイルに以下の設定を記載してから provision を行う（azd up または azd provision コマンド）。  
-AZURE_LOCATION_OPENAI="<target_location>"  
+ファイルに以下の設定を記載する。  
+  
+AZURE_GPT_MODEL_NAME="gpt-4"    
+
+2. ddl/sample_data/InsertDocumentFormat.sql  
+内の GPT モデル名も適宜変更あるいはレコード追加する。 
+
+3. 通常のデプロイ手順を実行する。  
+
+
+# GPT モデルを変更する（既にある環境のモデルを変更する場合）
+1. Azure Portal などから、Azure OpenAI インスタンスの Azure OpenAI Studio に移動する。  
+
+2. [デプロイ]メニューから、任意のモデルをデプロイする。  
+
+3. Azure Portal, App Service の 構成メニューからアプリケーション設定に以下を設定する（※）。設定値は2の内容と合わせる。  
+
+AZURE_GPT_MODEL_NAME="gpt-4"  
+AZURE_OPENAI_CHATGPT_DEPLOYMENT="chat"  
+AZURE_OPENAI_GPT_DEPLOYMENT="chat“  
+
+4. ddl/sample_data/InsertDocumentFormat.sql  
+内の GPT モデル名も適宜変更あるいはレコード追加し、SQL 実行する。  
+
+5. App Service を再起動する。  
+
+※：これは Azure 上にデプロイする場合の手順。 app/.start.ps1 コマンドによりローカル上で実行する場合は、同様の値を .env ファイルに設定する。   
 
 
 # Azure SQL Server の認証に Entra ID 認証（旧 AAD 認証）を使用する場合の手順
@@ -159,20 +182,6 @@ SQL_AUTHENTICATION="ActiveDirectoryMsi"
 SQL_CONNECTION_STRING="Driver={ODBC Driver 18 for SQL Server};Server=tcp:<sql-server-name>.database.windows.net,1433;Database=<sql-db-name>;Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"  
 同じ設定を、 Azure Portal 等から Web アプリケーションに対しても行う。  
 この設定は、Azure 上にて Webアプリケーションを実行する際に参照される。  
-
-
-# Azure OpenAI への認証方式を切り替える方法
-Azure OpenAI への認証方式は、AD 認証を用いる方法と、API key を用いる方法がある。  
-.env ファイルおよび App Service のアプリケーション設定にて、両者を切り替えることができる。  
-
-## AD 認証を用いるには  
-以下の設定を行う。もしくは、以下のキーを設定しない。もしくは、空文字を設定する。  
-AZURE_OPENAI_AUTHENTICATION="ActiveDirectory"  
-
-## API key 認証を用いるには  
-以下の設定を行う。  
-AZURE_OPENAI_AUTHENTICATION="ApiKey"  
-AZURE_OPENAI_KEY="{your_key}"  
 
 
 # トラブルシューティング
