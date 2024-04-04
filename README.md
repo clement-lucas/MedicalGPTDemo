@@ -132,6 +132,7 @@ azd deploy
 # GPT モデルを変更する（新しく環境を作成する場合）
 
 1. 本システムでは通常 gpt-35-turbo モデルを使用するが、例えば gpt-4 を使用したい場合は、  
+PowerShell で azd env new <env_name> コマンドを実行し .env ファイルを作った後、  
 .azure\<env_name>\.env  
 ファイルに以下の設定を記載する。  
   
